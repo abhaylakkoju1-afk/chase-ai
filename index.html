@@ -119,6 +119,253 @@ nav button:hover {
     letter-spacing: 1px;
 }
 
+/* THEME TOGGLE BUTTON */
+#themeToggle {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+
+    padding: 14px 20px;
+
+    border: none;
+    border-radius: 16px;
+
+    background: rgba(0,255,255,0.18);
+
+    color: white;
+
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+
+    cursor: pointer;
+
+    z-index: 99999;
+
+    backdrop-filter: blur(12px);
+
+    box-shadow:
+        0 0 12px rgba(0,255,255,0.25);
+
+    transition: all 0.3s ease;
+}
+
+#themeToggle:hover {
+    transform: scale(1.05);
+}
+
+/* ================================
+   PREMIUM LIGHT MODE MASTER THEME
+================================ */
+
+body.light-mode {
+    background:
+        linear-gradient(
+            135deg,
+            #f8f4e8 0%,
+            #fcfaf5 45%,
+            #f1ebdf 100%
+        ) !important;
+
+    color: #111;
+
+    background-attachment: fixed;
+}
+
+/* GLASS PANELS */
+body.light-mode .glass,
+body.light-mode .pb-item,
+body.light-mode .metric-box,
+body.light-mode .chart-container {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.88),
+            rgba(248,244,232,0.82)
+        );
+
+    backdrop-filter: blur(18px);
+
+    border:
+        1px solid rgba(255,255,255,0.55);
+
+    box-shadow:
+        0 8px 32px rgba(0,0,0,0.08),
+        0 2px 8px rgba(255,255,255,0.65) inset;
+
+    color: #111;
+}
+
+/* PRIMARY BUTTONS */
+body.light-mode .btn,
+body.light-mode button {
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff,
+            #f1ede4
+        );
+
+    color: #111;
+
+    border:
+        1px solid rgba(0,0,0,0.08);
+
+    box-shadow:
+        0 4px 12px rgba(0,0,0,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.7);
+
+    border-radius: 14px;
+
+    font-weight: 700;
+
+    transition: all 0.3s ease;
+}
+
+body.light-mode button:hover {
+    transform: translateY(-2px) scale(1.02);
+
+    box-shadow:
+        0 8px 22px rgba(0,119,255,0.15);
+}
+
+
+/* HEADINGS */
+body.light-mode h1,
+body.light-mode h2,
+body.light-mode h3,
+body.light-mode .title,
+body.light-mode .overview-title {
+    color: #111;
+
+    font-weight: 800;
+
+    letter-spacing: -0.5px;
+
+    text-shadow: none;
+}
+
+/* SUBTEXT */
+body.light-mode .subtitle,
+body.light-mode .quote,
+body.light-mode p,
+body.light-mode label {
+    color: rgba(0,0,0,0.72);
+}
+
+/* CHART TITLES */
+body.light-mode .chart-title {
+    color: #e63946;
+    font-weight: 800;
+}
+
+/* READINESS BARS */
+body.light-mode .readiness-bar {
+    background:
+        rgba(0,0,0,0.08);
+
+    border-radius: 999px;
+}
+
+/* PREMIUM HOVER */
+body.light-mode .pb-item:hover,
+
+/* PAGE DEPTH */
+body.light-mode::before {
+    content: "";
+
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            circle at top left,
+            rgba(255,180,80,0.12),
+            transparent 40%
+        ),
+        radial-gradient(
+            circle at bottom right,
+            rgba(0,119,255,0.06),
+            transparent 45%
+        );
+
+    z-index: -1;
+}
+
+
+/* ================================
+   PROFILE OVERVIEW
+================================ */
+
+body.light-mode .overview-card,
+body.light-mode .profile-card,
+body.light-mode .athlete-summary {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.92),
+            rgba(248,244,232,0.88)
+        );
+
+    color: #111;
+
+    box-shadow:
+        0 10px 28px rgba(0,0,0,0.08);
+}
+
+/* PROFILE HEADINGS */
+body.light-mode .overview-title,
+body.light-mode .overview-name,
+body.light-mode .overview-info,
+body.light-mode #profile h2,
+body.light-mode #profile h3 {
+    color: #111 !important;
+    text-shadow: none !important;
+}
+
+/* PROFILE DETAILS */
+body.light-mode .overview-info,
+body.light-mode .profile-meta,
+body.light-mode .profile-stat {
+    color: rgba(0,0,0,0.72) !important;
+}
+
+/* =====================================
+   KEEP ORIGINAL STROKE CARD COLORS
+===================================== */
+
+body.light-mode .stroke-card.elite,
+body.light-mode .stroke-card.gold,
+body.light-mode .stroke-card.silver,
+body.light-mode .stroke-card.bronze,
+body.light-mode .stroke-card.normal {
+    color: inherit !important;
+    filter: none !important;
+}
+
+
+
+
+/* BODY MAP + WAR ROOM */
+body.light-mode .body-legend,
+body.light-mode .readiness-label,
+body.light-mode .chart-title {
+    color: #111 !important;
+}
+
+/* TOOLTIP */
+body.light-mode #bodyTooltip {
+    background: rgba(255,255,255,0.96);
+    color: #111;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
 
 /* GLASS */
 .glass {
@@ -149,9 +396,35 @@ nav button:hover {
     color: white;
 }
 
-/* PAGES */
-.page { display:none; }
-.active { display:block; }
+/* =========================================
+   MASTER PAGE SYSTEM FIX
+========================================= */
+
+/* Hide all pages */
+.page {
+    display: none !important;
+
+    width: 100% !important;
+    min-height: 100vh !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Show only active page */
+.page.active {
+    display: block !important;
+}
+
+/* Home page only when active */
+#home.page.active {
+    display: block !important;
+}
+
+/* Hide home completely when inactive */
+#home.page:not(.active) {
+    display: none !important;
+}
 
 /* TEXT */
 .title { font-size: 60px; color: #00ffff; }
@@ -176,14 +449,76 @@ nav button:hover {
     border-radius: 10px;
 }
 
-/* PB */
+/* PB CARD */
 .pb-item {
-    margin: 10px;
-    padding: 10px;
-    border: 1px solid rgba(0,255,255,0.3);
-    border-radius: 10px;
+    width: 100%;
+    padding: 20px;
+    margin-bottom: 22px;
+
+    border-radius: 18px;
+
+    background: rgba(255,255,255,0.04);
+
+    border: 1px solid rgba(0,255,255,0.25);
+
+    overflow: visible !important;
+
+    height: auto !important;
+    min-height: unset !important;
+
+    display: block !important;
 }
 
+/* HEADER */
+.pb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* TITLE */
+.pb-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+/* BUTTON AREA */
+.pb-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* CHART SECTION */
+.chart-container {
+    width: 100%;
+    margin-top: 20px;
+
+    padding: 20px;
+
+    border-radius: 14px;
+
+    background: rgba(255,255,255,0.03);
+
+    display: block;
+
+    overflow: hidden;
+}
+
+/* CANVAS WRAPPER */
+.chart-wrapper {
+    position: relative;
+    width: 100%;
+    height: 320px;
+}
+
+/* CANVAS */
+.chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
 /* ===== ATHLETE OVERVIEW CARD UPGRADE ===== */
 
 /* MAIN CARD */
@@ -611,6 +946,13 @@ nav button:hover {
         0 0 20px rgba(255,215,0,0.4);
 }
 
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    margin-top: 20px;
+}
+
 #profile input,
 #profile select,
 #profile textarea {
@@ -694,7 +1036,7 @@ nav button:hover {
 .profile-right {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 8px;
 }
 
 .profile-right {
@@ -1081,6 +1423,412 @@ nav button:hover {
     background: rgba(0,255,255,0.08);
 }
 
+
+body.light-mode #profile input,
+body.light-mode #profile select,
+body.light-mode #profile textarea,
+body.light-mode #dashboard input,
+body.light-mode #dashboard select,
+body.light-mode #dashboard textarea {
+    background: rgba(255,255,255,0.98) !important;
+    color: #111 !important;
+    -webkit-text-fill-color: #111 !important;
+
+    border: 1px solid rgba(0,0,0,0.12) !important;
+
+    font-weight: 600 !important;
+    opacity: 1 !important;
+
+    caret-color: #111 !important;
+}
+
+/* PLACEHOLDER TEXT */
+body.light-mode #profile input::placeholder,
+body.light-mode #profile textarea::placeholder,
+body.light-mode #dashboard input::placeholder,
+body.light-mode #dashboard textarea::placeholder {
+    color: rgba(0,0,0,0.55) !important;
+    -webkit-text-fill-color: rgba(0,0,0,0.55) !important;
+    opacity: 1 !important;
+    font-weight: 500 !important;
+}
+
+/* SELECT DROPDOWN DISPLAYED VALUE */
+body.light-mode select option {
+    color: #111 !important;
+    background: white !important;
+}
+
+/* DATE INPUT FIX */
+body.light-mode input[type="date"] {
+    color: #111 !important;
+    -webkit-text-fill-color: #111 !important;
+}
+
+body.light-mode input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0);
+    opacity: 0.85;
+    cursor: pointer;
+}
+
+/* LABELS */
+body.light-mode label {
+    color: #111 !important;
+    font-weight: 700 !important;
+}
+
+/* SECTION HEADINGS */
+body.light-mode h2,
+body.light-mode h3,
+body.light-mode .overview-title,
+body.light-mode .overview-name,
+body.light-mode .overview-info {
+    color: #111 !important;
+    text-shadow: none !important;
+}
+
+/* REMOVE ANY FADED GLOBAL OPACITY */
+body.light-mode #profile,
+body.light-mode #dashboard,
+body.light-mode .glass,
+body.light-mode .overview-card {
+    opacity: 1 !important;
+}
+
+/* FORCE SAVED USER VALUES TO DISPLAY */
+body.light-mode input[value],
+body.light-mode textarea,
+body.light-mode select {
+    color: #111 !important;
+    -webkit-text-fill-color: #111 !important;
+}
+
+/* AUTOFILL FIX */
+body.light-mode input:-webkit-autofill,
+body.light-mode textarea:-webkit-autofill,
+body.light-mode select:-webkit-autofill {
+    -webkit-text-fill-color: #111 !important;
+    box-shadow: 0 0 0px 1000px white inset !important;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+/* =========================================
+   GLOBAL SCROLL REMOVAL + PERFECT HOME FIX
+========================================= */
+
+/* REMOVE ALL DEFAULT PAGE SPACING */
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+
+    width: 100% !important;
+    height: 100% !important;
+
+    overflow-x: hidden !important;
+}
+
+/* PREVENT HOME PAGE SCROLL */
+body,
+body.light-mode {
+    overflow-y: auto !important;
+}
+
+/* REMOVE SECTION PUSHING */
+section {
+    margin: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* NAVBAR FIX */
+nav,
+.navbar {
+    margin: 0 !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+
+    position: relative !important;
+    z-index: 1000 !important;
+}
+
+/* HOME PAGE MASTER */
+#home,
+body.light-mode #home {
+    position: relative !important;
+
+    width: 100% !important;
+    height: calc(100vh - 90px) !important;
+    min-height: calc(100vh - 90px) !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    overflow: hidden !important;
+
+    display: block !important;
+
+    background: transparent !important;
+    pointer-events: none !important;
+
+}
+
+/* REMOVE EXTRA OVERLAYS */
+#home::before,
+#home::after,
+body.light-mode #home::before,
+body.light-mode #home::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* VIDEO FULL FIT */
+#bgVideo,
+body.light-mode #bgVideo {
+    position: absolute !important;
+
+    top: 0 !important;
+    left: 0 !important;
+
+    width: 100% !important;
+    height: 100% !important;
+
+    object-fit: cover !important;
+
+    z-index: -1 !important;
+
+    opacity: 1 !important;
+
+    filter: none !important;
+    pointer-events: none !important;
+
+    background: transparent !important;
+}
+
+/* HERO CONTENT */
+.overlay,
+body.light-mode .overlay {
+    position: absolute !important;
+
+    top: 50% !important;
+    left: 50% !important;
+
+    transform: translate(-50%, -50%) !important;
+
+    width: auto !important;
+    max-width: none !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    text-align: center !important;
+
+    z-index: 10 !important;
+
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    pointer-events: none !important;
+}
+
+/* TITLE */
+body.light-mode .chase-title {
+    font-family: 'Michroma', sans-serif !important;
+
+    font-size: 4.2rem !important;
+    font-weight: 400 !important;
+
+    letter-spacing: 6px !important;
+
+    text-transform: uppercase !important;
+
+    color: white !important;
+
+    -webkit-text-fill-color: white !important;
+
+    text-shadow:
+        0 0 18px rgba(0,255,255,0.35),
+        0 0 35px rgba(0,150,255,0.15) !important;
+
+    margin-bottom: 18px !important;
+}
+
+/* SUBTITLE */
+body.light-mode .home-subtitle,
+body.light-mode .quote {
+    color: rgba(255,255,255,0.88) !important;
+}
+
+/* QUOTE */
+body.light-mode .quote {
+    color: rgba(255,255,255,0.78) !important;
+
+    text-shadow:
+        0 2px 12px rgba(0,0,0,0.42) !important;
+}
+
+  /* HOME PAGE CTA BUTTON = NAVBAR BUTTON STYLE
+========================================= */
+
+body.light-mode .overlay .btn {
+    padding: 18px 44px !important;
+
+    border-radius: 18px !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff,
+            #f7f4ee,
+            #ece7dc
+        ) !important;
+
+    color: #111 !important;
+
+    font-weight: 700 !important;
+    font-size: 1.08rem !important;
+
+    border:
+        1px solid rgba(0,0,0,0.08) !important;
+
+    box-shadow:
+        0 8px 22px rgba(0,0,0,0.10),
+        inset 0 1px 0 rgba(255,255,255,0.85) !important;
+
+    text-shadow: none !important;
+
+    backdrop-filter: blur(10px) !important;
+
+    transition: all 0.3s ease !important;
+
+    pointer-events: auto !important;
+}
+
+/* HOVER */
+body.light-mode .overlay .btn:hover {
+    transform: translateY(-3px) scale(1.03) !important;
+
+    box-shadow:
+        0 14px 28px rgba(0,0,0,0.14),
+        inset 0 1px 0 rgba(255,255,255,0.9) !important;
+
+    color: #000 !important;
+}
+
+/* NAVBAR */
+body.light-mode .nav {
+    padding: 18px 30px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.86),
+            rgba(248,244,232,0.82)
+        );
+
+    backdrop-filter: blur(24px);
+
+    border-bottom:
+        1px solid rgba(0,0,0,0.05);
+
+    box-shadow:
+        0 6px 22px rgba(0,0,0,0.05);
+}
+
+/* NAV BUTTONS */
+body.light-mode .nav button {
+    padding: 16px 34px;
+
+    border-radius: 18px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.92),
+            rgba(244,240,232,0.88)
+        );
+
+    color: #111;
+
+    font-weight: 800;
+
+    letter-spacing: 1px;
+
+    border:
+        1px solid rgba(0,0,0,0.05);
+
+    box-shadow:
+        0 4px 12px rgba(0,0,0,0.06);
+
+    transition: all 0.3s ease;
+}
+
+body.light-mode .nav button:hover {
+    color: #0077ff;
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 10px 24px rgba(0,119,255,0.12);
+}
+
+/* REMOVE HIDDEN PAGE OVERFLOW FROM OTHER SECTIONS */
+#profile,
+#dashboard,
+#warroom,
+#analyzer {
+    margin-top: 0 !important;
+}
+
+/* EXISTING CSS ABOVE */
+
+
+/* =========================================
+   LIGHT MODE HOME PAGE OUTER BACKGROUND FIX
+========================================= */
+
+body.light-mode,
+body.light-mode html {
+    background:
+        linear-gradient(
+            135deg,
+            #f8f4e8 0%,
+            #fcfaf5 45%,
+            #f1ebdf 100%
+        ) !important;
+}
+
+
+/* THEME TOGGLE */
+body.light-mode #themeToggle {
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.92),
+            rgba(248,244,232,0.88)
+        );
+
+    color: #111;
+
+    border:
+        1px solid rgba(0,0,0,0.06);
+
+    box-shadow:
+        0 8px 22px rgba(0,0,0,0.08);
+}
+
+/* AI COACH BUTTON */
+body.light-mode #aiCoachBtn {
+    background:
+        linear-gradient(
+            135deg,
+            #0077ff,
+            #00c6ff
+        );
+
+    box-shadow:
+        0 10px 24px rgba(0,119,255,0.25);
+}
+
 </style>
 </head>
 
@@ -1089,7 +1837,7 @@ nav button:hover {
 <!-- NAV -->
 <div class="nav">
 <button onclick="showPage('home')">Home</button>
-<button onclick="showPage('analyzer')">Chase AI</button>
+<button onclick="showPage('analyzer')">Analyzer</button>
 <button onclick="showPage('pb')">Wall of Records</button>
 <button onclick="showPage('race')">Chronos Engine</button>
 <button onclick="showPage('profile')">Profile</button>
@@ -1098,7 +1846,13 @@ nav button:hover {
 
 <!-- HOME -->
 <div id="home" class="page active">
-<video autoplay muted loop id="bgVideo">
+<video
+    autoplay
+    muted
+    loop
+    playsinline
+    id="bgVideo"
+>
     <source src="bg.mp4" type="video/mp4">
 </video>
 
@@ -1117,7 +1871,7 @@ nav button:hover {
 <div id="analyzer" class="page">
 <div class="glass">
 
-<h2>Chase AI Swim Analyzer</h2>
+<h2>Swim Analyzer</h2>
 
 <input type="file" id="videoInput" accept="video/*">
 
@@ -2189,21 +2943,30 @@ let metricsHistory = {
 };
 
 /* PAGE SWITCH */
-function showPage(p){
+function showPage(p) {
 
+    // Hide all pages
     document.querySelectorAll('.page').forEach(page => {
-        page.style.display = "none";
         page.classList.remove('active');
+        page.style.display = "none";
     });
 
+    // Show selected page
     const target = document.getElementById(p);
 
-    if(target){
-        target.style.display = "block";
+    if (target) {
         target.classList.add('active');
+        target.style.display = "block";
     }
 
-    if(p === "profile"){
+    // Scroll to top instantly
+    window.scrollTo({
+        top: 0,
+        behavior: "instant"
+    });
+
+    // Special page loaders
+    if (p === "profile") {
         loadProfile();
     }
 }
@@ -2823,37 +3586,46 @@ document.getElementById("time").value=pb.time;
 editIndex=i;
 }
 
-function displayPBs(){
+function displayPBs() {
 
-let c=document.getElementById("pbList");
-c.innerHTML="";
+    let c = document.getElementById("pbList");
+    c.innerHTML = "";
 
-pbs.forEach((pb,i)=>{
+    pbs.forEach((pb, i) => {
 
-let d=document.createElement("div");
-d.className="pb-item";
+        let d = document.createElement("div");
+        d.className = "pb-item";
 
-d.innerHTML = `
-${pb.event} (${pb.course}) - ${pb.time}
-<br>
-<button onclick="editPB(${i})">Edit</button>
-<button onclick="deletePB(${i})">Delete</button>
-<button onclick="toggleChart(${i})">📊</button>
+        d.innerHTML = `
+            <div class="pb-header">
+                <div class="pb-title">
+                    ${pb.event} (${pb.course}) - ${pb.time}
+                </div>
 
-<div id="chart-container-${i}" style="display:none; margin-top:10px;">
+                <div class="pb-controls">
+                    <button onclick="editPB(${i})">Edit</button>
+                    <button onclick="deletePB(${i})">Delete</button>
+                    <button onclick="toggleChart(${i})">📊</button>
+                </div>
+            </div>
 
-    <div class="chart-title">
-        Performance Trajectory
-    </div>
+            <div id="chart-container-${i}" class="chart-container" style="display:none;">
 
-    <canvas id="chart-${i}" height="200"></canvas>
+                <div class="chart-title">
+                    Performance Trajectory
+                </div>
 
-</div>
-`;
+                <div class="chart-wrapper">
+                    <canvas id="chart-${i}"></canvas>
+                </div>
 
-c.appendChild(d);
-});
+            </div>
+        `;
+
+        c.appendChild(d);
+    });
 }
+
 displayPBs();
 
 function toggleChart(index){
@@ -2880,72 +3652,121 @@ function formatTime(seconds){
 
 function renderChart(index){
 
-const pb = pbs[index];
+    const pb = pbs[index];
 
-if(!pb.history || pb.history.length === 0) return;
+    if(!pb || !pb.history || pb.history.length === 0) return;
 
-const ctx = document.getElementById(`chart-${index}`).getContext("2d");
+    const canvas = document.getElementById(`chart-${index}`);
+    if(!canvas) return;
 
-// DESTROY OLD CHART
-if(window[`chart${index}`]){
-    window[`chart${index}`].destroy();
-}
+    const ctx = canvas.getContext("2d");
 
-window[`chart${index}`] = new Chart(ctx, {
-    type: "line",
-    data: {
-        labels: pb.history.map((_,i)=>`Attempt ${i+1}`),
-        datasets: [{
-            data: pb.history,
-            borderColor: "#ff0033",
-            backgroundColor: "rgba(255,0,50,0.15)",
-            borderWidth: 3,
-            tension: 0.4,
-            pointRadius: 5,
-            pointBackgroundColor: "#ff0033",
-            fill: true
-        }]
-    },
-    options: {
-        plugins: {
-            legend: { display:false },
-            tooltip: {
-                callbacks: {
-                    label: function(context){
-                        return formatTime(context.raw);
-                    }
-                }
-            }
+    // Destroy old chart if exists
+    if(window[`chart${index}`]){
+        window[`chart${index}`].destroy();
+    }
+
+    window[`chart${index}`] = new Chart(ctx, {
+        type: "line",
+
+        data: {
+            labels: pb.history.map((_, i) => `Attempt ${i + 1}`),
+
+            datasets: [{
+                label: pb.event,
+                data: pb.history,
+
+                borderColor: "#ff0033",
+                backgroundColor: "rgba(255,0,51,0.15)",
+
+                borderWidth: 3,
+                tension: 0.35,
+                fill: true,
+
+                pointBackgroundColor: "#ffffff",
+                pointBorderColor: "#ff0033",
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
         },
-        scales: {
-            x: {
-                ticks: { color: "#ffffff" },
-                grid: { color: "rgba(255,255,255,0.08)" }
-            },
-            y: {
-                reverse: true,
-                ticks: {
-                    color: "#ffffff",
-                    callback: function(value){
-                        return formatTime(value);
+
+        options: {
+            responsive: true,
+
+            plugins: {
+                legend: {
+                    display: false,
+                    labels: {
+                        color: document.body.classList.contains("light-mode")
+                            ? "#111"
+                            : "#ffffff"
                     }
                 },
-                grid: { color: "rgba(255,255,255,0.08)" }
+
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return formatTime(context.raw);
+                        }
+                    }
+                }
+            },
+
+            scales: {
+                x: {
+                    ticks: {
+                        color: document.body.classList.contains("light-mode")
+                            ? "#111"
+                            : "#ffffff"
+                    },
+
+                    grid: {
+                        color: document.body.classList.contains("light-mode")
+                            ? "rgba(0,0,0,0.08)"
+                            : "rgba(255,255,255,0.08)"
+                    }
+                },
+
+                y: {
+                    reverse: true,
+
+                    ticks: {
+                        color: document.body.classList.contains("light-mode")
+                            ? "#111"
+                            : "#ffffff",
+
+                        callback: function(value) {
+                            return formatTime(value);
+                        }
+                    },
+
+                    grid: {
+                        color: document.body.classList.contains("light-mode")
+                            ? "rgba(0,0,0,0.08)"
+                            : "rgba(255,255,255,0.08)"
+                    }
+                }
+            },
+
+            animation: {
+                duration: 1200,
+                easing: "easeOutQuart"
             }
-        },
-        animation: {
-            duration: 1200,
-            easing: 'easeOutQuart'
         }
+    });
+
+    // 🔴 NEON GLOW (Dark mode only)
+    const chart = window[`chart${index}`];
+
+    if (!document.body.classList.contains("light-mode")) {
+        chart.ctx.shadowColor = "#ff0033";
+        chart.ctx.shadowBlur = 15;
+    } else {
+        chart.ctx.shadowColor = "transparent";
+        chart.ctx.shadowBlur = 0;
     }
-});
-
-// 🔴 NEON GLOW
-const chart = window[`chart${index}`];
-chart.ctx.shadowColor = "#ff0033";
-chart.ctx.shadowBlur = 15;
-
 }
+
 
 
 /* ===== RACE ===== */
@@ -4862,7 +5683,43 @@ function updateBodyPartColor(part){
     element.style.fill = colors[state];
 }
 
+// ===============================
+// THEME TOGGLE SYSTEM
+// ===============================
+function toggleTheme() {
+    const body = document.body;
+    const toggleBtn = document.getElementById("themeToggle");
 
+    body.classList.toggle("light-mode");
+
+    if (body.classList.contains("light-mode")) {
+        localStorage.setItem("theme", "light");
+        toggleBtn.innerHTML = "🌙 Dark Mode";
+    } else {
+        localStorage.setItem("theme", "dark");
+        toggleBtn.innerHTML = "☀️ Light Mode";
+    }
+}
+
+// ===============================
+// LOAD SAVED THEME
+// ===============================
+window.addEventListener("DOMContentLoaded", () => {
+    const savedTheme = localStorage.getItem("theme");
+    const toggleBtn = document.getElementById("themeToggle");
+
+    if (savedTheme === "light") {
+        document.body.classList.add("light-mode");
+
+        if (toggleBtn) {
+            toggleBtn.innerHTML = "🌙 Dark Mode";
+        }
+    } else {
+        if (toggleBtn) {
+            toggleBtn.innerHTML = "☀️ Light Mode";
+        }
+    }
+});
 
 </script>
 
@@ -4877,6 +5734,10 @@ function updateBodyPartColor(part){
     <input id="coachInput" placeholder="Ask anything...">
     <button onclick="sendCoachMessage()">Send</button>
 </div>
+
+<button id="themeToggle" onclick="toggleTheme()">
+    ☀️ Light Mode
+</button>
 
 </body>
 </html>
