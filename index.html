@@ -15,7 +15,7 @@
         rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&display=swap" rel="stylesheet">
-   <title>Swimtics | Engineered for Champions</title>
+    <title>Swimtics | Engineered for Champions</title>
     <meta name="description" content="Swimtics - Precision. Power. Progress. Elite AI-powered swimming analytics platform.">
 
     <style>
@@ -1861,100 +1861,169 @@ body.light-mode .hero-quote {
                 0 10px 24px rgba(0, 119, 255, 0.25);
         }
 
-        /* =========================================
-   AUTH MODAL
-========================================= */
+ /* ===== PREMIUM SWIMTICS AUTH MODAL ===== */
 
-        .auth-modal {
-            position: fixed;
+.auth-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
 
-            top: 0;
-            left: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(18px);
 
-            width: 100%;
-            height: 100%;
+    justify-content: center;
+    align-items: center;
 
-            background: rgba(0, 0, 0, 0.65);
+    z-index: 999999;
+}
 
-            display: flex;
-            justify-content: center;
-            align-items: center;
+.auth-box {
+    width: 95%;
+    max-width: 500px;
 
-            z-index: 10000;
-        }
+    padding: 50px 40px;
 
-        .auth-box {
-            width: 400px;
+    border-radius: 28px;
 
-            padding: 40px;
+    background: linear-gradient(
+        145deg,
+        rgba(10, 25, 45, 0.96),
+        rgba(20, 40, 70, 0.92)
+    );
 
-            border-radius: 22px;
+    border: 1px solid rgba(0, 191, 255, 0.25);
 
-            background:
-                linear-gradient(135deg,
-                    rgba(255, 255, 255, 0.95),
-                    rgba(245, 240, 230, 0.96));
+    box-shadow:
+        0 0 25px rgba(0, 191, 255, 0.15),
+        0 20px 60px rgba(0, 0, 0, 0.5);
 
-            box-shadow:
-                0 25px 60px rgba(0, 0, 0, 0.25);
+    text-align: center;
+}
 
-            display: flex;
-            flex-direction: column;
+.auth-box h2 {
+    font-family: 'Michroma', sans-serif;
+    font-size: 1.7rem;
+    margin-bottom: 30px;
 
-            gap: 16px;
+    color: white;
 
-            text-align: center;
-        }
+    text-shadow:
+        0 0 8px rgba(0, 191, 255, 0.35);
+}
 
-        .auth-box h2 {
-            font-size: 2rem;
-            color: #111;
-        }
+.auth-box input {
+    width: 100%;
 
-        .auth-box input {
-            padding: 16px;
+    padding: 15px 18px;
+    margin-bottom: 18px;
 
-            border-radius: 14px;
+    border: none;
+    outline: none;
 
-            border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 16px;
 
-            font-size: 1rem;
+    background: rgba(255, 255, 255, 0.08);
 
-            outline: none;
-        }
+    color: white;
+    font-size: 1rem;
+}
 
-        .auth-box button {
-            padding: 16px;
+.auth-box input::placeholder {
+    color: rgba(255, 255, 255, 0.65);
+}
 
-            border: none;
+.auth-box button {
+    width: 100%;
 
-            border-radius: 14px;
+    padding: 15px;
 
-            font-weight: 700;
+    margin-top: 10px;
 
-            cursor: pointer;
+    border: none;
+    border-radius: 18px;
 
-            background:
-                linear-gradient(135deg,
-                    #111,
-                    #333);
+    background: linear-gradient(
+        135deg,
+        #00bfff,
+        #007bff
+    );
 
-            color: white;
+    color: white;
 
-            transition: all 0.3s ease;
-        }
+    font-size: 1rem;
+    font-weight: 700;
 
-        .auth-box button:hover {
-            transform: translateY(-2px);
+    cursor: pointer;
 
-            box-shadow:
-                0 10px 20px rgba(0, 0, 0, 0.18);
-        }
+    transition: all 0.3s ease;
+}
 
-        #authMessage {
-            color: red;
-            font-size: 0.95rem;
-        }
+.auth-box button:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 0 18px rgba(0, 191, 255, 0.4);
+}
+
+.auth-switch {
+    margin-top: 22px;
+
+    font-size: 0.95rem;
+    color: rgba(255,255,255,0.8);
+}
+
+.auth-switch span {
+    color: #00bfff;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.auth-switch span:hover {
+    text-decoration: underline;
+}
+
+#authMessage {
+    margin-top: 18px;
+
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+/* ===== LIGHT MODE ===== */
+
+body.light-mode .auth-box {
+    background: linear-gradient(
+        145deg,
+        rgba(255,255,255,0.98),
+        rgba(245,248,252,0.98)
+    );
+
+    color: #111;
+
+    border: 1px solid rgba(0,0,0,0.08);
+
+    box-shadow:
+        0 15px 50px rgba(0,0,0,0.12);
+}
+
+body.light-mode .auth-box h2 {
+    color: #111;
+    text-shadow: none;
+}
+
+body.light-mode .auth-box input {
+    background: rgba(0,0,0,0.05);
+    color: #111;
+}
+
+body.light-mode .auth-box input::placeholder {
+    color: rgba(0,0,0,0.45);
+}
+
+body.light-mode .auth-switch {
+    color: #333;
+}
 
         /* =========================================
    PROFILE ACCOUNT DETAILS
@@ -2067,21 +2136,52 @@ body.light-mode .hero-quote {
         <button onclick="showPage('dashboard')">War Room</button>
     </div>
 
-    <div id="authModal" class="auth-modal">
-        <div class="auth-box">
+     <div id="authModal" class="auth-modal">
+    <div class="auth-box">
 
-            <h2 id="authTitle">Login to SWIMTICS</h2>
+        <!-- LOGIN VIEW -->
+        <div id="loginView">
+
+            <h2>Login to SWIMTICS</h2>
 
             <input type="email" id="authEmail" placeholder="Email">
             <input type="password" id="authPassword" placeholder="Password">
 
             <button onclick="loginUser()">Login</button>
-            <button onclick="signupUser()">Sign Up</button>
 
-            <p id="authMessage"></p>
+            <p class="auth-switch">
+                Don’t have an account?
+                <span onclick="showSignup()">Sign Up</span>
+            </p>
 
         </div>
+
+        <!-- SIGNUP VIEW -->
+        <div id="signupView" style="display:none;">
+
+            <h2>Create Your Account</h2>
+
+            <input type="text" id="signupFullName" placeholder="Full Name">
+            <input type="text" id="signupGender" placeholder="Gender">
+            <input type="text" id="signupClub" placeholder="Club">
+            <input type="text" id="signupNationality" placeholder="Nationality">
+
+            <input type="email" id="signupEmail" placeholder="Email">
+            <input type="password" id="signupPassword" placeholder="Password">
+
+            <button onclick="signupUser()">Create Account</button>
+
+            <p class="auth-switch">
+                Already have an account?
+                <span onclick="showLogin()">Login</span>
+            </p>
+
+        </div>
+
+        <p id="authMessage"></p>
+
     </div>
+</div> 
 
     <!-- HOME -->
     <div id="home" class="page active">
@@ -2140,18 +2240,18 @@ body.light-mode .hero-quote {
 
             <br>
 
-            <button type="button" class="btn" onclick="upload()">Analyze</button>
+            <button type="button" class="btn" onclick="requireAuth(() => upload())">Analyze</button>
 
             <div id="metrics"></div>
             <div id="feedback"></div>
 
             <br><br>
 
-            <button class="btn" onclick="saveAnalysisReport()">
+            <button class="btn" onclick="requireAuth(() => saveAnalysisReport())">
                 Save Analysis Report
             </button>
 
-            <button class="btn" onclick="loadSavedReports()">
+            <button class="btn" onclick="requireAuth(() => loadSavedReports())">
                 View Previous Reports
             </button>
 
@@ -2195,7 +2295,7 @@ body.light-mode .hero-quote {
             <input type="text" id="time" placeholder="Enter time">
 
             <br>
-            <button class="btn" onclick="savePB()">Save PB</button>
+            <button class="btn" onclick="requireAuth(() => savePB())">Save PB</button>
 
             <h3>Your PBs</h3>
             <div id="pbList"></div>
@@ -2223,16 +2323,16 @@ body.light-mode .hero-quote {
         pointer-events: none;
     "></canvas>
             </div>
-            <button class="btn" onclick="startMetrics()">Calculate Metrics</button>
+            <button class="btn" onclick="requireAuth(() => startMetrics())">Calculate Metrics</button>
 
             <div id="raceMetrics"></div>
 
             <br><br>
 
-            <button class="btn" onclick="startTimer()">▶ Start</button>
-            <button class="btn" onclick="pauseTimer()">⏸ Pause</button>
-            <button class="btn" onclick="split()">📍 Split</button>
-            <button class="btn" onclick="reset()">🔁 Reset</button>
+            <button class="btn" onclick="requireAuth(() => startTimer())">▶ Start</button>
+            <button class="btn" onclick="requireAuth(() => pauseTimer())">⏸ Pause</button>
+            <button class="btn" onclick="requireAuth(() => split())">📍 Split</button>
+            <button class="btn" onclick="requireAuth(() => reset())">🔁 Reset</button>
 
             <h2 id="timer">0.00 s</h2>
 
@@ -2343,7 +2443,7 @@ body.light-mode .hero-quote {
 
             </div>
 
-            <button class="btn" onclick="saveProfile()">Save Profile</button>
+            <button class="btn" onclick="requireAuth(() => saveProfile())">Save Profile</button>
 
             <div id="accountDetails" class="account-details-section"></div>
 
@@ -2787,7 +2887,7 @@ body.light-mode .hero-quote {
             <option value="distance">Distance (800m+)</option>
         </select><br><br>
 
-        <button type="button" class="btn" onclick="generateWarRoomPlan()">Generate War Room Plan</button>
+        <button type="button" class="btn" onclick="requireAuth(() => generateWarRoomPlan())">Generate War Room Plan</button>
 
         <div id="dashboardOutput"></div>
 
@@ -5626,50 +5726,118 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
             }
         });
 
+        /* ===== AUTH MODAL VIEW SWITCHING ===== */
+
+function openLoginModal() {
+    document.getElementById("authModal").style.display = "flex";
+    showLogin();
+}
+
+function closeLoginModal() {
+    document.getElementById("authModal").style.display = "none";
+}
+
+function showSignup() {
+    document.getElementById("loginView").style.display = "none";
+    document.getElementById("signupView").style.display = "block";
+
+    document.getElementById("authMessage").innerText = "";
+}
+
+function showLogin() {
+    document.getElementById("signupView").style.display = "none";
+    document.getElementById("loginView").style.display = "block";
+
+    document.getElementById("authMessage").innerText = "";
+}
+
         // =========================================
         // FIREBASE AUTH SYSTEM
         // =========================================
 
         function signupUser() {
-            const email = document.getElementById("authEmail").value;
-            const password = document.getElementById("authPassword").value;
-            const msg = document.getElementById("authMessage");
 
-            window.firebaseFns.createUserWithEmailAndPassword(window.auth, email, password)
-                .then((userCredential) => {
-                    msg.style.color = "green";
-                    msg.innerText = "Signup successful!";
+    const fullName = document.getElementById("signupFullName").value;
+    const gender = document.getElementById("signupGender").value;
+    const club = document.getElementById("signupClub").value;
+    const nationality = document.getElementById("signupNationality").value;
 
-                    document.getElementById("authModal").style.display = "none";
+    const email = document.getElementById("signupEmail").value;
+    const password = document.getElementById("signupPassword").value;
 
-                    saveUserData(userCredential.user.uid);
-                })
-                .catch((error) => {
-                    msg.style.color = "red";
-                    msg.innerText = error.message;
-                });
-        }
+    const msg = document.getElementById("authMessage");
 
-        // LOGIN
-        function loginUser() {
-            const email = document.getElementById("authEmail").value;
-            const password = document.getElementById("authPassword").value;
-            const msg = document.getElementById("authMessage");
+    window.firebaseFns.createUserWithEmailAndPassword(window.auth, email, password)
 
-            window.firebaseFns.signInWithEmailAndPassword(window.auth, email, password)
-                .then(() => {
-                    msg.style.color = "green";
-                    msg.innerText = "Login successful!";
+        .then((userCredential) => {
 
-                    document.getElementById("authModal").style.display = "none";
+            const uid = userCredential.user.uid;
 
-                    loadUserData();
-                })
-                .catch((error) => {
-                    msg.style.color = "red";
-                    msg.innerText = error.message;
-                });
-        }
+            const userData = {
+                fullName,
+                gender,
+                club,
+                nationality,
+                email,
+                profile: {},
+                pbs: [],
+                analyzerReports: [],
+                savedFeedback: [],
+                createdAt: Date.now()
+            };
+
+            window.firebaseFns.set(
+                window.firebaseFns.ref(window.db, 'users/' + uid),
+                userData
+            );
+
+            msg.style.color = "green";
+            msg.innerText = "Signup successful!";
+
+            document.getElementById("authModal").style.display = "none";
+
+            loadUserData();
+        })
+
+        .catch((error) => {
+            msg.style.color = "red";
+            msg.innerText = error.message;
+        });
+}
+
+        /* ===== UPGRADED LOGIN FUNCTION ===== */
+
+    function loginUser() {
+
+    const email = document.getElementById("authEmail").value;
+    const password = document.getElementById("authPassword").value;
+
+    const msg = document.getElementById("authMessage");
+
+    window.firebaseFns.signInWithEmailAndPassword(
+        window.auth,
+        email,
+        password
+    )
+
+    .then(() => {
+
+        msg.style.color = "green";
+        msg.innerText = "Login successful!";
+
+        closeLoginModal();
+
+        loadUserData();
+
+    })
+
+    .catch((error) => {
+
+        msg.style.color = "red";
+        msg.innerText = error.message;
+
+    });
+}
 
         // LOGOUT
         async function logoutUser() {
@@ -5795,12 +5963,105 @@ function updateProfileAccountSection() {
 
     </div>
     `;
+
+    /* ===== LOAD USER DATA + AUTO PROFILE INTEGRATION ===== */
+
+function loadUserData() {
+
+    const user = window.auth.currentUser;
+
+    if (!user) return;
+
+    currentUser = user;
+
+    window.firebaseFns.get(
+        window.firebaseFns.child(
+            window.firebaseFns.ref(window.db),
+            'users/' + user.uid
+        )
+    )
+
+    .then((snapshot) => {
+
+        if (snapshot.exists()) {
+
+            const data = snapshot.val();
+
+            /* ===== PROFILE FIELDS ===== */
+            if (data.fullName) {
+                document.getElementById("displayName").innerText = data.fullName;
+                document.getElementById("name").value = data.fullName;
+            }
+
+            if (data.gender) {
+                document.getElementById("gender").value = data.gender;
+            }
+
+            if (data.club) {
+                document.getElementById("club").value = data.club;
+            }
+
+            if (data.nationality) {
+                document.getElementById("nationality").value = data.nationality;
+            }
+
+            /* ===== LOAD EXISTING PROFILE OBJECT ===== */
+            if (data.profile) {
+                profileData = data.profile;
+            }
+
+            /* ===== LOAD PBS ===== */
+            if (data.pbs) {
+                pbs = data.pbs;
+            }
+
+            /* ===== LOAD REPORTS ===== */
+            if (data.analyzerReports) {
+                analyzerReports = data.analyzerReports;
+            }
+
+            /* ===== LOAD FEEDBACK ===== */
+            if (data.savedFeedback) {
+                savedFeedback = data.savedFeedback;
+            }
+
+            /* ===== REFRESH UI ===== */
+            if (typeof loadProfile === "function") loadProfile();
+            if (typeof updateProfileAccountSection === "function") {
+                updateProfileAccountSection();
+            }
+
+            if (typeof displayPBs === "function") displayPBs();
+        }
+    })
+
+    .catch((error) => {
+        console.error("Load User Data Error:", error);
+    });
+}
+}
+
+/* ===== PREMIUM AUTH GATE SYSTEM ===== */
+
+function requireAuth(actionCallback) {
+
+    const user = window.auth.currentUser;
+
+    if (user) {
+
+        actionCallback();
+
+    } else {
+
+        openLoginModal();
+
+    }
 }
 
     </script>
 
     <!-- FLOATING AI COACH -->
-    <button id="aiCoachBtn" onclick="toggleCoach()">🏊</button>
+    <button id="aiCoachBtn" onclick="requireAuth(() => toggleCoach())">🏊</button>
 
     <div id="aiCoachPanel">
         <h3>Coach ATLAS</h3>
@@ -5819,12 +6080,14 @@ function updateProfileAccountSection() {
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
         import {
-            getAuth,
-            createUserWithEmailAndPassword,
-            signInWithEmailAndPassword,
-            signOut,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         import {
             getDatabase,
@@ -5846,6 +6109,15 @@ function updateProfileAccountSection() {
         const app = initializeApp(firebaseConfig);
 
         const auth = getAuth(app);
+
+        setPersistence(auth, browserLocalPersistence)
+    .then(() => {
+        console.log("Persistent login enabled.");
+    })
+    .catch((error) => {
+        console.error("Persistence Error:", error);
+    });
+
         const db = getDatabase(app);
 
         window.auth = auth;
@@ -5860,7 +6132,30 @@ function updateProfileAccountSection() {
             set,
             get,
             child
+
+            
         };
+        window.firebaseFns.onAuthStateChanged(window.auth, (user) => {
+
+    if (user) {
+
+        currentUser = user;
+
+        loadUserData();
+
+        closeLoginModal();
+
+        console.log("User logged in:", user.email);
+
+    } else {
+
+        currentUser = null;
+
+        console.log("No active user.");
+
+    }
+
+});
 
         </script>
 
