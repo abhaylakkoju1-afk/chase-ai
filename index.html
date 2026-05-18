@@ -1911,21 +1911,18 @@ body.light-mode .hero-quote {
         0 0 8px rgba(0, 191, 255, 0.35);
 }
 
-.auth-box input {
+.auth-box input,
+.auth-box select {
     width: 100%;
-
-    padding: 15px 18px;
-    margin-bottom: 18px;
-
-    border: none;
-    outline: none;
-
-    border-radius: 16px;
-
-    background: rgba(255, 255, 255, 0.08);
-
-    color: white;
+    box-sizing: border-box;
+    padding: 16px 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(0,0,0,0.08);
     font-size: 1rem;
+    outline: none;
+    text-align: left;
+    display: block;
+    margin: 0 auto 12px auto;
 }
 
 .auth-box input::placeholder {
@@ -5726,6 +5723,23 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
             }
         });
 
+        /* ===== PREMIUM AUTH GATE SYSTEM ===== */
+
+function requireAuth(actionCallback) {
+
+    const user = window.auth.currentUser;
+
+    if (user) {
+
+        actionCallback();
+
+    } else {
+
+        openLoginModal();
+
+    }
+}
+
         /* ===== AUTH MODAL VIEW SWITCHING ===== */
 
 function openLoginModal() {
@@ -5882,50 +5896,6 @@ function showLogin() {
     }
 });
 
-function updateProfileAccountSection() {
-
-    const accountSection = document.getElementById("accountDetails");
-
-    if (!accountSection) return;
-
-    const user = currentUser || window.auth.currentUser;
-
-    if (!user) {
-        accountSection.innerHTML = `
-            <div class="account-card">
-                <h3>Account Details</h3>
-                <p>User not logged in.</p>
-            </div>
-        `;
-        return;
-    }
-
-    const joinDate = user.metadata?.creationTime
-        ? new Date(user.metadata.creationTime).toLocaleDateString()
-        : "Unavailable";
-
-    accountSection.innerHTML = `
-    <div class="account-card">
-
-        <h3>Account Details</h3>
-
-        <p><strong>Email:</strong> ${user.email || "Unavailable"}</p>
-
-        <p><strong>User ID:</strong> ${user.uid || "Unavailable"}</p>
-
-        <p><strong>Membership:</strong> Free Plan</p>
-
-        <p><strong>Joined:</strong> ${joinDate}</p>
-
-        <p><strong>Cloud Sync:</strong> Active</p>
-
-        <button onclick="logoutUser()" class="logout-btn">
-            Log Out
-        </button>
-
-    </div>
-    `;
-
     /* ===== LOAD USER DATA + AUTO PROFILE INTEGRATION ===== */
 
 function loadUserData() {
@@ -6000,24 +5970,54 @@ function loadUserData() {
     .catch((error) => {
         console.error("Load User Data Error:", error);
     });
-}}
-
-/* ===== PREMIUM AUTH GATE SYSTEM ===== */
-
-function requireAuth(actionCallback) {
-
-    const user = window.auth.currentUser;
-
-    if (user) {
-
-        actionCallback();
-
-    } else {
-
-        openLoginModal();
-
-    }
 }
+
+function updateProfileAccountSection() {
+
+    const accountSection = document.getElementById("accountDetails");
+
+    if (!accountSection) return;
+
+    const user = currentUser || window.auth.currentUser;
+
+    if (!user) {
+        accountSection.innerHTML = `
+            <div class="account-card">
+                <h3>Account Details</h3>
+                <p>User not logged in.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const joinDate = user.metadata?.creationTime
+        ? new Date(user.metadata.creationTime).toLocaleDateString()
+        : "Unavailable";
+
+    accountSection.innerHTML = `
+    <div class="account-card">
+
+        <h3>Account Details</h3>
+
+        <p><strong>Email:</strong> ${user.email || "Unavailable"}</p>
+
+        <p><strong>User ID:</strong> ${user.uid || "Unavailable"}</p>
+
+        <p><strong>Membership:</strong> Free Plan</p>
+
+        <p><strong>Joined:</strong> ${joinDate}</p>
+
+        <p><strong>Cloud Sync:</strong> Active</p>
+
+        <button onclick="logoutUser()" class="logout-btn">
+            Log Out
+        </button>
+
+    </div>
+    `;
+}
+
+
 
     </script>
 
