@@ -5864,61 +5864,23 @@ function showLogin() {
             };
 
             window.firebaseFns.set(
-    window.firebaseFns.ref(window.db, 'users/' + uid),
-    starterData
-);
-        }
-
-        // =========================================
-        // LOAD USER DATA
-        // =========================================
-
-        function loadUserData() {
-
-            const user = window.auth.currentUser;
-
-            if (!user) return;
-
-            const dbRef = window.firebaseFns.ref(window.db);
-
-            window.firebaseFns.get(
-                window.firebaseFns.child(dbRef, 'users/' + user.uid)
-            ).then((snapshot) => {
-
-                if (snapshot.exists()) {
-
-                    const data = snapshot.val();
-
-                    athleteProfile = data.profile || {};
-                    pbs = data.pbs || [];
-                    analyzerReports = data.analyzerReports || [];
-                    savedFeedback = data.savedFeedback || [];
-
-                    if (typeof loadProfile === "function") loadProfile();
-                    if (typeof displayPBs === "function") displayPBs();
-
-                }
-
-            }).catch((error) => {
-                console.error("Load failed:", error);
-            });
+            window.firebaseFns.ref(window.db, 'users/' + uid),
+             starterData
+             );
         }
 
         let currentUser = null;
 
         window.firebaseFns.onAuthStateChanged(window.auth, (user) => {
-
-            currentUser = user;
-
-            if (user) {
-                document.getElementById("authModal").style.display = "none";
-                loadUserData();
-                updateProfileAccountSection();
-            } else {
-                document.getElementById("authModal").style.display = "flex";
-            }
-
-        });
+    if (user) {
+        currentUser = user;
+        loadUserData();
+        closeLoginModal();
+    } else {
+        currentUser = null;
+        openLoginModal();
+    }
+});
 
 function updateProfileAccountSection() {
 
@@ -6038,8 +6000,7 @@ function loadUserData() {
     .catch((error) => {
         console.error("Load User Data Error:", error);
     });
-}
-}
+}}
 
 /* ===== PREMIUM AUTH GATE SYSTEM ===== */
 
