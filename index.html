@@ -3022,10 +3022,10 @@ function showLogin() {
 
         function signupUser() {
 
-    const fullName = document.getElementById("signupFullName").value;
-    const athleteGender = document.getElementById("signupGender").value;
-    const club = document.getElementById("signupClub").value;
-    const nationality = document.getElementById("signupNationality").value;
+    const fullName = document.getElementById("name").value = fullName;
+    const athleteGender = document.getElementById("gender").value = gender;
+    const club = document.getElementById("club").value = club;
+    const nationality = document.getElementById("nationality").value = nationality;
 
     const email = document.getElementById("signupEmail").value;
     const password = document.getElementById("signupPassword").value;
@@ -3073,6 +3073,13 @@ const userData = {
 
             document.getElementById("authModal").style.display = "none";
 
+            localStorage.setItem("profile", JSON.stringify({
+    name: fullName,
+    gender: gender.toLowerCase(),
+    club: club,
+    nationality: nationality
+}));
+
             loadUserData();
         })
 
@@ -3105,6 +3112,9 @@ const userData = {
         closeLoginModal();
 
         loadUserData();
+
+        loadProfile();
+        renderStrokeCards();
 
     })
 
@@ -3279,7 +3289,6 @@ function updateProfileAccountSection() {
     </div>
     `;
 }
-
 
 
 
@@ -4656,52 +4665,73 @@ function updateProfileAccountSection() {
 
         /* ===== UPGRADE saveProfile() ===== */
 
-function saveProfile() {
+window.saveProfile = function() {
 
     const profile = {
+
+        /* BASIC INFO */
         name: document.getElementById("name").value,
         dob: document.getElementById("dob").value,
         gender: document.getElementById("gender").value.toLowerCase(),
         nationality: document.getElementById("nationality").value,
         club: document.getElementById("club").value,
 
+        /* SWIMMING PROFILE */
         primaryStroke: document.getElementById("primaryStroke").value,
         secondaryStroke: document.getElementById("secondaryStroke").value,
         eventsPref: document.getElementById("eventsPref").value,
         distanceType: document.getElementById("distanceType").value,
 
+        /* PHYSICAL DATA */
         height: document.getElementById("height").value,
         weight: document.getElementById("weight").value,
         wingspan: document.getElementById("wingspan").value,
 
+        /* PERFORMANCE */
         strengths: document.getElementById("strengths").value,
         weaknesses: document.getElementById("weaknesses").value,
 
+        /* TRAINING */
         level: document.getElementById("level").value,
         hours: document.getElementById("hours").value,
         coach: document.getElementById("coach").value,
         facility: document.getElementById("facility").value,
 
+        /* GOALS */
         shortGoal: document.getElementById("shortGoal").value,
         longGoal: document.getElementById("longGoal").value,
         competition: document.getElementById("competition").value,
 
+        /* COMP HISTORY */
         lastComp: document.getElementById("lastComp").value,
         bestMeet: document.getElementById("bestMeet").value,
         medals: document.getElementById("medals").value
     };
 
+    /* ===== SAVE LOCALLY ===== */
     localStorage.setItem("profile", JSON.stringify(profile));
 
+    /* ===== SAVE TO FIREBASE ===== */
     if (window.auth.currentUser) {
-        saveUserData(window.auth.currentUser.uid);
+
+        window.firebaseFns.set(
+            window.firebaseFns.ref(
+                window.db,
+                "users/" + window.auth.currentUser.uid + "/profile"
+            ),
+            profile
+        );
+
     }
 
+    /* ===== REFRESH UI ===== */
     loadProfile();
     renderStrokeCards();
 
+    /* ===== SUCCESS ===== */
     alert("Profile saved successfully!");
-}
+
+};
 
 /* ===== UPGRADE loadProfile() ===== */
 
