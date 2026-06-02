@@ -49,34 +49,6 @@ gtag('config', 'G-VSLDBW2PYM');
             color: white;
         }
 
-        /* VIDEO BG */
-        #bgVideo {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: -1;
-            pointer-events: none;
-            /* 🔥 THIS FIXES CLICK ISSUE */
-        }
-
-        .overlay {
-            position: relative;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-           display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-
-            z-index: 5;
-            transition:
-        transform 0.2s ease-out,
-        opacity 0.2s ease-out;
-            pointer-events: auto;
-        }
-
         /* NAV */
         .nav {
             display: flex;
@@ -199,8 +171,7 @@ gtag('config', 'G-VSLDBW2PYM');
         }
 
         /* PRIMARY BUTTONS */
-        body.light-mode .btn,
-        body.light-mode button {
+        body.light-mode .btn {
             background:
                 linear-gradient(135deg,
                     #ffffff,
@@ -474,7 +445,7 @@ gtag('config', 'G-VSLDBW2PYM');
         /* ===== QUOTE ===== */
         .hero-quote {
             font-family: 'Inter', sans-serif;
-            font-size: 1rem;
+            font-size: 1.15rem;
             font-style: italic;
             font-weight: 400;
 
@@ -484,24 +455,6 @@ gtag('config', 'G-VSLDBW2PYM');
             max-width: 850px;
             line-height: 1.8;
             text-align: center; 
-        }
-
-        /* BUTTON */
-        .btn {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background: rgba(0, 255, 255, 0.2);
-            border: 1px solid #00ffff;
-            color: white;
-            cursor: pointer;
-        }
-
-        /* METRICS */
-        .metric-box {
-            margin-top: 15px;
-            padding: 12px;
-            background: rgba(0, 255, 255, 0.05);
-            border-radius: 10px;
         }
 
         /* PB CARD */
@@ -550,6 +503,9 @@ gtag('config', 'G-VSLDBW2PYM');
         .chart-container {
             width: 100%;
             margin-top: 20px;
+            height: 320px;
+
+            position: relative;
 
             padding: 20px;
 
@@ -1011,13 +967,6 @@ gtag('config', 'G-VSLDBW2PYM');
                 0 0 20px rgba(255, 215, 0, 0.4);
         }
 
-        .chart-container {
-            position: relative;
-            width: 100%;
-            height: 320px;
-            margin-top: 20px;
-        }
-
         #profile input,
         #profile select,
         #profile textarea {
@@ -1402,7 +1351,7 @@ gtag('config', 'G-VSLDBW2PYM');
             height: 100%;
             border-radius: 18px;
             transition: width 1s ease,
-                background0.6s ease;
+            background0.6s ease;
             position: relative;
         }
 
@@ -1428,61 +1377,55 @@ gtag('config', 'G-VSLDBW2PYM');
             }
         }
 
-        #aiCoachBtn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
 
-            width: 65px;
-            height: 65px;
 
-            border-radius: 50%;
-            border: none;
+#aiCoachPanel {
 
-            font-size: 28px;
+    position: fixed;
 
-            background: rgba(0, 255, 255, 0.2);
+    padding-top: 40px;
 
-            color: white;
+    right: 0;
+    bottom: 0;
 
-            cursor: pointer;
+    width: 420px;
+    height: 650px;
 
-            z-index: 99999;
-        }
+    background:
+        linear-gradient(
+            135deg,
+            rgba(6,20,60,0.95),
+            rgba(3,10,40,0.98)
+        );
 
-        #aiCoachPanel {
-            position: fixed;
-            top: 0;
-            right: -400px;
-            /* Hidden off-screen */
+    border: 1px solid rgba(0,200,255,0.18);
 
-            width: 350px;
-            height: 100%;
+    border-radius: 24px;
 
-            background: rgba(10, 15, 35, 0.98);
-            backdrop-filter: blur(15px);
+    backdrop-filter: blur(20px);
 
-            padding: 20px;
+    box-shadow:
+        0 0 35px rgba(0,180,255,0.15);
 
-            z-index: 99998;
+    overflow: hidden;
 
-            transition: right 0.4s ease;
+    display: none;
+    flex-direction: column;
 
-            overflow-y: auto;
+    z-index: 10001;
+}
 
-            box-shadow:
-                -5px 0 25px rgba(0, 255, 255, 0.15);
-        }
 
-        #aiCoachPanel.active {
-            right: 0;
-        }
+#coachMessages {
 
-        #coachMessages {
-            height: 70%;
-            overflow-y: auto;
-            margin-bottom: 15px;
-        }
+    flex: 1;
+
+    padding: 20px;
+
+    overflow-y: auto;
+
+    color: white;
+}
 
         .coach-msg {
             margin: 10px 0;
@@ -1490,6 +1433,43 @@ gtag('config', 'G-VSLDBW2PYM');
             border-radius: 10px;
             background: rgba(0, 255, 255, 0.08);
         }
+
+#coachInput {
+
+    flex: 1;
+
+    height: 60px;
+
+    padding: 0 24px;
+
+    border-radius: 18px;
+
+    border: 1px solid rgba(0,200,255,0.18);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.08),
+            rgba(0,80,255,0.05)
+        );
+
+    color: white;
+
+    font-family: Orbitron;
+
+    font-size: 0.95rem;
+
+    box-sizing: border-box;
+
+    outline: none;
+}
+
+#coachInput::placeholder {
+
+    color: rgba(255,255,255,0.45);
+
+    padding-left: 0;
+}
 
 
         body.light-mode #profile input,
@@ -1621,84 +1601,93 @@ gtag('config', 'G-VSLDBW2PYM');
 
         /* HOME PAGE MASTER */
         #home,
-        body.light-mode #home {
-            position: relative !important;
+body.light-mode #home {
+    position: relative !important;
+    width: 100% !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
 
-            width: 100% !important;
-            height: calc(100vh - 90px) !important;
-            min-height: calc(100vh - 90px) !important;
+    overflow: hidden !important;
 
-            margin: 0 !important;
-            padding: 0 !important;
-
-            overflow: hidden !important;
-
-            display: block !important;
-
-            background: transparent !important;
-            pointer-events: auto !important;
-
-        }
+}
 
         /* REMOVE EXTRA OVERLAYS */
-        #home::before,
-        #home::after,
-        body.light-mode #home::before,
-        body.light-mode #home::after {
-            display: none !important;
-            content: none !important;
-        }
+       #home::after {
+
+    content: "";
+
+    position: absolute;
+
+    bottom: 0;
+    left: 0;
+
+    width: 100%;
+    height: 250px;
+
+    background:
+        linear-gradient(
+            to bottom,
+            rgba(0,0,0,0),
+            rgba(0,0,0,0.95)
+        );
+
+    pointer-events: none;
+
+    z-index: 5;
+}
+
+
 
         /* VIDEO FULL FIT */
-        #bgVideo,
-        body.light-mode #bgVideo {
-            position: absolute !important;
+       #bgVideo,
+body.light-mode #bgVideo {
 
-            top: 0 !important;
-            left: 0 !important;
+    position: absolute !important;
 
-            width: 100% !important;
-            height: 100% !important;
+    top: 0;
+    left: 0;
 
-            object-fit: cover !important;
+    width: 100% !important;
+    height: 100% !important;
 
-            z-index: -1 !important;
+    object-fit: cover !important;
 
-            opacity: 1 !important;
+    z-index: -1 !important;
 
-            filter: none !important;
-            pointer-events: none !important;
+    pointer-events: none !important;
 
-            background: transparent !important;
-        }
+    transition: transform 0.1s linear;
+    will-change: transform;
+}
 
         /* HERO CONTENT */
         .overlay,
         body.light-mode .overlay {
-            position: relative !important;
+            position: absolute !important;
 
             top: 50% !important;
             left: 50% !important;
 
             transform: translate(-50%, -50%) !important;
 
-            width: auto !important;
+            width: 90% !important;
             max-width: none !important;
 
             padding: 0 !important;
             margin: 0 !important;
             display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+            flex-direction: column;
+            justify-content: center;
 
             text-align: center !important;
 
-            z-index: 5 !important;
+            z-index: 10 !important;
 
             transition:
         transform 0.2s ease-out,
         opacity 0.2s ease-out;
+
+    will-change: transform, opacity;
 
             background: transparent !important;
             border: none !important;
@@ -1892,16 +1881,94 @@ gtag('config', 'G-VSLDBW2PYM');
                 0 8px 22px rgba(0, 0, 0, 0.08);
         }
 
-        /* AI COACH BUTTON */
-        body.light-mode #aiCoachBtn {
-            background:
-                linear-gradient(135deg,
-                    #0077ff,
-                    #00c6ff);
+.coach-header {
 
-            box-shadow:
-                0 10px 24px rgba(0, 119, 255, 0.25);
-        }
+    margin-top: 25px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    padding: 30px 24px 20px 24px;
+
+    min-height: 90px;
+
+    flex-shrink: 0;
+
+    border-bottom:
+        1px solid rgba(0,200,255,0.12);
+
+    color: white;
+
+    z-index: 10;
+}
+
+
+.coach-icon {
+
+    font-size: 2rem;
+}
+
+.coach-header h3 {
+
+    margin: 0;
+
+    color: white;
+
+    font-size: 2rem;
+
+    font-family: Orbitron;
+}
+
+.coach-header p {
+
+    margin: 4px 0 0;
+
+    color: rgba(255,255,255,0.55);
+
+    font-size: 0.9rem;
+}
+
+.coach-send-btn {
+
+    width: 80px;
+    height: 80px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border: none;
+
+    border-radius: 22px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.35),
+            rgba(0,80,255,0.25)
+        );
+
+    color: white;
+
+    font-size: 1.8rem;
+
+    cursor: pointer;
+
+    transition: .3s ease;
+}
+
+.coach-send-btn:hover {
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 0 20px rgba(0,180,255,0.35);
+}
 
         /* ===== PREMIUM SWIMTICS AUTH MODAL ===== */
 
@@ -2225,6 +2292,10 @@ gtag('config', 'G-VSLDBW2PYM');
     padding: 120px 8%;
 
     z-index: 20;
+
+    margin-top: -50px;
+
+    border-radius: 40px 40px 0 0;
 }
 
 .features-title {
@@ -2354,6 +2425,286 @@ gtag('config', 'G-VSLDBW2PYM');
         width: 100%;
     }
 }
+
+.premium-upload,
+.raceVideo {
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 16px 32px;
+
+    border-radius: 20px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.35),
+            rgba(0,80,255,0.25)
+        );
+
+    border: 1px solid rgba(0,200,255,0.25);
+
+    backdrop-filter: blur(12px);
+
+    color: white;
+
+    font-family: Orbitron;
+    font-size: 1rem;
+
+    cursor: pointer;
+
+    transition: all .3s ease;
+
+    width: 270px;
+
+    height: 70px;
+
+    box-sizing: border-box;
+}
+
+.premium-upload:hover {
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 0 25px rgba(0,180,255,0.35);
+
+}
+
+#stroke {
+
+    color: #ffffff;
+
+    font-family: Orbitron;
+
+    font-size: 1rem;
+
+    appearance: none;
+
+background-image:
+url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='white'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
+
+background-repeat: no-repeat;
+
+background-position: right 20px center;
+
+background-size: 20px;
+
+    padding: 16px 50px 16px 20px;
+
+    border-radius: 20px;
+
+    border: 1px solid rgba(0,200,255,0.25);
+
+    background-color: transparent;
+
+    backdrop-filter: blur(12px);
+
+    cursor: pointer;
+
+    outline: none;
+
+    transition: all .3s ease;
+
+    width: 270px;
+
+    height: 70px;
+
+    box-sizing: border-box;
+}
+
+#stroke:hover {
+
+    box-shadow:
+        0 0 20px rgba(0,180,255,0.3);
+
+}
+
+#stroke option {
+    background: #081f4d;
+    color: white;
+    font-family: Orbitron, sans-serif;
+}
+
+#event,
+#course,
+#time {
+
+    height: 72px;
+
+    padding: 0 25px;
+
+    border-radius: 20px;
+
+    border: 1px solid rgba(0,200,255,0.25);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.18),
+            rgba(0,80,255,0.12)
+        );
+
+    backdrop-filter: blur(12px);
+
+    color: white;
+
+    font-family: Orbitron, sans-serif;
+
+    font-size: 1rem;
+
+    outline: none;
+
+    transition: all .3s ease;
+
+    box-sizing: border-box;
+}
+
+#event:hover,
+#course:hover,
+#time:hover {
+
+    box-shadow:
+        0 0 20px rgba(0,180,255,0.25);
+
+    transform: translateY(-2px);
+}
+
+.pb-action-btn {
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.20),
+            rgba(0,80,255,0.12)
+        );
+
+    border: 1px solid rgba(0,200,255,0.25);
+
+    color: white;
+
+    border-radius: 12px;
+
+    padding: 10px 18px;
+
+    font-family: Orbitron, sans-serif;
+
+    font-size: 0.9rem;
+
+    cursor: pointer;
+
+    transition: all .25s ease;
+
+    backdrop-filter: blur(10px);
+
+    min-width: 85px;
+}
+
+.pb-action-btn:hover {
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 0 15px rgba(0,180,255,0.35);
+}
+
+.delete-btn {
+
+    border-color:
+        rgba(255,80,80,0.35);
+}
+
+.delete-btn:hover {
+
+    box-shadow:
+        0 0 15px rgba(255,80,80,0.35);
+}
+
+.chart-btn {
+
+    min-width: 55px;
+
+    padding: 10px 12px;
+}
+
+.pb-time {
+
+    color: #00d9ff;
+
+    text-shadow:
+        0 0 10px rgba(0,217,255,0.4);
+}
+
+#aiCoachBtn {
+
+    position: fixed;
+    display: block;
+
+    right: 30px;
+    bottom: 30px;
+
+    width: 90px;
+    height: 90px;
+
+    border-radius: 50%;
+
+    border: 1px solid rgba(0,200,255,0.18);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.25),
+            rgba(0,80,255,0.18)
+        );
+
+    backdrop-filter: blur(20px);
+
+    font-size: 2rem;
+
+    box-shadow:
+        0 0 30px rgba(0,180,255,0.20);
+
+    z-index: 10000;
+    cursor: pointer;
+    visibility:visible
+}
+
+.coach-input-row {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 14px;
+
+    padding: 20px;
+
+    flex-shrink: 0;
+}
+
+.coach-close {
+
+    margin-left: auto;
+
+    background: transparent;
+
+    border: none;
+
+    color: white;
+
+    font-size: 1.5rem;
+
+    cursor: pointer;
+
+    opacity: 0.7;
+}
+
+.coach-close:hover {
+
+    opacity: 1;
+}
     </style>
 </head>
 
@@ -2435,13 +2786,16 @@ gtag('config', 'G-VSLDBW2PYM');
                 Precision. Power. Progress.
             </p>
             <div class="hero-quote">
-                “You can’t put a limit on anything. The more you dream, the farther you get.”
-                <br>– Michael Phelps
+               “You can’t put a limit on anything.
+               The more you dream, the farther you get.”
+               <br>
+               <span>— Michael Phelps</span>
             </div>
-            <button class="btn" onclick="showPage('analyzer')">Start Analyzing</button>
-       
+        </div>
+    </div>
+    
         <!-- HOME FEATURES -->
-<section class="features-section">
+<section id="homeFeatures" class="features-section">
 
     <h2 class="features-title">
         Explore The SWIMTICS Ecosystem
@@ -2553,23 +2907,29 @@ gtag('config', 'G-VSLDBW2PYM');
         </div>
 
     </div>
+   
 
 </section>
+</div>
 
-    </div>
     
-
     <!-- ANALYZER -->
     <div id="analyzer" class="page">
         <div class="glass">
 
             <h2>Chase AI : Your Personal Swim Analyzer</h2>
 
-            <input type="file" id="videoInput" accept="video/*">
+            <input type="file" id="videoUpload" hidden>
+            <label for="videoUpload" class="premium-upload">
+             📹 Upload Swim Video
+            </label>
+
+            <span id="fileName">No file selected</span>
 
             <br><br>
-
+  
             <select id="stroke">
+                <option value="" selected disabled>Select Stroke</option>
                 <option value="freestyle">Freestyle</option>
                 <option value="backstroke">Backstroke</option>
                 <option value="breaststroke">Breaststroke</option>
@@ -2661,7 +3021,22 @@ gtag('config', 'G-VSLDBW2PYM');
 
             <h2>Race Analysis</h2>
 
-            <input type="file" id="raceVideo" accept="video/*">
+            <input
+    type="file"
+    id="raceVideo"
+    hidden>
+
+<label
+    for="raceVideo"
+    class="premium-upload">
+
+    🎥 Upload Race Video
+
+</label>
+
+<span id="raceFileName">
+    No file selected
+</span>
             <br><br>
 
             <div style="position: relative; width: 70%; margin:auto;">
@@ -3533,6 +3908,19 @@ function showPage(pageId) {
         return;
 
     }
+
+    const homeFeatures =
+    document.getElementById("homeFeatures");
+
+if (homeFeatures) {
+
+    if (pageId === "home") {
+        homeFeatures.style.display = "block";
+    } else {
+        homeFeatures.style.display = "none";
+    }
+
+}
 
     /* =========================================
        SHOW TARGET PAGE
@@ -4662,14 +5050,31 @@ window.showPage = showPage;
                 d.innerHTML = `
             <div class="pb-header">
                 <div class="pb-title">
-                    ${pb.event} (${pb.course}) - ${pb.time}
+                    ${pb.event} (${pb.course}) -
+                 <span class="pb-time">${pb.time}</span>
                 </div>
 
                 <div class="pb-controls">
-                    <button onclick="editPB(${i})">Edit</button>
-                    <button onclick="deletePB(${i})">Delete</button>
-                    <button onclick="toggleChart(${i})">📊</button>
-                </div>
+
+    <button
+        class="pb-action-btn"
+        onclick="editPB(${i})">
+        Edit
+    </button>
+
+    <button
+        class="pb-action-btn delete-btn"
+        onclick="deletePB(${i})">
+        Delete
+    </button>
+
+    <button
+        class="pb-action-btn chart-btn"
+        onclick="toggleChart(${i})">
+        📊
+    </button>
+
+</div>
             </div>
 
             <div id="chart-container-${i}" class="chart-container" style="display:none;">
@@ -6252,13 +6657,21 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
             }
         }
 
+function toggleCoach() {
 
+    const panel =
+        document.getElementById("aiCoachPanel");
 
+    if (panel.style.display === "flex") {
 
-        function toggleCoach() {
-            document.getElementById("aiCoachPanel")
-                .classList.toggle("active");
-        }
+        panel.style.display = "none";
+
+    } else {
+
+        panel.style.display = "flex";
+
+    }
+}
 
         function sendCoachMessage() {
 
@@ -6736,7 +7149,7 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
             }
         });
 
-        window.addEventListener("scroll", () => {
+window.addEventListener("scroll", () => {
 
     const scrollY = window.scrollY;
 
@@ -6746,29 +7159,63 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
     const video =
         document.getElementById("bgVideo");
 
+    if (!overlay || !video) return;
+
     overlay.style.transform =
-        `translateY(${scrollY * 0.4}px)`;
+        `translate(-50%, calc(-50% + ${scrollY * 0.35}px))`;
 
     overlay.style.opacity =
-        1 - scrollY / 600;
+        Math.max(0, 1 - scrollY / 500);
 
     video.style.transform =
-        `translateY(${scrollY * 0.25}px) scale(${1 + scrollY / 5000})`;
+        `scale(${1 + scrollY * 0.0002})`;
 
 });
     </script>
 
     <!-- FLOATING AI COACH -->
-    <button id="aiCoachBtn" onclick="toggleCoach()">🏊</button>
 
+    <button id="aiCoachBtn" onclick="toggleCoach()">
+    🏊
+</button>
     <div id="aiCoachPanel">
-        <h3>Coach ATLAS</h3>
 
-        <div id="coachMessages"></div>
+        
 
-        <input id="coachInput" placeholder="Ask anything...">
-        <button onclick="sendCoachMessage()">Send</button>
+    <div class="coach-header">
+
+        <span class="coach-icon">🏊</span>
+
+        <div>
+            <h3>Coach ATLAS</h3>
+        </div>
+
+        <button class="coach-close"
+           onclick="toggleCoach()">
+          ✕
+        </button>
+
     </div>
+
+    <div id="coachMessages"></div>
+
+    <div class="coach-input-row">
+
+        <input
+            id="coachInput"
+            placeholder="Ask anything about training, racing or recovery...">
+
+        <button
+            class="coach-send-btn"
+            onclick="sendCoachMessage()">
+
+            ➜
+
+        </button>
+
+    </div>
+
+</div>
 
     <button id="themeToggle" onclick="toggleTheme()">
         ☀️ Light Mode
