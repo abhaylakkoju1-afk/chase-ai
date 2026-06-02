@@ -61,13 +61,16 @@ gtag('config', 'G-VSLDBW2PYM');
         }
 
         .overlay {
-            position: absolute;
+            position: relative;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
 
-            z-index: 10;
+            z-index: 5;
+            transition:
+        transform 0.2s ease-out,
+        opacity 0.2s ease-out;
             pointer-events: auto;
         }
 
@@ -1668,7 +1671,7 @@ gtag('config', 'G-VSLDBW2PYM');
         /* HERO CONTENT */
         .overlay,
         body.light-mode .overlay {
-            position: absolute !important;
+            position: relative !important;
 
             top: 50% !important;
             left: 50% !important;
@@ -1683,7 +1686,11 @@ gtag('config', 'G-VSLDBW2PYM');
 
             text-align: center !important;
 
-            z-index: 10 !important;
+            z-index: 5 !important;
+
+            transition:
+        transform 0.2s ease-out,
+        opacity 0.2s ease-out;
 
             background: transparent !important;
             border: none !important;
@@ -2196,6 +2203,149 @@ gtag('config', 'G-VSLDBW2PYM');
         body.light-mode .account-card p {
             color: #222;
         }
+
+/* ==========================
+   HOME FEATURES
+========================== */
+
+.features-section {
+
+    position: relative;
+
+    background: #050505;
+
+    padding: 120px 8%;
+
+    z-index: 20;
+}
+
+.features-title {
+
+    text-align: center;
+
+    font-size: 3rem;
+
+    margin-bottom: 15px;
+
+    color: white;
+}
+
+.features-subtitle {
+
+    text-align: center;
+
+    color: rgba(255,255,255,0.7);
+
+    max-width: 800px;
+
+    margin: auto auto 80px;
+}
+
+.features-grid {
+
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 30px;
+
+    max-width: 1200px;
+
+    margin: auto;
+}
+
+.feature-card {
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.08),
+            rgba(255,255,255,0.03)
+        );
+
+    backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    border-radius: 25px;
+
+    padding: 35px;
+
+    transition: all .35s ease;
+
+    cursor: pointer;
+}
+
+.feature-card:hover {
+
+    transform:
+        translateY(-8px)
+        scale(1.02);
+
+    border-color: #ff0033;
+
+    box-shadow:
+        0 20px 50px rgba(255,0,51,0.25);
+}
+
+.feature-icon {
+
+    font-size: 3rem;
+
+    margin-bottom: 15px;
+}
+
+.feature-card h3 {
+
+    color: white;
+
+    margin-bottom: 15px;
+}
+
+.feature-card p {
+
+    color: rgba(255,255,255,0.8);
+
+    line-height: 1.7;
+}
+
+.feature-card span {
+
+    display: block;
+
+    margin-top: 15px;
+
+    color: #ff0033;
+
+    font-weight: 600;
+}
+
+.warroom-wrapper {
+
+    display: flex;
+
+    justify-content: center;
+
+    margin-top: 35px;
+}
+
+.warroom-card {
+
+    width: 50%;
+}
+
+@media(max-width:900px){
+
+    .features-grid {
+
+        grid-template-columns: 1fr;
+    }
+
+    .warroom-card {
+
+        width: 100%;
+    }
+}
     </style>
 </head>
 
@@ -2283,6 +2433,123 @@ gtag('config', 'G-VSLDBW2PYM');
             <button class="btn" onclick="showPage('analyzer')">Start Analyzing</button>
         </div>
     </div>
+
+    <!-- HOME FEATURES -->
+
+<section class="features-section">
+
+    <h2 class="features-title">
+        Explore The SWIMTICS Ecosystem
+    </h2>
+
+    <p class="features-subtitle">
+        Every tool is engineered to help swimmers train smarter,
+        race faster, and unlock elite performance.
+    </p>
+
+    <div class="features-grid">
+
+        <!-- CHASE AI -->
+        <div class="feature-card" onclick="showPage('analyzer')">
+
+            <div class="feature-icon">🏊</div>
+
+            <h3>Chase AI</h3>
+
+            <p>
+                Upload training videos and receive detailed and intelligent stroke analysis,
+                technique feedback, efficiency score and performance
+                insights.
+            </p>
+
+            <span>
+                Improve mechanics. Reduce wasted motion.
+            </span>
+
+        </div>
+
+        <!-- PB PAGE -->
+        <div class="feature-card" onclick="showPage('pb')">
+
+            <div class="feature-icon">🏆</div>
+
+            <h3>Wall of Records</h3>
+
+            <p>
+                Store your personal bests, track progression,
+                visualize performance trends and monitor growth.
+            </p>
+
+            <span>
+                Your swimming journey in one place.
+            </span>
+
+        </div>
+
+        <!-- RACE -->
+        <div class="feature-card" onclick="showPage('race')">
+
+            <div class="feature-icon">⏱️</div>
+
+            <h3>Chronos Engine</h3>
+
+            <p>
+                Analyze race videos to evaluate splits,
+                turns and pacing throughout the race.
+            </p>
+
+            <span>
+                Discover where races are won and lost.
+            </span>
+
+        </div>
+
+        <!-- PROFILE -->
+        <div class="feature-card" onclick="showPage('profile')">
+
+            <div class="feature-icon">👤</div>
+
+            <h3>Profile</h3>
+
+            <p>
+                Build your athlete profile including goals,
+                training background, physical attributes and
+                competitive history.
+            </p>
+
+            <span>
+                Your complete swimmer identity.
+            </span>
+
+        </div>
+
+    </div>
+
+    <!-- WAR ROOM CENTER CARD -->
+
+    <div class="warroom-wrapper">
+
+        <div class="feature-card warroom-card"
+            onclick="showPage('dashboard')">
+
+            <div class="feature-icon">⚔️</div>
+
+            <h3>War Room</h3>
+
+            <p>
+                Generate race-preparation plans based on fatigue,
+                soreness, recovery, nutrition and readiness.
+            </p>
+
+            <span>
+                Peak at the perfect moment.
+            </span>
+
+        </div>
+
+    </div>
+
+</section>
 
     <!-- ANALYZER -->
     <div id="analyzer" class="page">
@@ -6460,6 +6727,27 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
                 }
             }
         });
+
+        window.addEventListener("scroll", () => {
+
+    const scrollY = window.scrollY;
+
+    const overlay =
+        document.querySelector(".overlay");
+
+    const video =
+        document.getElementById("bgVideo");
+
+    overlay.style.transform =
+        `translateY(${scrollY * 0.4}px)`;
+
+    overlay.style.opacity =
+        1 - scrollY / 600;
+
+    video.style.transform =
+        `translateY(${scrollY * 0.25}px) scale(${1 + scrollY / 5000})`;
+
+});
     </script>
 
     <!-- FLOATING AI COACH -->
