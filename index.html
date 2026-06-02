@@ -3355,7 +3355,7 @@ window.showPage = showPage;
 
         function signupUser() {
 
-            const fullName = document.getElementById("signupName").value;
+            const fullName = document.getElementById("signupFullName").value;
             const gender = document.getElementById("signupGender").value;
             const club = document.getElementById("signupClub").value;
             const nationality = document.getElementById("signupNationality").value;
@@ -3397,9 +3397,11 @@ window.showPage = showPage;
                     };
 
                     window.firebaseFns.set(
-                        window.firebaseFns.ref(window.db, 'users/' + uid),
-                        userData
-                    );
+    window.firebaseFns.ref(window.db, 'users/' + uid),
+    userData
+).then(() => {
+    console.log("User data saved");
+});
 
                     msg.style.color = "green";
                     msg.innerText = "Signup successful!";
