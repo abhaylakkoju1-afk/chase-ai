@@ -65,7 +65,10 @@ gtag('config', 'G-VSLDBW2PYM');
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            text-align: center;
+           display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 
             z-index: 5;
             transition:
@@ -475,11 +478,12 @@ gtag('config', 'G-VSLDBW2PYM');
             font-style: italic;
             font-weight: 400;
 
-            margin-top: 25px;
+            margin: 0 auto;
 
             opacity: 0.82;
             max-width: 850px;
             line-height: 1.8;
+            text-align: center; 
         }
 
         /* BUTTON */
@@ -1683,6 +1687,10 @@ gtag('config', 'G-VSLDBW2PYM');
 
             padding: 0 !important;
             margin: 0 !important;
+            display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 
             text-align: center !important;
 
@@ -2431,8 +2439,8 @@ gtag('config', 'G-VSLDBW2PYM');
                 <br>– Michael Phelps
             </div>
             <button class="btn" onclick="showPage('analyzer')">Start Analyzing</button>
-
-             <!-- HOME FEATURES -->
+        </div>
+        <!-- HOME FEATURES -->
 
 <section class="features-section">
 
@@ -2549,9 +2557,8 @@ gtag('config', 'G-VSLDBW2PYM');
 
 </section>
 
-        </div>
     </div>
-
+    
 
     <!-- ANALYZER -->
     <div id="analyzer" class="page">
