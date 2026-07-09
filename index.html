@@ -3774,26 +3774,28 @@ background-size: 20px;
 /* VIDEO LOAD */
 window.addEventListener("DOMContentLoaded", () => {
 
-    const videoInput = document.getElementById("videoInput");
+    const videoUpload = document.getElementById("videoUpload");
+    const video = document.getElementById("analyzerPlayer");
+    const fileName = document.getElementById("fileName");
 
-    if (videoInput) {
+    if (!videoUpload || !video) return;
 
-        videoInput.addEventListener("change", function (e) {
+    videoUpload.addEventListener("change", function (e) {
 
-            const file = e.target.files[0];
+        const file = e.target.files[0];
+        if (!file) return;
 
-            if (!file) return;
+        video.src = URL.createObjectURL(file);
+        video.load();
 
-            const video = document.getElementById("analyzerPlayer");
+        // Show selected file name
+        if (fileName) {
+            fileName.textContent = file.name;
+        }
 
-            if (video) {
-                video.src = URL.createObjectURL(file);
-                video.load();
-            }
+    });
 
-        });
-
-    }
+});
 
     const raceVideo = document.getElementById("raceVideo");
 
@@ -4486,7 +4488,7 @@ window.showPage = showPage;
         function saveAnalysisReport() {
             const stroke = document.getElementById("stroke").value;
             const feedback = document.getElementById("feedback").innerHTML;
-            const videoFile = document.getElementById("videoInput").files[0];
+            const videoFile = document.getElementById("videoUpload").files[0];
 
             if (!feedback) {
                 alert("Please analyze a swim video first.");
