@@ -10,8 +10,8 @@
 // whole small file IS the declarations, with no anchor search or
 // balanced-block scanning needed.
 //
-// averageValid has NOT moved — it is still defined inline in index.html
-// — so it continues to load via the existing loadChaseFunctions().
+// averageValid's tests moved to metrics.test.js, alongside
+// summariseMetric — both now live in src/chase-engine/stats.js.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -19,7 +19,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import vm from "node:vm";
-import { loadChaseFunctions } from "./extract-chase-functions.js";
 import { normalizeVmValue } from "./normalize-vm-value.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -52,7 +51,6 @@ function loadGeometryHelpers() {
   return sandbox;
 }
 
-const chase = loadChaseFunctions();
 const geometry = loadGeometryHelpers();
 
 describe("midpoint(a, b)", () => {
@@ -72,24 +70,6 @@ describe("midpoint(a, b)", () => {
 
   test("invalid input: null point b returns null", () => {
     assert.strictEqual(geometry.midpoint({ x: 1, y: 1 }, null), null);
-  });
-});
-
-describe("averageValid(values)", () => {
-  test("normal: mean of a valid numeric array", () => {
-    assert.strictEqual(chase.averageValid([1, 2, 3]), 2);
-  });
-
-  test("boundary: empty array returns null", () => {
-    assert.strictEqual(chase.averageValid([]), null);
-  });
-
-  test("invalid input: all-non-finite array returns null", () => {
-    assert.strictEqual(chase.averageValid([NaN, Infinity, -Infinity]), null);
-  });
-
-  test("invalid input: non-finite values are ignored, not counted", () => {
-    assert.strictEqual(chase.averageValid([1, NaN, 3, undefined]), 2);
   });
 });
 
