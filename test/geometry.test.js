@@ -1,31 +1,77 @@
-// Unit tests for Chase's pure geometry helpers, extracted directly from
-// index.html by test/extract-chase-functions.js. These functions are the
+// Unit tests for Chase's pure geometry helpers. These functions are the
 // foundation every biomechanical angle/alignment metric is built on.
+//
+// midpoint, chaseCalculateAngle, calculateLineAngle, and isVisible now
+// live in the standalone classic script src/chase-engine/geometry.js
+// (see the loading-order note at the top of that file for why it is a
+// classic script, not an ES module). They are loaded below via
+// loadGeometryHelpers(), a smaller version of the same vm-sandbox
+// technique extract-chase-functions.js uses — simpler here because the
+// whole small file IS the declarations, with no anchor search or
+// balanced-block scanning needed.
+//
+// averageValid has NOT moved — it is still defined inline in index.html
+// — so it continues to load via the existing loadChaseFunctions().
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import vm from "node:vm";
 import { loadChaseFunctions } from "./extract-chase-functions.js";
 import { normalizeVmValue } from "./normalize-vm-value.js";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const GEOMETRY_MODULE_PATH = join(__dirname, "..", "src", "chase-engine", "geometry.js");
+const GEOMETRY_HELPER_NAMES = ["midpoint", "chaseCalculateAngle", "calculateLineAngle", "isVisible"];
+
+function loadGeometryHelpers() {
+  const source = readFileSync(GEOMETRY_MODULE_PATH, "utf8");
+  const sandbox = {};
+  vm.createContext(sandbox);
+
+  try {
+    vm.runInContext(source, sandbox, { filename: "chase-engine-geometry.vm.js" });
+  } catch (error) {
+    throw new Error(
+      `Failed to evaluate src/chase-engine/geometry.js in an isolated vm sandbox: ${error.message}`
+    );
+  }
+
+  for (const name of GEOMETRY_HELPER_NAMES) {
+    if (typeof sandbox[name] === "undefined") {
+      throw new Error(
+        `src/chase-engine/geometry.js loaded without error, but "${name}" is not present on ` +
+        `the sandbox afterwards. This should not happen and likely indicates the file's ` +
+        `contents no longer match GEOMETRY_HELPER_NAMES.`
+      );
+    }
+  }
+
+  return sandbox;
+}
+
 const chase = loadChaseFunctions();
+const geometry = loadGeometryHelpers();
 
 describe("midpoint(a, b)", () => {
   test("normal: averages x/y/z of two points", () => {
-    const result = chase.midpoint({ x: 0, y: 0, z: 2 }, { x: 10, y: 20, z: 4 });
+    const result = geometry.midpoint({ x: 0, y: 0, z: 2 }, { x: 10, y: 20, z: 4 });
     assert.deepStrictEqual(normalizeVmValue(result), { x: 5, y: 10, z: 3 });
   });
 
   test("boundary: missing z on both points defaults to 0", () => {
-    const result = chase.midpoint({ x: 0, y: 0 }, { x: 10, y: 20 });
+    const result = geometry.midpoint({ x: 0, y: 0 }, { x: 10, y: 20 });
     assert.deepStrictEqual(normalizeVmValue(result), { x: 5, y: 10, z: 0 });
   });
 
   test("invalid input: null point a returns null", () => {
-    assert.strictEqual(chase.midpoint(null, { x: 1, y: 1 }), null);
+    assert.strictEqual(geometry.midpoint(null, { x: 1, y: 1 }), null);
   });
 
   test("invalid input: null point b returns null", () => {
-    assert.strictEqual(chase.midpoint({ x: 1, y: 1 }, null), null);
+    assert.strictEqual(geometry.midpoint({ x: 1, y: 1 }, null), null);
   });
 });
 
@@ -49,7 +95,7 @@ describe("averageValid(values)", () => {
 
 describe("chaseCalculateAngle(a, b, c)", () => {
   test("normal: a clean 90-degree angle at the vertex", () => {
-    const angle = chase.chaseCalculateAngle(
+    const angle = geometry.chaseCalculateAngle(
       { x: 0, y: 1 },
       { x: 0, y: 0 },
       { x: 1, y: 0 }
@@ -58,7 +104,7 @@ describe("chaseCalculateAngle(a, b, c)", () => {
   });
 
   test("normal: a straight 180-degree line", () => {
-    const angle = chase.chaseCalculateAngle(
+    const angle = geometry.chaseCalculateAngle(
       { x: -1, y: 0 },
       { x: 0, y: 0 },
       { x: 1, y: 0 }
@@ -67,7 +113,7 @@ describe("chaseCalculateAngle(a, b, c)", () => {
   });
 
   test("normal: a folded-back 0-degree angle", () => {
-    const angle = chase.chaseCalculateAngle(
+    const angle = geometry.chaseCalculateAngle(
       { x: 1, y: 0 },
       { x: 0, y: 0 },
       { x: 1, y: 0 }
@@ -77,57 +123,57 @@ describe("chaseCalculateAngle(a, b, c)", () => {
 
   test("boundary: zero-length vector (a coincides with vertex b) returns null", () => {
     assert.strictEqual(
-      chase.chaseCalculateAngle({ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }),
+      geometry.chaseCalculateAngle({ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }),
       null
     );
   });
 
   test("invalid input: missing landmark returns null instead of throwing", () => {
-    assert.strictEqual(chase.chaseCalculateAngle(null, { x: 0, y: 0 }, { x: 1, y: 0 }), null);
-    assert.strictEqual(chase.chaseCalculateAngle({ x: 0, y: 0 }, undefined, { x: 1, y: 0 }), null);
-    assert.strictEqual(chase.chaseCalculateAngle({ x: 0, y: 0 }, { x: 1, y: 0 }, null), null);
+    assert.strictEqual(geometry.chaseCalculateAngle(null, { x: 0, y: 0 }, { x: 1, y: 0 }), null);
+    assert.strictEqual(geometry.chaseCalculateAngle({ x: 0, y: 0 }, undefined, { x: 1, y: 0 }), null);
+    assert.strictEqual(geometry.chaseCalculateAngle({ x: 0, y: 0 }, { x: 1, y: 0 }, null), null);
   });
 });
 
 describe("calculateLineAngle(a, b)", () => {
   test("normal: a horizontal line is 0 degrees", () => {
-    assert.strictEqual(chase.calculateLineAngle({ x: 0, y: 0 }, { x: 10, y: 0 }), 0);
+    assert.strictEqual(geometry.calculateLineAngle({ x: 0, y: 0 }, { x: 10, y: 0 }), 0);
   });
 
   test("normal: a vertical line is 90 degrees", () => {
-    const angle = chase.calculateLineAngle({ x: 0, y: 0 }, { x: 0, y: 10 });
+    const angle = geometry.calculateLineAngle({ x: 0, y: 0 }, { x: 0, y: 10 });
     assert.ok(Math.abs(angle - 90) < 1e-9, `expected ~90, got ${angle}`);
   });
 
   test("boundary: a leftward horizontal line is 180 degrees (angle is unsigned)", () => {
-    const angle = chase.calculateLineAngle({ x: 0, y: 0 }, { x: -10, y: 0 });
+    const angle = geometry.calculateLineAngle({ x: 0, y: 0 }, { x: -10, y: 0 });
     assert.ok(Math.abs(angle - 180) < 1e-9, `expected ~180, got ${angle}`);
   });
 
   test("invalid input: missing point returns null", () => {
-    assert.strictEqual(chase.calculateLineAngle(null, { x: 1, y: 1 }), null);
-    assert.strictEqual(chase.calculateLineAngle({ x: 1, y: 1 }, null), null);
+    assert.strictEqual(geometry.calculateLineAngle(null, { x: 1, y: 1 }), null);
+    assert.strictEqual(geometry.calculateLineAngle({ x: 1, y: 1 }, null), null);
   });
 });
 
 describe("isVisible(point, threshold = 0.35)", () => {
   test("normal: visibility clearly above the default threshold", () => {
-    assert.strictEqual(chase.isVisible({ visibility: 0.9 }), true);
+    assert.strictEqual(geometry.isVisible({ visibility: 0.9 }), true);
   });
 
   test("normal: visibility clearly below the default threshold", () => {
-    assert.strictEqual(chase.isVisible({ visibility: 0.1 }), false);
+    assert.strictEqual(geometry.isVisible({ visibility: 0.1 }), false);
   });
 
   test("boundary: visibility exactly at the threshold counts as visible", () => {
-    assert.strictEqual(chase.isVisible({ visibility: 0.35 }), true);
+    assert.strictEqual(geometry.isVisible({ visibility: 0.35 }), true);
   });
 
   test("invalid input: missing visibility field defaults to fully visible", () => {
-    assert.strictEqual(chase.isVisible({}), true);
+    assert.strictEqual(geometry.isVisible({}), true);
   });
 
   test("invalid input: null point is not visible", () => {
-    assert.strictEqual(chase.isVisible(null), false);
+    assert.strictEqual(geometry.isVisible(null), false);
   });
 });
