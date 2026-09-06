@@ -7210,6 +7210,7 @@ body {
 
 
     <script src="src/chase-engine/geometry.js"></script>
+    <script src="src/chase-engine/stats.js"></script>
     <script>
 
         function showPage(pageId) {
@@ -7369,19 +7370,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
 });
-
-/* ---------------------------------------------------------
-   GEOMETRY HELPERS
---------------------------------------------------------- */
-
-function averageValid(values) {
-
-    const valid = values.filter(value => Number.isFinite(value));
-
-    if (!valid.length) return null;
-
-    return valid.reduce((sum, value) => sum + value, 0) / valid.length;
-}
 
 /* ---------------------------------------------------------
    CHASE AI — SKELETON OVERLAY (letterbox-safe, DPR-aware)
@@ -8085,32 +8073,6 @@ function finishChaseAnalysis() {
     displayChaseMetrics();
     generateChaseFeedback();
     setChaseStatus("ANALYSIS COMPLETE");
-}
-
-/* ---------------------------------------------------------
-   STATISTICS
---------------------------------------------------------- */
-
-function summariseMetric(values) {
-
-    const valid = values.filter(value => Number.isFinite(value));
-
-    if (!valid.length) {
-        return { count: 0, mean: 0, stdDev: 0, min: 0, max: 0 };
-    }
-
-    const mean = valid.reduce((sum, value) => sum + value, 0) / valid.length;
-
-    const variance =
-        valid.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / valid.length;
-
-    return {
-        count: valid.length,
-        mean,
-        stdDev: Math.sqrt(variance),
-        min: Math.min(...valid),
-        max: Math.max(...valid)
-    };
 }
 
 /* ---------------------------------------------------------

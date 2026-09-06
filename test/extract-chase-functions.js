@@ -7,6 +7,12 @@
 // their real signatures, and evaluates ONLY those extracted declarations
 // inside isolated Node `vm` sandboxes.
 //
+// It also reads src/chase-engine/stats.js in full (no anchor search
+// needed — the whole small file IS the declarations) and includes it in
+// the same sandbox, purely because chaseDetectFreestyleCycles (still
+// defined inline in index.html) calls summariseMetric, which now lives
+// in that file. stats.js is never written to either.
+//
 // It deliberately never executes the rest of index.html — most of that
 // file references `document`, `window`, MediaPipe, and Firebase globals
 // that do not exist under Node and would throw immediately if run here.
@@ -23,6 +29,7 @@ import vm from "node:vm";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const INDEX_HTML_PATH = join(__dirname, "..", "index.html");
+const STATS_MODULE_PATH = join(__dirname, "..", "src", "chase-engine", "stats.js");
 
 // ---------------------------------------------------------------------
 // Balanced-block extraction
@@ -145,8 +152,6 @@ function extractBalancedBlock(text, openIndex) {
 // an anchor is missing or ambiguous (found more than once).
 
 const TARGETS = {
-  averageValid: "function averageValid(values) {",
-  summariseMetric: "function summariseMetric(values) {",
   chaseDetectFreestyleCycles: "function chaseDetectFreestyleCycles() {",
   CHASE_COACHING_RULES: "const CHASE_COACHING_RULES = [",
   timeToSeconds: "function timeToSeconds(t) {",
@@ -201,12 +206,14 @@ function readIndexHtml() {
 }
 
 const PURE_FUNCTION_NAMES = [
-  "averageValid",
-  "summariseMetric",
   "timeToSeconds",
   "formatTime",
   "capitalize",
 ];
+
+// Defined in src/chase-engine/stats.js rather than index.html — see the
+// STATS_MODULE_PATH read in loadChaseFunctions() below.
+const STATS_FUNCTION_NAMES = ["averageValid", "summariseMetric"];
 
 /**
  * Extracts the approved Chase pure functions and CHASE_COACHING_RULES
@@ -228,7 +235,13 @@ export function loadChaseFunctions() {
 
   const declarations = PURE_FUNCTION_NAMES.map((name) => extractDeclaration(source, name));
 
-  // chaseDetectFreestyleCycles calls summariseMetric (already extracted
+  // averageValid and summariseMetric now live in src/chase-engine/stats.js.
+  // The whole (small) file is read directly and included here — no anchor
+  // search needed, since the whole file IS the declarations — ahead of
+  // chaseDetectFreestyleCycles below, which calls summariseMetric.
+  declarations.push(readFileSync(STATS_MODULE_PATH, "utf8"));
+
+  // chaseDetectFreestyleCycles calls summariseMetric (provided just
   // above) and reads a module-level `metricsHistory` object that this
   // harness supplies via the sandbox global (see below) rather than
   // extracting from index.html, since it is test input, not Chase source.
@@ -273,7 +286,12 @@ export function loadChaseFunctions() {
     );
   }
 
-  const expectedGlobals = [...PURE_FUNCTION_NAMES, "chaseDetectFreestyleCycles", "CHASE_COACHING_RULES"];
+  const expectedGlobals = [
+    ...PURE_FUNCTION_NAMES,
+    ...STATS_FUNCTION_NAMES,
+    "chaseDetectFreestyleCycles",
+    "CHASE_COACHING_RULES",
+  ];
 
   for (const name of expectedGlobals) {
     if (typeof sandbox[name] === "undefined") {

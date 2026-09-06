@@ -1,5 +1,14 @@
-// Unit tests for summariseMetric(), the per-metric statistics helper used
-// throughout the Chase analyzer and by stroke-cycle detection.
+// Unit tests for Chase's pure statistics helpers: averageValid and
+// summariseMetric, the per-metric statistics helper used throughout the
+// Chase analyzer and by stroke-cycle detection.
+//
+// Both now live in the standalone classic script src/chase-engine/stats.js
+// (see the loading-order note at the top of that file for why it is a
+// classic script, not an ES module). loadChaseFunctions() reads that file
+// directly into its vm sandbox alongside its index.html extractions —
+// chaseDetectFreestyleCycles (still inline in index.html) depends on
+// summariseMetric, so the shared loader provides both here too rather
+// than each test file loading stats.js independently.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -7,6 +16,24 @@ import { loadChaseFunctions } from "./extract-chase-functions.js";
 import { normalizeVmValue } from "./normalize-vm-value.js";
 
 const chase = loadChaseFunctions();
+
+describe("averageValid(values)", () => {
+  test("normal: mean of a valid numeric array", () => {
+    assert.strictEqual(chase.averageValid([1, 2, 3]), 2);
+  });
+
+  test("boundary: empty array returns null", () => {
+    assert.strictEqual(chase.averageValid([]), null);
+  });
+
+  test("invalid input: all-non-finite array returns null", () => {
+    assert.strictEqual(chase.averageValid([NaN, Infinity, -Infinity]), null);
+  });
+
+  test("invalid input: non-finite values are ignored, not counted", () => {
+    assert.strictEqual(chase.averageValid([1, NaN, 3, undefined]), 2);
+  });
+});
 
 describe("summariseMetric(values)", () => {
   test("normal: known dataset matches hand-computed mean/stdDev", () => {
