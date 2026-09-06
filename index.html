@@ -2,20 +2,17 @@
 <html>
 
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@500;600;700&family=Bebas+Neue&display=swap"
-        rel="stylesheet">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Michroma&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&display=swap" rel="stylesheet">
-    <!-- FAVICON -->
+
+
+
+
+<!-- FAVICON -->
     <link rel="icon" type="image/png" href="favicon.png">
 
     <!-- Google Analytics -->
@@ -40,7 +37,11 @@ gtag('config', 'G-VSLDBW2PYM');
     <meta name="description"
         content="Swimtics - Precision. Power. Progress. Elite AI-powered swimming analytics platform.">
 
-    <style>
+
+
+        <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Michroma&family=Orbitron:wght@500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
         /* ===== GLOBAL ===== */
         body {
             margin: 0;
@@ -96,6 +97,7 @@ gtag('config', 'G-VSLDBW2PYM');
 
             transform: translateY(-2px);
         }
+        
 
         /* THEME TOGGLE BUTTON */
         #themeToggle {
@@ -313,8 +315,6 @@ gtag('config', 'G-VSLDBW2PYM');
             color: inherit !important;
             filter: none !important;
         }
-
-
 
 
         /* BODY MAP + WAR ROOM */
@@ -2705,10 +2705,3525 @@ background-size: 20px;
 
     opacity: 1;
 }
+
+/* =========================================================
+   CHASE AI — VIDEO VIEWER
+========================================================= */
+
+.chase-video-container {
+
+    position: relative;
+
+    width: min(100%, 1000px);
+
+    margin: 30px auto;
+
+    background: #000;
+
+    overflow: hidden;
+
+    border-radius: 14px;
+
+    line-height: 0;
+}
+
+.chase-video-container video {
+
+    display: block;
+
+    width: 100%;
+
+    height: auto;
+
+    max-height: 70vh;
+
+    object-fit: contain;
+
+    background: #000;
+}
+
+.chase-video-container canvas {
+
+    position: absolute;
+
+    inset: 0;
+
+    width: 100%;
+
+    height: 100%;
+
+    pointer-events: none;
+
+    z-index: 2;
+}
+
+.chase-video-container video {
+
+    position: relative;
+
+    z-index: 1;
+}
     </style>
+
+    <!-- =========================================================
+         SWIMTICS PREMIUM VISUAL SYSTEM
+         ========================================================= -->
+    <style id="swimticsPremiumMergedCSS">
+
+
+/* =========================================================
+   SWIMTICS — CINEMATIC ENTRY EXPERIENCE
+   ========================================================= */
+
+:root {
+
+    --black: #020508;
+    --navy: #061426;
+
+    --cyan: #00d9ff;
+    --cyan-soft: rgba(0,217,255,.55);
+
+    --white: #f3f7fa;
+
+    --muted: rgba(235,242,248,.48);
+
+    --border: rgba(255,255,255,.13);
+
+    --ease: cubic-bezier(.16,1,.3,1);
+
+}
+
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
+* {
+    box-sizing: border-box;
+}
+
+
+html,
+body {
+
+    width: 100%;
+
+    min-height: 100%;
+
+    margin: 0;
+    padding: 0;
+
+    background: var(--black);
+
+    overflow-x: hidden;
+
+    overflow-y: auto;
+
+}
+
+
+/* =========================================================
+   MAIN ENTRY
+   ========================================================= */
+
+#entryGate {
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 10000;
+
+    overflow: hidden;
+
+    background: #020508;
+
+    color: white;
+
+    font-family: Inter, sans-serif;
+
+    opacity: 1;
+
+    visibility: visible;
+
+    transition:
+
+        opacity 1.1s var(--ease),
+
+        visibility 1.1s var(--ease);
+
+}
+
+
+/* =========================================================
+   BACKGROUND IMAGE
+   ========================================================= */
+
+.entry-background {
+
+    position: absolute;
+
+    inset: -3%;
+
+    z-index: 0;
+
+    background-image:
+        url("entry-bg.png");
+
+    background-size: cover;
+
+    background-position: center center;
+
+    background-repeat: no-repeat;
+
+    filter:
+
+        saturate(.72)
+
+        contrast(1.08)
+
+        brightness(.60)
+
+        blur(.15px);
+
+    transform: scale(1.035);
+
+    animation:
+        cinematicZoom 18s
+        cubic-bezier(.16,1,.3,1)
+        forwards;
+
+    transition:
+        transform 2s var(--ease);
+
+}
+
+
+/* slow cinematic zoom */
+
+@keyframes cinematicZoom {
+
+    0% {
+
+        transform:
+            scale(1.035)
+            translate3d(0,0,0);
+
+    }
+
+    100% {
+
+        transform:
+            scale(1.10)
+            translate3d(-.4%, -.3%, 0);
+
+    }
+
+}
+
+
+/* =========================================================
+   DARK CINEMATIC OVERLAY
+   ========================================================= */
+
+.entry-overlay {
+
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 1;
+
+    background:
+
+        linear-gradient(
+            180deg,
+
+            rgba(1,5,10,.72) 0%,
+
+            rgba(2,8,15,.20) 28%,
+
+            rgba(2,8,15,.18) 50%,
+
+            rgba(1,5,10,.82) 100%
+        ),
+
+        radial-gradient(
+            ellipse at center,
+
+            transparent 25%,
+
+            rgba(0,0,0,.58) 100%
+        );
+
+    pointer-events: none;
+
+}
+
+
+/* =========================================================
+   BLUE ATMOSPHERIC GLOW
+   ========================================================= */
+
+.entry-light {
+
+    position: absolute;
+
+    z-index: 2;
+
+    width: 65vw;
+
+    height: 65vw;
+
+    max-width: 900px;
+
+    max-height: 900px;
+
+    left: 50%;
+
+    top: 45%;
+
+    transform:
+        translate(-50%, -50%);
+
+    border-radius: 50%;
+
+    background:
+
+        radial-gradient(
+            circle,
+
+            rgba(0,170,255,.10),
+
+            rgba(0,80,180,.035) 40%,
+
+            transparent 70%
+        );
+
+    filter: blur(25px);
+
+    pointer-events: none;
+
+}
+
+
+/* =========================================================
+   TECHNICAL GRID
+   ========================================================= */
+
+.entry-grid {
+
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 3;
+
+    pointer-events: none;
+
+    opacity: .10;
+
+    background-image:
+
+        linear-gradient(
+            rgba(0,217,255,.12) 1px,
+            transparent 1px
+        ),
+
+        linear-gradient(
+            90deg,
+            rgba(0,217,255,.12) 1px,
+            transparent 1px
+        );
+
+    background-size:
+        90px 90px;
+
+    mask-image:
+        radial-gradient(
+            ellipse at center,
+            black 0%,
+            transparent 75%
+        );
+
+}
+
+
+/* =========================================================
+   GRAIN
+   ========================================================= */
+
+.entry-grain {
+
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 8;
+
+    pointer-events: none;
+
+    opacity: .045;
+
+    background-image:
+
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='.8'/%3E%3C/svg%3E");
+
+    mix-blend-mode: screen;
+
+}
+
+
+/* =========================================================
+   SCREEN BORDER
+   ========================================================= */
+
+.entry-frame {
+
+    position: absolute;
+
+    inset: 28px;
+
+    z-index: 6;
+
+    border:
+
+        1px solid
+        rgba(255,255,255,.14);
+
+    pointer-events: none;
+
+}
+
+
+.entry-frame::before,
+.entry-frame::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 7px;
+
+    height: 7px;
+
+    border-radius: 50%;
+
+    background:
+        var(--cyan);
+
+    box-shadow:
+        0 0 15px
+        rgba(0,217,255,.7);
+
+}
+
+
+.entry-frame::before {
+
+    top: -4px;
+
+    left: 17%;
+
+}
+
+
+.entry-frame::after {
+
+    top: -4px;
+
+    right: 17%;
+
+}
+
+
+/* =========================================================
+   SCAN LINE
+   ========================================================= */
+
+.scan-line {
+
+    position: absolute;
+
+    left: 0;
+
+    top: -10%;
+
+    width: 100%;
+
+    height: 1px;
+
+    z-index: 7;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(0,217,255,.65),
+            transparent
+        );
+
+    box-shadow:
+
+        0 0 20px
+        rgba(0,217,255,.5);
+
+    opacity: .35;
+
+    animation:
+        scanLine 8s linear infinite;
+
+}
+
+
+@keyframes scanLine {
+
+    from {
+        transform:
+            translateY(-10vh);
+    }
+
+    to {
+        transform:
+            translateY(120vh);
+    }
+
+}
+
+
+/* =========================================================
+   HUGE BACKGROUND NUMBER
+   ========================================================= */
+
+.background-number {
+
+    position: absolute;
+
+    z-index: 2;
+
+    right: 4vw;
+
+    top: 5vh;
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size:
+        clamp(16rem, 32vw, 38rem);
+
+    line-height: .8;
+
+    font-weight: 800;
+
+    color:
+
+        rgba(120,210,255,.035);
+
+    letter-spacing:
+        -25px;
+
+    user-select: none;
+
+    pointer-events: none;
+
+}
+
+
+/* =========================================================
+   TOP INFORMATION
+   ========================================================= */
+
+.entry-top {
+
+    position: absolute;
+
+    top: 52px;
+
+    left: 52px;
+
+    right: 52px;
+
+    z-index: 9;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    letter-spacing: 4px;
+
+    text-transform: uppercase;
+
+    color:
+        rgba(255,255,255,.55);
+
+}
+
+
+.entry-top-right {
+
+    color:
+        rgba(0,217,255,.75);
+
+}
+
+
+/* =========================================================
+   SIDE INFORMATION
+   ========================================================= */
+
+.entry-side-left {
+
+    position: absolute;
+
+    z-index: 9;
+
+    left: 55px;
+
+    top: 50%;
+
+    transform:
+        translateY(-50%);
+
+    writing-mode:
+        vertical-rl;
+
+    transform:
+        translateY(-50%)
+        rotate(180deg);
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing: 4px;
+
+    color:
+        rgba(255,255,255,.34);
+
+    text-transform: uppercase;
+
+}
+
+
+.entry-side-right {
+
+    position: absolute;
+
+    z-index: 9;
+
+    right: 55px;
+
+    top: 50%;
+
+    transform:
+        translateY(-50%);
+
+    writing-mode:
+        vertical-rl;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing: 4px;
+
+    color:
+        rgba(255,255,255,.34);
+
+    text-transform: uppercase;
+
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+   ========================================================= */
+
+.entry-content {
+
+    position: absolute;
+
+    z-index: 10;
+
+    left: 50%;
+
+    top: 50%;
+
+    transform:
+        translate(-50%, -50%);
+
+    width: min(1000px, 85%);
+
+    text-align: center;
+
+}
+
+
+/* =========================================================
+   SMALL LABEL
+   ========================================================= */
+
+.entry-kicker {
+
+    margin-bottom: 22px;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    letter-spacing: 7px;
+
+    text-transform: uppercase;
+
+    color:
+        rgba(0,217,255,.75);
+
+    opacity: 0;
+
+    transform:
+        translateY(15px);
+
+    animation:
+
+        contentReveal .9s
+        .2s var(--ease)
+        forwards;
+
+}
+
+
+/* =========================================================
+   SWIMTICS LOGO
+   ========================================================= */
+
+.entry-logo {
+
+    margin: 0;
+
+    font-family:
+        Michroma,
+        sans-serif;
+
+    font-size:
+        clamp(4rem, 10vw, 9rem);
+
+    font-weight: 800;
+
+    letter-spacing:
+        clamp(5px, 1vw, 13px);
+
+    line-height: .9;
+
+    color:
+        #f4f8fb;
+
+    text-shadow:
+
+        0 0 12px
+        rgba(255,255,255,.28),
+
+        0 0 35px
+        rgba(0,180,255,.28),
+
+        0 0 75px
+        rgba(0,100,255,.16);
+
+    opacity: 0;
+
+    transform:
+        translateY(25px)
+        scale(.96);
+
+    animation:
+
+        logoReveal 1.2s
+        .35s var(--ease)
+        forwards;
+
+}
+
+
+@keyframes logoReveal {
+
+    from {
+
+        opacity: 0;
+
+        transform:
+            translateY(25px)
+            scale(.96);
+
+        filter:
+            blur(8px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform:
+            translateY(0)
+            scale(1);
+
+        filter:
+            blur(0);
+
+    }
+
+}
+
+
+/* =========================================================
+   DIVIDER
+   ========================================================= */
+
+.entry-divider {
+
+    width:
+        min(430px, 55%);
+
+    height: 1px;
+
+    margin:
+        32px auto 28px;
+
+    background:
+
+        linear-gradient(
+            90deg,
+
+            transparent,
+
+            rgba(0,217,255,.7),
+
+            transparent
+        );
+
+    position: relative;
+
+    opacity: 0;
+
+    animation:
+
+        lineReveal 1s
+        .7s var(--ease)
+        forwards;
+
+}
+
+
+.entry-divider::after {
+
+    content: "";
+
+    position: absolute;
+
+    left: 50%;
+
+    top: 50%;
+
+    width: 5px;
+
+    height: 5px;
+
+    transform:
+        translate(-50%, -50%)
+        rotate(45deg);
+
+    background:
+        var(--cyan);
+
+    box-shadow:
+        0 0 14px
+        rgba(0,217,255,.75);
+
+}
+
+
+@keyframes lineReveal {
+
+    from {
+
+        opacity: 0;
+
+        transform:
+            scaleX(.2);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform:
+            scaleX(1);
+
+    }
+
+}
+
+
+/* =========================================================
+   SUBTITLE
+   ========================================================= */
+
+.entry-subtitle {
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size:
+        clamp(.75rem, 1.5vw, 1rem);
+
+    letter-spacing:
+        clamp(3px, .6vw, 7px);
+
+    color:
+        rgba(238,245,250,.75);
+
+    text-transform:
+        uppercase;
+
+    opacity: 0;
+
+    transform:
+        translateY(15px);
+
+    animation:
+
+        contentReveal .9s
+        .85s var(--ease)
+        forwards;
+
+}
+
+
+@keyframes contentReveal {
+
+    from {
+
+        opacity: 0;
+
+        transform:
+            translateY(15px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform:
+            translateY(0);
+
+    }
+
+}
+
+
+/* =========================================================
+   ENTRY CONTROL
+   ========================================================= */
+
+.enter-wrapper {
+
+    margin-top: 48px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    opacity: 0;
+
+    transform:
+        translateY(20px);
+
+    animation:
+
+        contentReveal 1s
+        1.05s var(--ease)
+        forwards;
+
+}
+
+
+/* =========================================================
+   CIRCULAR BUTTON
+   ========================================================= */
+
+.enter-button {
+
+    position: relative;
+
+    width: 92px;
+
+    height: 92px;
+
+    border-radius: 50%;
+
+    border:
+
+        1px solid
+        rgba(0,217,255,.55);
+
+    background:
+
+        radial-gradient(
+            circle,
+            rgba(0,40,65,.7),
+            rgba(1,7,14,.88)
+        );
+
+    color: white;
+
+    cursor: pointer;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    transition:
+
+        transform .6s var(--ease),
+
+        border-color .4s ease,
+
+        box-shadow .5s ease,
+
+        background .5s ease;
+
+}
+
+
+.enter-button::before {
+
+    content: "";
+
+    position: absolute;
+
+    inset: -10px;
+
+    border:
+
+        1px solid
+        rgba(0,217,255,.17);
+
+    border-radius: 50%;
+
+    transition:
+        transform .6s var(--ease),
+        border-color .5s ease;
+
+}
+
+
+.enter-button::after {
+
+    content: "";
+
+    position: absolute;
+
+    inset: -19px;
+
+    border:
+
+        1px dashed
+        rgba(255,255,255,.12);
+
+    border-radius: 50%;
+
+    animation:
+        rotateRing 18s linear infinite;
+
+}
+
+
+@keyframes rotateRing {
+
+    to {
+        transform:
+            rotate(360deg);
+    }
+
+}
+
+
+.enter-button:hover {
+
+    transform:
+        scale(1.08);
+
+    border-color:
+        rgba(0,217,255,.95);
+
+    background:
+
+        radial-gradient(
+            circle,
+            rgba(0,100,145,.55),
+            rgba(1,7,14,.9)
+        );
+
+    box-shadow:
+
+        0 0 35px
+        rgba(0,180,255,.22),
+
+        0 0 80px
+        rgba(0,90,255,.12);
+
+}
+
+
+.enter-button:hover::before {
+
+    transform:
+        scale(1.12);
+
+    border-color:
+        rgba(0,217,255,.3);
+
+}
+
+
+.enter-arrow {
+
+    font-size: 30px;
+
+    font-weight: 300;
+
+    line-height: 1;
+
+    transition:
+        transform .5s var(--ease);
+
+}
+
+
+.enter-button:hover .enter-arrow {
+
+    transform:
+        translateX(5px);
+
+}
+
+
+/* =========================================================
+   ENTER LABEL
+   ========================================================= */
+
+.enter-label {
+
+    margin-top: 30px;
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    letter-spacing:
+        5px;
+
+    text-transform:
+        uppercase;
+
+    color:
+        rgba(255,255,255,.8);
+
+}
+
+
+.enter-instruction {
+
+    margin-top: 11px;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing:
+        3px;
+
+    text-transform:
+        uppercase;
+
+    color:
+        rgba(255,255,255,.30);
+
+}
+
+
+/* =========================================================
+   BOTTOM INFORMATION
+   ========================================================= */
+
+.entry-bottom {
+
+    position: absolute;
+
+    z-index: 9;
+
+    bottom: 48px;
+
+    left: 52px;
+
+    right: 52px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    letter-spacing: 4px;
+
+    color:
+        rgba(255,255,255,.38);
+
+    text-transform:
+        uppercase;
+
+}
+
+
+.entry-bottom-right {
+
+    color:
+        rgba(0,217,255,.55);
+
+}
+
+
+/* =========================================================
+   APP
+   ========================================================= */
+
+
+
+/* =========================================================
+   EXIT ANIMATION
+   ========================================================= */
+
+#entryGate.exit {
+
+    opacity: 0;
+
+    visibility: hidden;
+
+}
+
+
+#entryGate.exit .entry-background {
+
+    transform:
+        scale(1.18);
+
+    filter:
+
+        saturate(.8)
+
+        brightness(.35)
+
+        blur(3px);
+
+}
+
+
+#entryGate.exit .entry-content {
+
+    transform:
+        translate(-50%, -50%)
+        scale(1.06);
+
+    opacity: 0;
+
+    transition:
+        opacity .7s ease,
+        transform .9s var(--ease);
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:800px) {
+
+    .entry-frame {
+
+        inset: 14px;
+
+    }
+
+
+    .entry-top {
+
+        top: 32px;
+
+        left: 30px;
+
+        right: 30px;
+
+        font-size: 8px;
+
+        letter-spacing: 2px;
+
+    }
+
+
+    .entry-side-left,
+    .entry-side-right {
+
+        display: none;
+
+    }
+
+
+    .entry-bottom {
+
+        bottom: 30px;
+
+        left: 30px;
+
+        right: 30px;
+
+        font-size: 8px;
+
+        letter-spacing: 2px;
+
+    }
+
+
+    .entry-logo {
+
+        font-size:
+            clamp(3rem, 15vw, 5rem);
+
+    }
+
+
+    .entry-subtitle {
+
+        line-height: 1.7;
+
+    }
+
+
+    .background-number {
+
+        right: -5vw;
+
+        top: 15vh;
+
+        font-size:
+            70vw;
+
+    }
+
+
+    .enter-button {
+
+        width: 78px;
+
+        height: 78px;
+
+    }
+
+
+    .enter-arrow {
+
+        font-size: 25px;
+
+    }
+
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media(prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+
+        animation-duration:
+            .01ms !important;
+
+        animation-iteration-count:
+            1 !important;
+
+        transition-duration:
+            .01ms !important;
+
+    }
+
+}
+
+/* =========================================================
+   SWIMTICS PREMIUM MOTION SYSTEM
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   SCROLL PROGRESS
+   --------------------------------------------------------- */
+
+#swimticsScrollProgress {
+
+    position: fixed;
+
+    top: 50%;
+
+    right: 18px;
+
+    width: 2px;
+
+    height: 90px;
+
+    transform: translateY(-50%);
+
+    background: rgba(255,255,255,.08);
+
+    z-index: 999999;
+
+    overflow: hidden;
+
+}
+
+
+#swimticsScrollProgress span {
+
+    display: block;
+
+    width: 100%;
+
+    height: 0%;
+
+    background:
+
+        linear-gradient(
+            180deg,
+            #00d9ff,
+            rgba(0,217,255,.15)
+        );
+
+    box-shadow:
+        0 0 12px
+        rgba(0,217,255,.5);
+
+}
+
+
+/* ---------------------------------------------------------
+   PAGE TRANSITION
+   --------------------------------------------------------- */
+
+.swimtics-page-transition {
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 999998;
+
+    pointer-events: none;
+
+    background:
+
+        linear-gradient(
+            135deg,
+            #020407,
+            #061426
+        );
+
+    transform:
+        translateY(100%);
+
+}
+
+
+/* ---------------------------------------------------------
+   SECTION REVEAL
+   --------------------------------------------------------- */
+
+.swimtics-reveal {
+
+    opacity: 0;
+
+    transform:
+        translateY(60px);
+
+    filter:
+        blur(8px);
+
+}
+
+
+.swimtics-reveal.visible {
+
+    opacity: 1;
+
+    transform:
+        translateY(0);
+
+    filter:
+        blur(0);
+
+}
+
+
+/* ---------------------------------------------------------
+   FEATURE CARD
+   --------------------------------------------------------- */
+
+.feature-card {
+
+    transform:
+        translateY(0)
+        scale(1);
+
+    transform-style:
+        preserve-3d;
+
+    will-change:
+        transform;
+
+}
+
+
+/* ---------------------------------------------------------
+   CARD LIGHT
+   --------------------------------------------------------- */
+
+.swimtics-card-light {
+
+    position: absolute;
+
+    width: 250px;
+
+    height: 250px;
+
+    border-radius: 50%;
+
+    pointer-events: none;
+
+    background:
+
+        radial-gradient(
+            circle,
+            rgba(0,217,255,.12),
+            transparent 70%
+        );
+
+    filter:
+        blur(25px);
+
+    opacity: 0;
+
+    transform:
+        translate(-50%, -50%);
+
+    z-index: 0;
+
+}
+
+
+/* ---------------------------------------------------------
+   CARD BORDER SWEEP
+   --------------------------------------------------------- */
+
+.feature-card .swimtics-border-sweep {
+
+    position: absolute;
+
+    top: 0;
+
+    left: -100%;
+
+    width: 100%;
+
+    height: 1px;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(0,217,255,.8),
+            transparent
+        );
+
+    pointer-events: none;
+
+}
+
+
+.feature-card:hover
+.swimtics-border-sweep {
+
+    animation:
+        borderSweep .9s ease forwards;
+
+}
+
+
+@keyframes borderSweep {
+
+    from {
+
+        left: -100%;
+
+    }
+
+    to {
+
+        left: 100%;
+
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   SECTION MARKER
+   --------------------------------------------------------- */
+
+.swimtics-section-marker {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    margin-bottom: 25px;
+
+    color:
+        rgba(0,217,255,.7);
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    letter-spacing: 4px;
+
+    text-transform: uppercase;
+
+}
+
+
+.swimtics-section-marker::before {
+
+    content: "";
+
+    width: 35px;
+
+    height: 1px;
+
+    background:
+        rgba(0,217,255,.6);
+
+}
+
+
+/* ---------------------------------------------------------
+   TECHNICAL CORNER
+   --------------------------------------------------------- */
+
+.swimtics-tech-corner {
+
+    position: absolute;
+
+    width: 30px;
+
+    height: 30px;
+
+    pointer-events: none;
+
+    opacity: .35;
+
+}
+
+
+.swimtics-tech-corner::before,
+.swimtics-tech-corner::after {
+
+    content: "";
+
+    position: absolute;
+
+    background:
+        rgba(0,217,255,.6);
+
+}
+
+
+.swimtics-tech-corner::before {
+
+    width: 30px;
+
+    height: 1px;
+
+}
+
+
+.swimtics-tech-corner::after {
+
+    width: 1px;
+
+    height: 30px;
+
+}
+
+
+/* ---------------------------------------------------------
+   IMAGE / VIDEO PARALLAX
+   --------------------------------------------------------- */
+
+.swimtics-parallax {
+
+    will-change:
+        transform;
+
+}
+
+
+/* ---------------------------------------------------------
+   PREMIUM DIVIDER
+   --------------------------------------------------------- */
+
+.swimtics-divider {
+
+    position: relative;
+
+    width: 100%;
+
+    height: 1px;
+
+    margin: 80px 0;
+
+    background:
+        rgba(255,255,255,.07);
+
+    overflow: hidden;
+
+}
+
+
+.swimtics-divider::after {
+
+    content: "";
+
+    position: absolute;
+
+    left: -20%;
+
+    top: 0;
+
+    width: 20%;
+
+    height: 1px;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            transparent,
+            #00d9ff,
+            transparent
+        );
+
+    animation:
+        dividerFlow 5s linear infinite;
+
+}
+
+
+@keyframes dividerFlow {
+
+    to {
+
+        left: 120%;
+
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   GLOW DOT
+   --------------------------------------------------------- */
+
+.swimtics-pulse-dot {
+
+    width: 5px;
+
+    height: 5px;
+
+    border-radius: 50%;
+
+    background:
+        #00d9ff;
+
+    box-shadow:
+        0 0 0 0
+        rgba(0,217,255,.5);
+
+    animation:
+        pulseDot 2.5s infinite;
+
+}
+
+
+@keyframes pulseDot {
+
+    0% {
+
+        box-shadow:
+            0 0 0 0
+            rgba(0,217,255,.45);
+
+    }
+
+    70% {
+
+        box-shadow:
+            0 0 0 10px
+            rgba(0,217,255,0);
+
+    }
+
+    100% {
+
+        box-shadow:
+            0 0 0 0
+            rgba(0,217,255,0);
+
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   MOBILE
+   --------------------------------------------------------- */
+
+@media(max-width:800px) {
+
+    #swimticsScrollProgress {
+
+        right: 8px;
+
+        height: 60px;
+
+    }
+
+}
+
+/* =========================================================
+   SWIMTICS PERFORMANCE ECOSYSTEM
+   ========================================================= */
+
+.swimtics-ecosystem-intro {
+
+    position: relative;
+
+    width: min(1200px, 88%);
+
+    margin: 0 auto 95px;
+
+    padding-left: 24px;
+
+}
+
+
+/* ---------------------------------------------------------
+   SYSTEM LABEL
+   --------------------------------------------------------- */
+
+.swimtics-ecosystem-intro::before {
+
+    content: "";
+
+    display: block;
+
+    width: 85px;
+
+    height: 2px;
+
+    margin-bottom: 32px;
+
+    background:
+        linear-gradient(
+            90deg,
+            #00d9ff,
+            rgba(0,217,255,.08),
+            transparent
+        );
+
+    box-shadow:
+        0 0 14px
+        rgba(0,217,255,.35);
+
+}
+
+
+.swimtics-ecosystem-intro::after {
+
+    content: "";
+
+    position: absolute;
+
+    left: 24px;
+
+    bottom: -42px;
+
+    width: calc(100% - 24px);
+
+    height: 1px;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            rgba(0,217,255,.45),
+            rgba(255,255,255,.08) 45%,
+            transparent
+        );
+
+}
+
+
+/* ---------------------------------------------------------
+   TITLE
+   --------------------------------------------------------- */
+
+.swimtics-ecosystem-intro
+.features-title {
+
+    position: relative;
+
+    margin: 0;
+
+    font-family:
+        Michroma,
+        sans-serif;
+
+    font-size:
+        clamp(2.8rem, 6.5vw, 7rem);
+
+    line-height:
+        .95;
+
+    letter-spacing:
+        -2px;
+
+    text-transform:
+        uppercase;
+
+    max-width:
+        950px;
+
+    color:
+        #f2f7fa;
+
+}
+
+
+/* ---------------------------------------------------------
+   TITLE ACCENT
+   --------------------------------------------------------- */
+
+.swimtics-ecosystem-intro
+.features-title::after {
+
+    content: "";
+
+    display: block;
+
+    width: 85px;
+
+    height: 2px;
+
+    margin-top: 28px;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            #00d9ff,
+            transparent
+        );
+
+    box-shadow:
+        0 0 15px
+        rgba(0,217,255,.35);
+
+}
+
+
+/* ---------------------------------------------------------
+   SUBTITLE
+   --------------------------------------------------------- */
+
+.swimtics-ecosystem-intro
+.features-subtitle {
+
+    max-width: 520px;
+
+    margin-top: 30px;
+
+    font-family:
+        Inter,
+        sans-serif;
+
+    font-size:
+        clamp(.9rem, 1.2vw, 1.05rem);
+
+    line-height:
+        1.7;
+
+    color:
+        rgba(235,242,248,.52);
+
+}
+
+
+/* =========================================================
+   ECOSYSTEM CARD SYSTEM
+   ========================================================= */
+
+.feature-card {
+
+    position: relative;
+
+    min-height: 320px;
+
+    overflow: hidden;
+
+    border:
+        1px solid
+        rgba(255,255,255,.10);
+
+    background:
+
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,.055),
+            rgba(255,255,255,.012)
+        );
+
+    backdrop-filter:
+        blur(18px);
+
+    -webkit-backdrop-filter:
+        blur(18px);
+
+    transition:
+        border-color .5s ease,
+        background .5s ease;
+
+}
+
+
+/* ---------------------------------------------------------
+   GIANT NUMBER
+   --------------------------------------------------------- */
+
+.feature-card::before {
+
+    content: attr(data-system);
+
+    position: absolute;
+
+    top: -35px;
+
+    right: 35px;
+
+    font-family: Orbitron, sans-serif;
+
+    font-size:
+        clamp(11rem, 17vw, 17rem);
+
+    line-height: 1;
+
+    font-weight: 800;
+
+    letter-spacing: -15px;
+
+    color:
+        rgba(65, 155, 190, .085);
+
+    pointer-events: none;
+
+    z-index: 0;
+
+}
+
+
+/* ---------------------------------------------------------
+   CARD NUMBER
+   --------------------------------------------------------- */
+
+.feature-card::after {
+
+    content: attr(data-index);
+
+    position: absolute;
+
+    top: 28px;
+
+    right: 30px;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    letter-spacing: 3px;
+
+    color:
+        rgba(0,217,255,.5);
+
+}
+
+
+/* ---------------------------------------------------------
+   HOVER
+   --------------------------------------------------------- */
+
+.feature-card:hover {
+
+    border-color:
+        rgba(0,217,255,.28);
+
+    background:
+
+        linear-gradient(
+            135deg,
+            rgba(0,100,150,.10),
+            rgba(255,255,255,.025)
+        );
+
+}
+
+
+/* ---------------------------------------------------------
+   CARD INNER DEPTH
+   --------------------------------------------------------- */
+
+.feature-card > * {
+
+    position: relative;
+
+    z-index: 2;
+
+}
+
+
+/* ---------------------------------------------------------
+   CARD LIGHT
+   --------------------------------------------------------- */
+
+.swimtics-card-light {
+
+    width: 320px;
+
+    height: 320px;
+
+    background:
+
+        radial-gradient(
+            circle,
+            rgba(0,217,255,.13),
+            rgba(0,120,255,.035) 35%,
+            transparent 70%
+        );
+
+    filter:
+        blur(30px);
+
+}
+
+
+/* =========================================================
+   CARD TOP LINE
+   ========================================================= */
+
+.swimtics-border-sweep {
+
+    height: 1px !important;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(0,217,255,.9),
+            transparent
+        ) !important;
+
+}
+
+
+/* =========================================================
+   TECHNICAL CORNERS
+   ========================================================= */
+
+.feature-card .swimtics-tech-corner {
+
+    position: absolute;
+
+    width: 18px;
+
+    height: 18px;
+
+    z-index: 5;
+
+    opacity: .5;
+
+}
+
+
+.feature-card .swimtics-tech-corner::before {
+
+    content: "";
+
+    position: absolute;
+
+    width: 18px;
+
+    height: 1px;
+
+    background:
+        rgba(0,217,255,.6);
+
+}
+
+
+.feature-card .swimtics-tech-corner::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 1px;
+
+    height: 18px;
+
+    background:
+        rgba(0,217,255,.6);
+
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media(max-width:800px) {
+
+    .swimtics-ecosystem-intro {
+
+        width: 88%;
+
+        padding-left: 12px;
+
+        margin-bottom: 65px;
+
+    }
+
+
+    .swimtics-ecosystem-intro::after {
+
+        left: 12px;
+
+        width: calc(100% - 12px);
+
+    }
+
+
+    .feature-card {
+
+        min-height: 270px;
+
+    }
+
+
+    .feature-card::before {
+
+        font-size:
+            8rem;
+
+    }
+
+}
+
+
+/* =================================================
+           GLOBAL
+           ================================================= */
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+
+        body {
+            overflow-x: hidden !important;
+        }
+
+
+        /* =================================================
+           ECOSYSTEM INTRO
+           ================================================= */
+
+        .swimtics-ecosystem-intro {
+
+            position: relative;
+
+            width: min(1200px, 88%);
+
+            margin: 0 auto 95px;
+
+            padding-left: 24px;
+
+        }
+
+
+        .swimtics-ecosystem-intro::before {
+
+    content: "";
+
+    display: block;
+
+    width: 85px;
+
+    height: 2px;
+
+    margin-bottom: 32px;
+
+    background:
+        linear-gradient(
+            90deg,
+            #00d9ff,
+            rgba(0,217,255,.08),
+            transparent
+        );
+
+    box-shadow:
+        0 0 14px
+        rgba(0,217,255,.35);
+
+}
+
+
+        .swimtics-ecosystem-intro::after {
+
+            content: "";
+
+            position: absolute;
+
+            left: 24px;
+
+            bottom: -42px;
+
+            width: calc(100% - 24px);
+
+            height: 1px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    rgba(0,217,255,.45),
+                    rgba(255,255,255,.08) 45%,
+                    transparent
+                );
+
+        }
+
+
+        .swimtics-ecosystem-intro .features-title {
+
+            position: relative;
+
+            margin: 0;
+
+            font-family: Michroma, sans-serif;
+
+            font-size:
+                clamp(2.8rem, 6.5vw, 7rem);
+
+            line-height: .95;
+
+            letter-spacing: -2px;
+
+            text-transform: uppercase;
+
+            max-width: 950px;
+
+            color: #f2f7fa;
+
+        }
+
+
+        .swimtics-ecosystem-intro
+        .features-title::after {
+
+            content: "";
+
+            display: block;
+
+            width: 85px;
+
+            height: 2px;
+
+            margin-top: 28px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    #00d9ff,
+                    transparent
+                );
+
+            box-shadow:
+                0 0 15px
+                rgba(0,217,255,.35);
+
+        }
+
+
+        .swimtics-ecosystem-intro
+        .features-subtitle {
+
+            max-width: 520px;
+
+            margin-top: 30px;
+
+            font-family: Inter, sans-serif;
+
+            font-size:
+                clamp(.9rem, 1.2vw, 1.05rem);
+
+            line-height: 1.7;
+
+            color:
+                rgba(235,242,248,.52);
+
+        }
+
+
+        /* =================================================
+           FEATURE CARDS
+           ================================================= */
+
+        .feature-card {
+
+            position: relative;
+
+            min-height: 320px;
+
+            overflow: hidden;
+
+            transform-style: preserve-3d;
+
+            will-change: transform;
+
+            border:
+                1px solid
+                rgba(255,255,255,.10);
+
+            background:
+                linear-gradient(
+                    135deg,
+                    rgba(255,255,255,.055),
+                    rgba(255,255,255,.012)
+                );
+
+            backdrop-filter: blur(18px);
+
+            -webkit-backdrop-filter: blur(18px);
+
+            transition:
+                border-color .5s ease,
+                background .5s ease;
+
+        }
+
+
+        /* =================================================
+           GIANT SYSTEM NUMBER
+           ================================================= */
+
+        .feature-card::before {
+
+    content: attr(data-system);
+
+    position: absolute;
+
+    top: -35px;
+
+    right: 35px;
+
+    font-family: Orbitron, sans-serif;
+
+    font-size:
+        clamp(11rem, 17vw, 17rem);
+
+    line-height: 1;
+
+    font-weight: 800;
+
+    letter-spacing: -15px;
+
+    color:
+        rgba(65, 155, 190, .085);
+
+    pointer-events: none;
+
+    z-index: 0;
+
+}
+
+
+        /* =================================================
+           CARD INDEX
+           ================================================= */
+
+        .feature-card::after {
+
+            content: attr(data-index);
+
+            position: absolute;
+
+            top: 28px;
+
+            right: 30px;
+
+            font-family: Rajdhani, sans-serif;
+
+            font-size: 10px;
+
+            font-weight: 600;
+
+            letter-spacing: 3px;
+
+            color:
+                rgba(0,217,255,.5);
+
+            pointer-events: none;
+
+            z-index: 5;
+
+        }
+
+
+        /* =================================================
+           CARD CONTENT
+           ================================================= */
+
+        .feature-card > * {
+
+            position: relative;
+
+            z-index: 2;
+
+        }
+
+
+        /* =================================================
+           TECHNICAL CORNER
+           ================================================= */
+
+        .feature-card .swimtics-tech-corner {
+
+            position: absolute;
+
+            width: 18px;
+
+            height: 18px;
+
+            top: 0;
+
+            left: 0;
+
+            z-index: 5;
+
+            opacity: .5;
+
+        }
+
+
+        .feature-card
+        .swimtics-tech-corner::before {
+
+            content: "";
+
+            position: absolute;
+
+            width: 18px;
+
+            height: 1px;
+
+            background:
+                rgba(0,217,255,.6);
+
+        }
+
+
+        .feature-card
+        .swimtics-tech-corner::after {
+
+            content: "";
+
+            position: absolute;
+
+            width: 1px;
+
+            height: 18px;
+
+            background:
+                rgba(0,217,255,.6);
+
+        }
+
+
+        /* =================================================
+           CARD LIGHT
+           ================================================= */
+
+        .swimtics-card-light {
+
+            position: absolute;
+
+            width: 320px;
+
+            height: 320px;
+
+            border-radius: 50%;
+
+            pointer-events: none;
+
+            background:
+                radial-gradient(
+                    circle,
+                    rgba(0,217,255,.13),
+                    rgba(0,120,255,.035) 35%,
+                    transparent 70%
+                );
+
+            filter: blur(30px);
+
+            opacity: 0;
+
+            transform:
+                translate(-50%, -50%);
+
+            z-index: 0;
+
+        }
+
+
+        /* =================================================
+           BORDER SWEEP
+           ================================================= */
+
+        .swimtics-border-sweep {
+
+            position: absolute;
+
+            top: 0;
+
+            left: -100%;
+
+            width: 100%;
+
+            height: 1px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(0,217,255,.9),
+                    transparent
+                );
+
+            pointer-events: none;
+
+            z-index: 6;
+
+        }
+
+
+        .feature-card:hover
+        .swimtics-border-sweep {
+
+            animation:
+                swimticsBorderSweep .9s ease forwards;
+
+        }
+
+
+        @keyframes swimticsBorderSweep {
+
+            from {
+                left: -100%;
+            }
+
+            to {
+                left: 100%;
+            }
+
+        }
+
+
+        /* =================================================
+           SCROLL PROGRESS
+           ================================================= */
+
+        #swimticsScrollProgress {
+
+            position: fixed;
+
+            top: 50%;
+
+            right: 18px;
+
+            width: 2px;
+
+            height: 90px;
+
+            transform:
+                translateY(-50%);
+
+            background:
+                rgba(255,255,255,.08);
+
+            z-index: 999999;
+
+            overflow: hidden;
+
+        }
+
+
+        #swimticsScrollProgress span {
+
+            display: block;
+
+            width: 100%;
+
+            height: 0%;
+
+            background:
+                linear-gradient(
+                    180deg,
+                    #00d9ff,
+                    rgba(0,217,255,.15)
+                );
+
+            box-shadow:
+                0 0 12px
+                rgba(0,217,255,.5);
+
+        }
+
+
+        /* =================================================
+           MOBILE
+           ================================================= */
+
+        @media(max-width:800px) {
+
+            .swimtics-ecosystem-intro {
+
+                width: 88%;
+
+                padding-left: 12px;
+
+                margin-bottom: 65px;
+
+            }
+
+
+            .swimtics-ecosystem-intro::after {
+
+                left: 12px;
+
+                width:
+                    calc(100% - 12px);
+
+            }
+
+
+            .feature-card {
+
+                min-height: 270px;
+
+            }
+
+
+            .feature-card::before {
+
+                font-size: 8rem;
+
+            }
+
+        }
+
+        /* =========================================================
+   CHASE AI PERFORMANCE SHOWCASE
+   ========================================================= */
+
+.swimtics-chase-showcase {
+
+    position: relative;
+
+    width: 100%;
+
+    min-height: 100vh;
+
+    margin-top: 120px !important;
+
+    padding:
+        150px 0 130px;
+
+    background:
+        #020508;
+
+    overflow: hidden;
+
+}
+
+
+/* ---------------------------------------------------------
+   INNER
+   --------------------------------------------------------- */
+
+.chase-showcase-inner {
+
+    width:
+        min(1250px, 86%);
+
+    margin:
+        0 auto;
+
+}
+
+
+/* ---------------------------------------------------------
+   HEADER
+   --------------------------------------------------------- */
+
+.chase-showcase-header {
+
+    position: relative;
+
+    margin-bottom: 65px;
+
+}
+
+
+.chase-kicker {
+
+    margin-bottom: 22px;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    letter-spacing: 4px;
+
+    color:
+        rgba(0,217,255,.7);
+
+}
+
+
+.chase-showcase-header h2 {
+
+    margin: 0;
+
+    font-family:
+        Michroma,
+        sans-serif;
+
+    font-size:
+        clamp(3rem, 7vw, 7.5rem);
+
+    line-height: .9;
+
+    letter-spacing: -3px;
+
+    color:
+        #f3f7fa;
+
+}
+
+
+.chase-showcase-header p {
+
+    margin-top: 28px;
+
+    font-family:
+        Inter,
+        sans-serif;
+
+    font-size:
+        clamp(1rem, 1.5vw, 1.2rem);
+
+    color:
+        rgba(235,242,248,.48);
+
+}
+
+
+/* ---------------------------------------------------------
+   ANALYSIS STAGE
+   --------------------------------------------------------- */
+
+.chase-analysis-stage {
+
+    position: relative;
+
+    height:
+        min(650px, 60vw);
+
+    min-height:
+        480px;
+
+    overflow: hidden;
+
+    border:
+        1px solid
+        rgba(255,255,255,.11);
+
+    background:
+
+        radial-gradient(
+            circle at center,
+            rgba(0,110,160,.10),
+            transparent 45%
+        ),
+
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,.045),
+            rgba(255,255,255,.008)
+        );
+
+    box-shadow:
+        0 30px 100px
+        rgba(0,0,0,.45);
+
+}
+
+
+/* ---------------------------------------------------------
+   GRID
+   --------------------------------------------------------- */
+
+.chase-analysis-grid {
+
+    position: absolute;
+
+    inset: 0;
+
+    background-image:
+
+        linear-gradient(
+            rgba(0,217,255,.07) 1px,
+            transparent 1px
+        ),
+
+        linear-gradient(
+            90deg,
+            rgba(0,217,255,.07) 1px,
+            transparent 1px
+        );
+
+    background-size:
+        70px 70px;
+
+    mask-image:
+        radial-gradient(
+            ellipse at center,
+            black 0%,
+            transparent 80%
+        );
+
+    opacity: .35;
+
+}
+
+
+/* ---------------------------------------------------------
+   GIANT 02
+   --------------------------------------------------------- */
+
+.chase-analysis-number {
+
+    position: absolute;
+
+    right: -25px;
+
+    top: -80px;
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size:
+        clamp(18rem, 35vw, 35rem);
+
+    line-height: .8;
+
+    font-weight: 800;
+
+    letter-spacing: -30px;
+
+    color:
+        rgba(100,210,255,.035);
+
+    pointer-events: none;
+
+}
+
+
+/* ---------------------------------------------------------
+   CENTER SYSTEM
+   --------------------------------------------------------- */
+
+.chase-analysis-center {
+
+    position: absolute;
+
+    left: 50%;
+
+    top: 50%;
+
+    transform:
+        translate(-50%, -50%);
+
+    width:
+        min(500px, 70%);
+
+    text-align: center;
+
+}
+
+
+.chase-analysis-label {
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    letter-spacing: 5px;
+
+    color:
+        rgba(0,217,255,.65);
+
+}
+
+
+.chase-analysis-line {
+
+    width: 100%;
+
+    height: 1px;
+
+    margin: 22px 0;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(0,217,255,.6),
+            transparent
+        );
+
+}
+
+
+.chase-analysis-status {
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size:
+        clamp(.65rem, 1vw, .8rem);
+
+    letter-spacing:
+        4px;
+
+    color:
+        rgba(255,255,255,.35);
+
+}
+
+
+/* ---------------------------------------------------------
+   CORNERS
+   --------------------------------------------------------- */
+
+.chase-analysis-corner {
+
+    position: absolute;
+
+    width: 35px;
+
+    height: 35px;
+
+}
+
+
+.chase-analysis-corner::before,
+.chase-analysis-corner::after {
+
+    content: "";
+
+    position: absolute;
+
+    background:
+        rgba(0,217,255,.6);
+
+}
+
+
+.chase-analysis-corner::before {
+
+    width: 35px;
+
+    height: 1px;
+
+}
+
+
+.chase-analysis-corner::after {
+
+    width: 1px;
+
+    height: 35px;
+
+}
+
+
+.chase-corner-tl {
+
+    top: 20px;
+    left: 20px;
+
+}
+
+
+.chase-corner-tr {
+
+    top: 20px;
+    right: 20px;
+
+    transform:
+        rotate(90deg);
+
+}
+
+
+.chase-corner-bl {
+
+    bottom: 20px;
+    left: 20px;
+
+    transform:
+        rotate(-90deg);
+
+}
+
+
+.chase-corner-br {
+
+    bottom: 20px;
+    right: 20px;
+
+    transform:
+        rotate(180deg);
+
+}
+
+
+/* ---------------------------------------------------------
+   SIDE METADATA
+   --------------------------------------------------------- */
+
+.chase-analysis-meta {
+
+    position: absolute;
+
+    top: 50%;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing: 3px;
+
+    color:
+        rgba(255,255,255,.25);
+
+    writing-mode:
+        vertical-rl;
+
+}
+
+
+.chase-analysis-meta span {
+
+    color:
+        rgba(0,217,255,.65);
+
+    margin-bottom: 8px;
+
+}
+
+
+.chase-meta-left {
+
+    left: 25px;
+
+    transform:
+        translateY(-50%)
+        rotate(180deg);
+
+}
+
+
+.chase-meta-right {
+
+    right: 25px;
+
+    transform:
+        translateY(-50%);
+
+}
+
+
+/* ---------------------------------------------------------
+   BOTTOM PROCESS
+   --------------------------------------------------------- */
+
+.chase-analysis-bottom {
+
+    position: absolute;
+
+    left: 30px;
+
+    right: 30px;
+
+    bottom: 25px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    font-weight: 600;
+
+    letter-spacing: 3px;
+
+    color:
+        rgba(255,255,255,.28);
+
+}
+
+
+.chase-analysis-bottom span {
+
+    position: relative;
+
+}
+
+
+.chase-analysis-bottom span::before {
+
+    content: "";
+
+    display: inline-block;
+
+    width: 5px;
+
+    height: 5px;
+
+    margin-right: 9px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(0,217,255,.6);
+
+}
+
+
+/* ---------------------------------------------------------
+   FOOTER
+   --------------------------------------------------------- */
+
+.chase-showcase-footer {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-top: 22px;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing: 3px;
+
+    color:
+        rgba(255,255,255,.25);
+
+}
+
+
+/* ---------------------------------------------------------
+   MOBILE
+   --------------------------------------------------------- */
+
+@media(max-width:800px) {
+
+    .swimtics-chase-showcase {
+
+        padding:
+            100px 0;
+
+    }
+
+
+    .chase-showcase-inner {
+
+        width: 90%;
+
+    }
+
+
+    .chase-analysis-stage {
+
+        height: 500px;
+
+        min-height: 500px;
+
+    }
+
+
+    .chase-analysis-number {
+
+        font-size: 15rem;
+
+    }
+
+
+    .chase-analysis-meta {
+
+        display: none;
+
+    }
+
+
+    .chase-analysis-bottom {
+
+        font-size: 7px;
+
+        letter-spacing: 2px;
+
+    }
+
+
+    .chase-showcase-footer {
+
+        flex-direction: column;
+
+        gap: 8px;
+
+    }
+
+}
+    </style>
+
 </head>
 
 <body>
+
+<div id="entryGate">
+<!-- BACKGROUND IMAGE -->
+<div class="entry-background" id="entryBackground">
+</div>
+<!-- CINEMATIC OVERLAY -->
+<div class="entry-overlay"></div>
+<!-- AMBIENT BLUE LIGHT -->
+<div class="entry-light"></div>
+<!-- TECH GRID -->
+<div class="entry-grid"></div>
+<!-- GIANT 04 -->
+<div class="background-number">
+        04
+    </div>
+<!-- SCAN LINE -->
+<div class="scan-line"></div>
+<!-- GRAIN -->
+<div class="entry-grain"></div>
+<!-- FRAME -->
+<div class="entry-frame"></div>
+<!-- =================================================
+         TOP META
+         ================================================= -->
+<div class="entry-top">
+<div>
+            AI PERFORMANCE system
+        </div>
+<div class="entry-top-right">
+            ABHAY LAKKOJU
+        </div>
+</div>
+<!-- =================================================
+         SIDE META
+         ================================================= -->
+<div class="entry-side-left">
+
+        ATHLETES · DATA · PERFORMANCE
+
+    </div>
+<div class="entry-side-right">
+
+        FASTER · STRONGER · SMARTER
+
+    </div>
+<!-- =================================================
+         MAIN CONTENT
+         ================================================= -->
+<main class="entry-content">
+<div class="entry-kicker">
+
+            PERFORMANCE INTELLIGENCE
+
+        </div>
+<h1 class="entry-logo">
+
+            SWIMTICS
+
+        </h1>
+<div class="entry-divider"></div>
+<div class="entry-subtitle">
+
+            Engineered for Champions
+
+        </div>
+<!-- ENTRY BUTTON -->
+<div class="enter-wrapper">
+<button aria-label="Enter SWIMTICS" class="enter-button" id="enterButton">
+<span class="enter-arrow">
+                    →
+                </span>
+</button>
+<div class="enter-label">
+
+                Enter
+
+            </div>
+<div class="enter-instruction">
+
+                Press the seal to enter the future
+
+            </div>
+</div>
+</main>
+<!-- =================================================
+         BOTTOM META
+         ================================================= -->
+<div class="entry-bottom">
+<div>
+
+            PRECISION · POWER · PROGRESS
+
+        </div>
+<div class="entry-bottom-right">
+
+            SWIM SMARTER
+
+        </div>
+</div>
+</div>
+
+
 
     <!-- NAV -->
     <div class="nav">
@@ -2772,7 +6287,7 @@ background-size: 20px;
     <!-- HOME -->
     <div id="home" class="page active">
         <video autoplay muted loop playsinline id="bgVideo">
-            <source src="bg.mp4" type="video/mp4">
+            <source src="C:\Users\abhay\OneDrive\Desktop\AI Swimming Analyzer\frontend\bg.mp4" type="video/mp4">
         </video>
 
         <div class="overlay">
@@ -2938,17 +6453,20 @@ background-size: 20px;
 
             <br><br>
 
-            <div style="position: relative; width: 70%; margin: auto;">
-                <video id="analyzerPlayer" width="100%" controls playsinline></video>
-                <canvas id="canvas" style="
-    position:absolute;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    pointer-events: none;
-"></canvas>
+            <div class="chase-video-container">
+
+    <video
+        id="analyzerPlayer"
+        controls
+        playsinline
+    ></video>
+
+        <canvas id="canvas"></canvas>
+
+</div>
             </div>
+
+            <div id="chaseStatus" style="margin-top:10px;font-family:'Orbitron',sans-serif;font-size:0.85rem;letter-spacing:1px;color:#00d9ff;"></div>
 
             <br>
 
@@ -3688,32 +7206,50 @@ background-size: 20px;
 
 
         };
-        window.firebaseFns.onAuthStateChanged(window.auth, (user) => {
-
-            if (user) {
-
-                currentUser = user;
-
-                loadUserData();
-
-                closeLoginModal();
-
-                console.log("User logged in:", user.email);
-
-            } else {
-
-                currentUser = null;
-
-                console.log("No active user.");
-
-            }
-
-        });
-
     </script>
 
 
     <script>
+
+        function showPage(pageId) {
+    console.log("Navigating to:", pageId);
+
+    const pages = document.querySelectorAll(".page");
+
+    pages.forEach(page => {
+        page.style.display = "none";
+        page.classList.remove("active");
+    });
+
+    const selectedPage = document.getElementById(pageId);
+
+    if (!selectedPage) {
+        console.error("No page found with ID:", pageId);
+        return;
+    }
+
+    const homeFeatures = document.getElementById("homeFeatures");
+
+    if (homeFeatures) {
+        if (pageId === "home") {
+            homeFeatures.style.display = "block";
+        } else {
+            homeFeatures.style.display = "none";
+        }
+    }
+
+    selectedPage.style.display = "block";
+    selectedPage.classList.add("active");
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+    // ...
+}
+
+window.showPage = showPage;
 
         window.currentUser = null;
 
@@ -3723,16 +7259,9 @@ background-size: 20px;
         let startX = null;
         let laneCenterY = null;
         let racePose = null;
-
-        let previousDirection = null;
         let lastTurnTime = 0;
 
-        let autoSplits = [];
-
         let wallContactActive = false;
-        let lastWallSide = null;
-
-        let maxTravelX = null;
         let measuring = false;
 
         let strokeTimes = [];
@@ -3744,34 +7273,68 @@ background-size: 20px;
         let lastHipX = null;
         let speedSamples = [];
 
-        let metricFrames = 0;
-
         const POOL_LENGTH_METERS = 25;
-        let videoFPS = 30; // default estimate
         let startTime = 0, running = false;
         const WALL_THRESHOLD = 0.25; // near screen edge
-        const TURN_COOLDOWN = 5;     // seconds
 
         let pbs = JSON.parse(localStorage.getItem("pbs")) || [];
 
-        let metricsHistory = {
-            elbow: [],
-            alignment: [],
-            rotation: [],
-            timestamps: []
-        };
+        /* =========================================================
+   CHASE AI — SWIMMING ANALYSIS ENGINE
+   Phase 1: pose tracking + skeleton overlay (already working)
+   Phase 2: swimming-specific metrics
+   Phase 3: freestyle stroke-cycle detection
+   Phase 4: per-stroke dispatch (freestyle fully supported;
+            other strokes explicitly marked limited)
+   Phase 5: evidence-based coaching rule pipeline
+   Phase 6: reference/knowledge layer scaffold (empty, honest)
+========================================================= */
 
-        let strokeData = JSON.parse(localStorage.getItem("strokeData")) || {
-            freestyle: {},
-            backstroke: {},
-            breaststroke: {},
-            butterfly: {}
-        };
+let analyzing = false;
+let pose = null;
+let chaseAnalysisTimer = null;
+let chaseAnalysisBusy = false;
 
-        let sorenessMap = {};
-        window.lastFrameTime = null;
+const chaseAnalysisCanvas = document.createElement("canvas");
+const chaseAnalysisCtx = chaseAnalysisCanvas.getContext("2d", {
+    alpha: false
+});
 
-/* VIDEO LOAD */
+/* Phase 2: expanded metric storage. All arrays stay index-aligned
+   with `timestamps` — every qualifying frame pushes one entry to
+   every array, using `null` where that particular metric could not
+   be computed for that frame. This alignment is required for
+   Phase 3 (cycle detection), which needs to look up "what was the
+   elbow angle at this exact timestamp". */
+let metricsHistory = {
+    elbow: [],
+    alignment: [],
+    rotation: [],          // shoulder vertical asymmetry (existing metric, unchanged meaning)
+    armSymmetry: [],       // |leftElbowAngle - rightElbowAngle|
+    hipAlignment: [],      // hip-line tilt from horizontal, degrees
+    kneeAngle: [],         // avg(hip-knee-ankle) angle, both legs
+    lateralX: [],          // nose x-position (0-1), for lateral drift
+    wristMinY: [],         // min(visible wrist y) — used for stroke-cycle detection
+    timestamps: []
+};
+
+let currentAnalysis = {
+    frames: 0,
+    validFrames: 0,
+    startedAt: null,
+    endedAt: null
+};
+
+window.chaseAI = {
+    ready: false,
+    analyzing: false,
+    metricsHistory
+};
+
+/* ---------------------------------------------------------
+   VIDEO LOAD
+--------------------------------------------------------- */
+
 window.addEventListener("DOMContentLoaded", () => {
 
     const videoUpload = document.getElementById("videoUpload");
@@ -3780,1177 +7343,1244 @@ window.addEventListener("DOMContentLoaded", () => {
 
     if (!videoUpload || !video) return;
 
-    videoUpload.addEventListener("change", function (e) {
+    videoUpload.addEventListener("change", (event) => {
 
-        const file = e.target.files[0];
+        const file = event.target.files[0];
         if (!file) return;
+
+        if (video.src && video.src.startsWith("blob:")) {
+            URL.revokeObjectURL(video.src);
+        }
 
         video.src = URL.createObjectURL(file);
         video.load();
 
-        // Show selected file name
         if (fileName) {
             fileName.textContent = file.name;
         }
 
+        setChaseStatus("VIDEO LOADED");
+
+        /* Clear the old analysis when a new video is selected. */
+        stopChaseAnalysis(false);
+        clearChaseOutput();
+
     });
 
 });
 
-    const raceVideo = document.getElementById("raceVideo");
+/* ---------------------------------------------------------
+   GEOMETRY HELPERS
+--------------------------------------------------------- */
 
-    if (raceVideo) {
+function midpoint(a, b) {
 
-        raceVideo.addEventListener("change", function (e) {
+    if (!a || !b) return null;
 
-            const file = e.target.files[0];
-
-            if (!file) return;
-
-            const racePlayer = document.getElementById("racePlayer");
-
-            if (racePlayer) {
-                racePlayer.src = URL.createObjectURL(file);
-                racePlayer.load();
-            }
-
-        });
-
-    }
-
-    /* =========================================
-       RACE VIDEO ENDED
-    ========================================= */
-
-    const racePlayer = document.getElementById("racePlayer");
-
-    if (racePlayer) {
-
-        racePlayer.addEventListener("ended", () => {
-
-            measuring = false;
-
-            let avgSPM = 0;
-
-            if (strokeTimes.length >= 2) {
-
-                const totalDuration =
-                    strokeTimes[strokeTimes.length - 1] -
-                    strokeTimes[0];
-
-                if (totalDuration > 0) {
-
-                    avgSPM =
-                        ((strokeTimes.length - 1) /
-                            totalDuration) *
-                        60;
-
-                }
-
-            }
-
-            if (raceStarted) {
-
-                const finalTime =
-                    racePlayer.currentTime - startTime;
-
-                const finalDiv =
-                    document.createElement("div");
-
-                finalDiv.innerHTML =
-                    `<b>Final Time: ${finalTime.toFixed(2)} s</b>`;
-
-                document.getElementById("splits")
-                    .appendChild(finalDiv);
-
-            }
-
-            let avgSpeed = 0;
-
-            if (speedSamples.length > 0) {
-
-                avgSpeed =
-                    speedSamples.reduce((a, b) => a + b, 0) /
-                    speedSamples.length;
-
-            }
-
-        });
-
-    }
-
-
-function showPage(pageId) {
-
-    console.log("Navigating to:", pageId);
-
-    /* =========================================
-       HIDE ALL PAGES
-    ========================================= */
-
-    const pages = document.querySelectorAll(".page");
-
-    pages.forEach(page => {
-
-        page.style.display = "none";
-        page.classList.remove("active");
-
-    });
-
-    /* =========================================
-       FIND TARGET PAGE
-    ========================================= */
-
-    const selectedPage = document.getElementById(pageId);
-
-    if (!selectedPage) {
-
-        console.error("No page found with ID:", pageId);
-        return;
-
-    }
-
-    const homeFeatures =
-    document.getElementById("homeFeatures");
-
-if (homeFeatures) {
-
-    if (pageId === "home") {
-        homeFeatures.style.display = "block";
-    } else {
-        homeFeatures.style.display = "none";
-    }
-
+    return {
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+        z: ((a.z ?? 0) + (b.z ?? 0)) / 2
+    };
 }
 
-    /* =========================================
-       SHOW TARGET PAGE
-    ========================================= */
+function averageValid(values) {
 
-    selectedPage.style.display = "block";
-    selectedPage.classList.add("active");
+    const valid = values.filter(value => Number.isFinite(value));
 
-    /* =========================================
-       SCROLL TO TOP
-    ========================================= */
+    if (!valid.length) return null;
 
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-
-    /* =========================================
-       PROFILE PAGE
-    ========================================= */
-
-    if (pageId === "profile") {
-
-        if (typeof loadProfile === "function") {
-            loadProfile();
-        }
-
-        if (typeof updateProfileAccountSection === "function") {
-            updateProfileAccountSection();
-        }
-
-    }
-
-    /* =========================================
-       PB PAGE
-    ========================================= */
-
-    if (pageId === "pb") {
-
-        if (typeof displayPBs === "function") {
-            displayPBs();
-        }
-
-    }
-
-    /* =========================================
-       DASHBOARD PAGE
-    ========================================= */
-
-    if (pageId === "dashboard") {
-
-        if (typeof loadSavedReports === "function") {
-            loadSavedReports();
-        }
-
-    }
-
+    return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
-/* =========================================
-   MAKE GLOBAL
-========================================= */
+function chaseCalculateAngle(a, b, c) {
 
-window.showPage = showPage;
+    if (!a || !b || !c) return null;
 
+    const abx = a.x - b.x;
+    const aby = a.y - b.y;
+    const cbx = c.x - b.x;
+    const cby = c.y - b.y;
 
-        /* ===== AUTH MODAL VIEW SWITCHING ===== */
+    const magnitudeAB = Math.hypot(abx, aby);
+    const magnitudeCB = Math.hypot(cbx, cby);
 
-        function openLoginModal() {
-            document.getElementById("authModal").style.display = "flex";
-            showLogin();
-        }
+    if (!magnitudeAB || !magnitudeCB) return null;
 
-        function closeLoginModal() {
-            document.getElementById("authModal").style.display = "none";
-        }
+    const cosine =
+        (abx * cbx + aby * cby) /
+        (magnitudeAB * magnitudeCB);
 
-        function showSignup() {
-            document.getElementById("loginView").style.display = "none";
-            document.getElementById("signupView").style.display = "block";
+    return Math.acos(
+        Math.max(-1, Math.min(1, cosine))
+    ) * 180 / Math.PI;
+}
 
-            document.getElementById("authMessage").innerText = "";
-        }
+function calculateLineAngle(a, b) {
 
-        function showLogin() {
-            document.getElementById("signupView").style.display = "none";
-            document.getElementById("loginView").style.display = "block";
+    if (!a || !b) return null;
 
-            document.getElementById("authMessage").innerText = "";
-        }
+    return Math.abs(
+        Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI
+    );
+}
 
-        // =========================================
-        // FIREBASE AUTH SYSTEM
-        // =========================================
+function isVisible(point, threshold = 0.35) {
 
-        function signupUser() {
+    return !!(
+        point &&
+        (point.visibility ?? 1) >= threshold
+    );
+}
 
-            const fullName = document.getElementById("signupFullName").value;
-            const gender = document.getElementById("signupGender").value;
-            const club = document.getElementById("signupClub").value;
-            const nationality = document.getElementById("signupNationality").value;
+/* ---------------------------------------------------------
+   CHASE AI — SKELETON OVERLAY (letterbox-safe, DPR-aware)
+   (Phase 1 — unchanged from the working version.)
+--------------------------------------------------------- */
 
-            const email = document.getElementById("signupEmail").value;
-            const password = document.getElementById("signupPassword").value;
+const CHASE_LANDMARK_INDEX = {
+    NOSE: 0,
+    LEFT_SHOULDER: 11, RIGHT_SHOULDER: 12,
+    LEFT_ELBOW: 13, RIGHT_ELBOW: 14,
+    LEFT_WRIST: 15, RIGHT_WRIST: 16,
+    LEFT_HIP: 23, RIGHT_HIP: 24,
+    LEFT_KNEE: 25, RIGHT_KNEE: 26,
+    LEFT_ANKLE: 27, RIGHT_ANKLE: 28
+};
 
-            const msg = document.getElementById("authMessage");
+const CHASE_SKELETON_CONNECTIONS = [
+    ["NOSE", "LEFT_SHOULDER"], ["NOSE", "RIGHT_SHOULDER"],
+    ["LEFT_SHOULDER", "RIGHT_SHOULDER"],
+    ["LEFT_SHOULDER", "LEFT_ELBOW"], ["LEFT_ELBOW", "LEFT_WRIST"],
+    ["RIGHT_SHOULDER", "RIGHT_ELBOW"], ["RIGHT_ELBOW", "RIGHT_WRIST"],
+    ["LEFT_SHOULDER", "LEFT_HIP"], ["RIGHT_SHOULDER", "RIGHT_HIP"],
+    ["LEFT_HIP", "RIGHT_HIP"],
+    ["LEFT_HIP", "LEFT_KNEE"], ["LEFT_KNEE", "LEFT_ANKLE"],
+    ["RIGHT_HIP", "RIGHT_KNEE"], ["RIGHT_KNEE", "RIGHT_ANKLE"]
+];
 
-            window.firebaseFns.createUserWithEmailAndPassword(window.auth, email, password)
+const CHASE_MIN_DRAW_CONFIDENCE = 0.4;
 
-                .then((userCredential) => {
+function syncChaseCanvasToVideo() {
 
-                    const uid = userCredential.user.uid;
+    const video = document.getElementById("analyzerPlayer");
+    const canvas = document.getElementById("canvas");
 
-                    /* ===== UPGRADE SIGNUP DATA STORAGE ===== */
+    if (!video || !canvas) return null;
 
-                    /* INSIDE signupUser() -> userData object */
+    const renderedWidth = video.clientWidth;
+    const renderedHeight = video.clientHeight;
 
-                    const userData = {
-                        fullName,
-                        gender: gender.toLowerCase(),
-                        club,
-                        nationality,
-                        email,
+    if (!renderedWidth || !renderedHeight) return null;
 
-                        profile: {
-                            name: fullName,
-                            gender: gender.toLowerCase(),
-                            club,
-                            nationality
-                        },
+    const nativeWidth = video.videoWidth || renderedWidth;
+    const nativeHeight = video.videoHeight || renderedHeight;
 
-                        pbs: [],
-                        analyzerReports: [],
-                        savedFeedback: [],
+    const nativeRatio = nativeWidth / nativeHeight;
+    const boxRatio = renderedWidth / renderedHeight;
 
-                        createdAt: Date.now()
-                    };
+    let drawWidth = renderedWidth;
+    let drawHeight = renderedHeight;
+    let offsetX = 0;
+    let offsetY = 0;
 
-                    window.firebaseFns.set(
-    window.firebaseFns.ref(window.db, 'users/' + uid),
-    userData
-).then(() => {
-    console.log("User data saved");
+    if (nativeRatio > boxRatio) {
+        drawHeight = renderedWidth / nativeRatio;
+        offsetY = (renderedHeight - drawHeight) / 2;
+    } else if (nativeRatio < boxRatio) {
+        drawWidth = renderedHeight * nativeRatio;
+        offsetX = (renderedWidth - drawWidth) / 2;
+    }
+
+    canvas.style.position = "absolute";
+    canvas.style.left = offsetX + "px";
+    canvas.style.top = offsetY + "px";
+    canvas.style.width = drawWidth + "px";
+    canvas.style.height = drawHeight + "px";
+
+    const dpr = window.devicePixelRatio || 1;
+    const pixelWidth = Math.max(1, Math.round(drawWidth * dpr));
+    const pixelHeight = Math.max(1, Math.round(drawHeight * dpr));
+
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+        canvas.width = pixelWidth;
+        canvas.height = pixelHeight;
+    }
+
+    window.chaseCanvasDPR = dpr;
+
+    return { drawWidth, drawHeight, offsetX, offsetY };
+}
+
+window.addEventListener("resize", () => {
+    syncChaseCanvasToVideo();
 });
 
-                    msg.style.color = "green";
-                    msg.innerText = "Signup successful!";
+function drawChaseSkeleton(ctx, lm, widthCss, heightCss) {
 
-                    document.getElementById("authModal").style.display = "none";
-
-                    localStorage.setItem("profile", JSON.stringify({
-                        name: fullName,
-                        gender: gender.toLowerCase(),
-                        club: club,
-                        nationality: nationality
-                    }));
-
-                    loadUserData();
-                })
-
-                .catch((error) => {
-                    msg.style.color = "red";
-                    msg.innerText = error.message;
-                });
-        }
-
-        /* ===== UPGRADED LOGIN FUNCTION ===== */
-
-        function loginUser() {
-
-            const email = document.getElementById("authEmail").value;
-            const password = document.getElementById("authPassword").value;
-
-            const msg = document.getElementById("authMessage");
-
-            window.firebaseFns.signInWithEmailAndPassword(
-                window.auth,
-                email,
-                password
-            )
-
-                .then(() => {
-
-                    msg.style.color = "green";
-                    msg.innerText = "Login successful!";
-
-                    closeLoginModal();
-
-                    loadUserData();
-
-                    loadProfile();
-                    renderStrokeCards();
-
-                })
-
-                .catch((error) => {
-
-                    msg.style.color = "red";
-                    msg.innerText = error.message;
-
-                });
-        }
-
-        // LOGOUT
-        async function logoutUser() {
-            try {
-                await window.firebaseFns.signOut(window.auth);
-                window.location.href = "index.html";
-            } catch (error) {
-                console.error("Logout Error:", error);
-            }
-            localStorage.removeItem("profile");
-            localStorage.removeItem("swimticsLoggedIn");
-            loadProfile();
-            renderStrokeCards();
-        }
-
-        function closeLoginModal() {
-
-    const modal = document.getElementById("authModal");
-
-    if (modal) {
-        modal.style.display = "none";
+    function point(name) {
+        const p = lm[CHASE_LANDMARK_INDEX[name]];
+        if (!isVisible(p, CHASE_MIN_DRAW_CONFIDENCE)) return null;
+        return { x: p.x * widthCss, y: p.y * heightCss };
     }
 
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    CHASE_SKELETON_CONNECTIONS.forEach(([a, b]) => {
+
+        const pa = point(a);
+        const pb = point(b);
+
+        if (!pa || !pb) return;
+
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.strokeStyle = "rgba(0, 217, 255, 0.9)";
+        ctx.lineWidth = 4;
+        ctx.shadowColor = "rgba(0, 217, 255, 0.55)";
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+    });
+
+    Object.keys(CHASE_LANDMARK_INDEX).forEach((name) => {
+
+        const p = point(name);
+
+        if (!p) return;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "rgba(0, 217, 255, 0.7)";
+        ctx.shadowBlur = 6;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#00d9ff";
+        ctx.shadowBlur = 0;
+        ctx.stroke();
+    });
+
+    ctx.restore();
 }
 
-        // =========================================
-        // SAVE USER DATA TO FIREBASE
-        // =========================================
+/* ---------------------------------------------------------
+   PHASE 4: STROKE DISPATCH TABLE
+   The dropdown value ("freestyle" / "backstroke" / "breaststroke" /
+   "butterfly") determines what Chase is allowed to claim about the
+   swim. Only freestyle has a real biomechanical model right now.
+   The others still get honest generic pose metrics, but the coaching
+   layer will say plainly that stroke-specific analysis isn't built
+   yet rather than pretending the freestyle logic applies to them.
+--------------------------------------------------------- */
 
-        function saveUserData(uid) {
+const CHASE_STROKE_SUPPORT = {
+    freestyle:   { supported: true,  label: "Freestyle" },
+    backstroke:  { supported: false, label: "Backstroke" },
+    breaststroke:{ supported: false, label: "Breaststroke" },
+    butterfly:   { supported: false, label: "Butterfly" }
+};
 
-            const starterData = {
-                profile: {},
-                pbs: [],
-                analyzerReports: [],
-                savedFeedback: [],
-                timestamp: Date.now()
-            };
+/* ---------------------------------------------------------
+   PHASE 6: REFERENCE / KNOWLEDGE LAYER (SCAFFOLD ONLY)
+   Intentionally empty. This is the architectural slot where a real,
+   sourced dataset (e.g. published stroke-mechanics ranges, or a
+   licensed elite-swimmer comparison set) could be plugged in later.
+   Until such a dataset actually exists in this object, Chase must
+   never claim to be comparing the swimmer to elite technique —
+   doing so without real data would be fabrication.
+--------------------------------------------------------- */
 
-            window.firebaseFns.set(
-                window.firebaseFns.ref(window.db, 'users/' + uid),
-                starterData
-            );
-        }
+const CHASE_REFERENCE_LIBRARY = {
+    freestyle: {
+        source: null,          // e.g. a citation once real data is added
+        benchmarks: null        // e.g. { elbowAngleRange: [120,150] } once sourced
+    }
+    // backstroke / breaststroke / butterfly entries can be added
+    // the same way once real reference data is available.
+};
 
-        
-        if (
-    window.firebaseFns &&
-    window.firebaseFns.onAuthStateChanged &&
-    window.auth
-) {
+function chaseReferenceDisclaimer(strokeKey) {
+    const entry = CHASE_REFERENCE_LIBRARY[strokeKey];
+    if (entry && entry.source) {
+        return `Reference comparison source: ${entry.source}.`;
+    }
+    return "No sourced technique-reference dataset has been implemented yet — this report only reflects your own measured video, not a comparison to any other swimmer.";
+}
 
-    window.firebaseFns.onAuthStateChanged(
-        window.auth,
-        (user) => {
+/* ---------------------------------------------------------
+   MEDIAPIPE INITIALIZATION
+--------------------------------------------------------- */
 
-            if (user) {
+function initialiseChasePose() {
 
-                window.currentUser = user;
+    if (pose) return true;
 
-                console.log(
-                    "User logged in:",
-                    user.email
-                );
+    if (typeof Pose === "undefined") {
+        console.error("CHASE AI: MediaPipe Pose is unavailable.");
+        setChaseStatus("POSE ENGINE FAILED TO LOAD");
+        return false;
+    }
 
-                if (typeof loadUserData === "function") {
-                    loadUserData();
-                }
+    pose = new Pose({
+        locateFile: (file) =>
+            `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+    });
 
-                if (typeof closeLoginModal === "function") {
-                    closeLoginModal();
-                }
+    pose.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        smoothSegmentation: false,
+        minDetectionConfidence: 0.35,
+        minTrackingConfidence: 0.35
+    });
 
-            } else {
+    pose.onResults(onChasePoseResults);
 
-                window.currentUser = null;
+    window.chaseAI.ready = true;
 
-                console.log("No user logged in.");
+    console.log("CHASE AI: Pose engine ready.");
+    setChaseStatus("POSE MODEL INITIALIZED");
 
-            }
+    return true;
+}
 
-        }
+/* ---------------------------------------------------------
+   ANALYSIS CANVAS
+--------------------------------------------------------- */
+
+function prepareChaseAnalysisCanvas(video) {
+
+    const sourceWidth = video.videoWidth || 640;
+    const sourceHeight = video.videoHeight || 360;
+
+    const maxWidth = 640;
+    const scale = Math.min(1, maxWidth / sourceWidth);
+
+    chaseAnalysisCanvas.width = Math.max(
+        1,
+        Math.round(sourceWidth * scale)
     );
 
+    chaseAnalysisCanvas.height = Math.max(
+        1,
+        Math.round(sourceHeight * scale)
+    );
 }
 
-        /* ===== LOAD USER DATA + AUTO PROFILE INTEGRATION ===== */
+/* ---------------------------------------------------------
+   START ANALYSIS
+--------------------------------------------------------- */
 
-        function loadUserData() {
+async function upload() {
 
-            const user = window.currentUser || window.auth.currentUser;
+    const video = document.getElementById("analyzerPlayer");
+    const stroke = document.getElementById("stroke");
 
-            if (!user) return;
+    if (!video) {
+        alert("Video player not found.");
+        return;
+    }
 
-            window.currentUser = user;
+    if (!video.src) {
+        alert("Please upload a swim video first.");
+        return;
+    }
 
-            window.firebaseFns.get(
-                window.firebaseFns.child(
-                    window.firebaseFns.ref(window.db),
-                    'users/' + user.uid
-                )
-            )
+    if (!stroke || !stroke.value) {
+        alert("Please select a stroke.");
+        return;
+    }
 
-                .then((snapshot) => {
+    if (!initialiseChasePose()) {
+        alert("CHASE AI could not initialise the pose engine.");
+        return;
+    }
 
-                    if (snapshot.exists()) {
+    stopChaseAnalysis(false);
 
-                        const data = snapshot.val();
+    metricsHistory.elbow = [];
+    metricsHistory.alignment = [];
+    metricsHistory.rotation = [];
+    metricsHistory.armSymmetry = [];
+    metricsHistory.hipAlignment = [];
+    metricsHistory.kneeAngle = [];
+    metricsHistory.lateralX = [];
+    metricsHistory.wristMinY = [];
+    metricsHistory.timestamps = [];
 
-                        /* ===== PROFILE FIELDS ===== */
-                        if (data.fullName) {
-                            document.getElementById("displayName").innerText = data.fullName;
-                            document.getElementById("name").value = data.fullName;
-                        }
+    currentAnalysis = {
+        frames: 0,
+        validFrames: 0,
+        startedAt: performance.now(),
+        endedAt: null
+    };
 
-                        if (data.gender) {
-                            document.getElementById("gender").value = data.gender;
-                        }
+    window.lastMetrics = null;
 
-                        if (data.club) {
-                            document.getElementById("club").value = data.club;
-                        }
+    clearChaseOutput();
 
-                        if (data.nationality) {
-                            document.getElementById("nationality").value = data.nationality;
-                        }
+    const canvas = document.getElementById("canvas");
+    const chaseInitialSize = syncChaseCanvasToVideo();
 
-                        /* ===== LOAD EXISTING PROFILE OBJECT ===== */
-                        if (data.profile) {
-                            localStorage.setItem("profile", JSON.stringify(data.profile));
-                        }
+    if (canvas && chaseInitialSize) {
+        const dpr = window.chaseCanvasDPR || 1;
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, chaseInitialSize.drawWidth, chaseInitialSize.drawHeight);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
 
-                        /* ===== LOAD PBS ===== */
-                        if (data.pbs) {
-                            pbs = data.pbs;
-                        }
+    prepareChaseAnalysisCanvas(video);
 
-                        /* ===== LOAD REPORTS ===== */
-                        if (data.analyzerReports) {
-                            analyzerReports = data.analyzerReports;
-                        }
+    video.currentTime = 0;
 
-                        /* ===== LOAD FEEDBACK ===== */
-                        if (data.savedFeedback) {
-                            savedFeedback = data.savedFeedback;
-                        }
+    try {
+        await video.play();
+    } catch (error) {
 
-                        /* ===== REFRESH UI ===== */
-                        if (typeof loadProfile === "function") loadProfile();
-                        if (typeof updateProfileAccountSection === "function") {
-                            updateProfileAccountSection();
-                        }
+        console.error("CHASE AI video playback failed:", error);
 
-                        if (typeof displayPBs === "function") displayPBs();
-                    }
-                })
+        alert(
+            "The video could not be played. Please try uploading it again."
+        );
 
-                .catch((error) => {
-                    console.error("Load User Data Error:", error);
-                });
+        return;
+    }
+
+    analyzing = true;
+    window.chaseAI.analyzing = true;
+
+    setChaseStatus("ANALYZING VIDEO…");
+
+    chaseAnalysisTimer = setInterval(() => {
+        runChaseAnalysis(video);
+    }, 120);
+
+}
+
+/* ---------------------------------------------------------
+   RUN ONE POSE INFERENCE
+--------------------------------------------------------- */
+
+async function runChaseAnalysis(video) {
+
+    if (
+        !analyzing ||
+        chaseAnalysisBusy ||
+        video.ended ||
+        video.readyState < 2
+    ) {
+        return;
+    }
+
+    chaseAnalysisBusy = true;
+
+    try {
+
+        if (
+            !chaseAnalysisCanvas.width ||
+            !chaseAnalysisCanvas.height
+        ) {
+            prepareChaseAnalysisCanvas(video);
         }
 
-        function updateProfileAccountSection() {
+        chaseAnalysisCtx.drawImage(
+            video,
+            0,
+            0,
+            chaseAnalysisCanvas.width,
+            chaseAnalysisCanvas.height
+        );
 
-            const accountSection = document.getElementById("accountDetails");
+        await pose.send({
+            image: chaseAnalysisCanvas
+        });
 
-            if (!accountSection) return;
+    } catch (error) {
 
-            const user = currentUser || window.auth.currentUser;
+        console.error("CHASE AI frame error:", error);
+        setChaseStatus("FRAME ERROR — CHECK CONSOLE");
 
-            if (!user) {
-                accountSection.innerHTML = `
-            <div class="account-card">
-                <h3>Account Details</h3>
-                <p>User not logged in.</p>
-            </div>
-        `;
-                return;
-            }
+    } finally {
+        chaseAnalysisBusy = false;
+    }
+}
 
-            const joinDate = user.metadata?.creationTime
-                ? new Date(user.metadata.creationTime).toLocaleDateString()
-                : "Unavailable";
+/* ---------------------------------------------------------
+   STOP ANALYSIS
+--------------------------------------------------------- */
 
-            accountSection.innerHTML = `
-    <div class="account-card">
+function stopChaseAnalysis(clearOutput = true) {
 
-        <h3>Account Details</h3>
+    analyzing = false;
+    window.chaseAI.analyzing = false;
 
-        <p><strong>Email:</strong> ${user.email || "Unavailable"}</p>
+    if (chaseAnalysisTimer) {
+        clearInterval(chaseAnalysisTimer);
+        chaseAnalysisTimer = null;
+    }
 
-        <p><strong>User ID:</strong> ${user.uid || "Unavailable"}</p>
+    chaseAnalysisBusy = false;
 
-        <p><strong>Membership:</strong> Free Plan</p>
+    if (clearOutput) {
+        clearChaseOutput();
+    }
+}
 
-        <p><strong>Joined:</strong> ${joinDate}</p>
+/* ---------------------------------------------------------
+   VIDEO EVENTS
+--------------------------------------------------------- */
 
-        <p><strong>Cloud Sync:</strong> Active</p>
+window.addEventListener("DOMContentLoaded", () => {
 
-        <button onclick="logoutUser()" class="logout-btn">
-            Log Out
-        </button>
+    const video = document.getElementById("analyzerPlayer");
+    if (!video) return;
 
-    </div>
-    `;
+    video.addEventListener("loadedmetadata", () => {
+        syncChaseCanvasToVideo();
+    });
+
+    video.addEventListener("ended", () => {
+        finishChaseAnalysis();
+    });
+
+});
+
+/* ---------------------------------------------------------
+   POSE RESULTS — landmark extraction + Phase 2 metrics
+--------------------------------------------------------- */
+
+function onChasePoseResults(results) {
+
+    const video = document.getElementById("analyzerPlayer");
+    const canvas = document.getElementById("canvas");
+
+    if (!video || !canvas || !results.poseLandmarks) {
+
+        if (analyzing) {
+            currentAnalysis.frames++;
         }
 
-        async function saveProfile() {
+        return;
+    }
 
-            try {
+    const ctx = canvas.getContext("2d");
+    const lm = results.poseLandmarks;
 
-                /* ===== BUILD PROFILE OBJECT ===== */
-                const profile = {
+    const chaseCanvasSize = syncChaseCanvasToVideo();
 
-                    /* BASIC INFO */
-                    name: document.getElementById("name")?.value || "",
-                    dob: document.getElementById("dob")?.value || "",
-                    gender: (document.getElementById("gender")?.value || "male").toLowerCase(),
-                    nationality: document.getElementById("nationality")?.value || "",
-                    club: document.getElementById("club")?.value || "",
+    const dpr = window.chaseCanvasDPR || 1;
+    const drawWidthCss = chaseCanvasSize
+        ? chaseCanvasSize.drawWidth
+        : (video.clientWidth || video.videoWidth || 640);
+    const drawHeightCss = chaseCanvasSize
+        ? chaseCanvasSize.drawHeight
+        : (video.clientHeight || video.videoHeight || 360);
 
-                    /* SWIMMING PROFILE */
-                    primaryStroke: document.getElementById("primaryStroke")?.value || "",
-                    secondaryStroke: document.getElementById("secondaryStroke")?.value || "",
-                    eventsPref: document.getElementById("eventsPref")?.value || "",
-                    distanceType: document.getElementById("distanceType")?.value || "",
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, drawWidthCss, drawHeightCss);
 
-                    /* PHYSICAL DATA */
-                    height: document.getElementById("height")?.value || "",
-                    weight: document.getElementById("weight")?.value || "",
-                    wingspan: document.getElementById("wingspan")?.value || "",
+    currentAnalysis.frames++;
+    currentAnalysis.validFrames++;
 
-                    /* PERFORMANCE */
-                    strengths: document.getElementById("strengths")?.value || "",
-                    weaknesses: document.getElementById("weaknesses")?.value || "",
+    /* -----------------------------------------------------
+       LANDMARKS
+    ----------------------------------------------------- */
 
-                    /* TRAINING */
-                    level: document.getElementById("level")?.value || "",
-                    hours: document.getElementById("hours")?.value || "",
-                    coach: document.getElementById("coach")?.value || "",
-                    facility: document.getElementById("facility")?.value || "",
+    const nose = lm[0];
+    const leftShoulder = lm[11];
+    const rightShoulder = lm[12];
+    const leftElbow = lm[13];
+    const rightElbow = lm[14];
+    const leftWrist = lm[15];
+    const rightWrist = lm[16];
+    const leftHip = lm[23];
+    const rightHip = lm[24];
+    const leftKnee = lm[25];
+    const rightKnee = lm[26];
+    const leftAnkle = lm[27];
+    const rightAnkle = lm[28];
 
-                    /* GOALS */
-                    shortGoal: document.getElementById("shortGoal")?.value || "",
-                    longGoal: document.getElementById("longGoal")?.value || "",
-                    competition: document.getElementById("competition")?.value || "",
+    /* -----------------------------------------------------
+       EXISTING METRICS (unchanged math)
+    ----------------------------------------------------- */
 
-                    /* COMP HISTORY */
-                    lastComp: document.getElementById("lastComp")?.value || "",
-                    bestMeet: document.getElementById("bestMeet")?.value || "",
-                    medals: document.getElementById("medals")?.value || ""
-                };
+    const leftElbowAngle =
+        isVisible(leftShoulder) && isVisible(leftElbow) && isVisible(leftWrist)
+            ? chaseCalculateAngle(leftShoulder, leftElbow, leftWrist)
+            : null;
 
-                /* ===== SAVE LOCALLY ===== */
-                localStorage.setItem("profile", JSON.stringify(profile));
+    const rightElbowAngle =
+        isVisible(rightShoulder) && isVisible(rightElbow) && isVisible(rightWrist)
+            ? chaseCalculateAngle(rightShoulder, rightElbow, rightWrist)
+            : null;
 
-                console.log("Profile saved locally:", profile);
+    const elbowAngle = averageValid([leftElbowAngle, rightElbowAngle]);
 
-                /* ===== SAVE TO FIREBASE ===== */
-                if (
-                    window.auth &&
-                    window.auth.currentUser &&
-                    window.firebaseFns &&
-                    window.db
-                ) {
+    const shoulderMid = midpoint(leftShoulder, rightShoulder);
+    const hipMid = midpoint(leftHip, rightHip);
+    const ankleMid = midpoint(leftAnkle, rightAnkle);
 
-                    await window.firebaseFns.set(
-                        window.firebaseFns.ref(
-                            window.db,
-                            "users/" + window.auth.currentUser.uid + "/profile"
-                        ),
-                        profile
-                    );
+    let bodyAlignment = null;
+    if (shoulderMid && hipMid && ankleMid) {
+        bodyAlignment = chaseCalculateAngle(shoulderMid, hipMid, ankleMid);
+    }
 
-                    console.log("Profile saved to Firebase");
+    const shoulderAsymmetry =
+        isVisible(leftShoulder) && isVisible(rightShoulder)
+            ? Math.abs(leftShoulder.y - rightShoulder.y)
+            : null;
 
-                } else {
-                    console.log("User not logged in — saved locally only");
-                }
+    /* -----------------------------------------------------
+       PHASE 2: NEW SWIMMING-SPECIFIC METRICS
 
-                /* ===== REFRESH UI ===== */
-                if (typeof loadProfile === "function") loadProfile();
-                if (typeof renderStrokeCards === "function") renderStrokeCards();
-                if (typeof updateProfileSummary === "function") updateProfileSummary();
+       Arm symmetry — |leftElbowAngle - rightElbowAngle|.
+       Definition: difference between the two arms' elbow angles
+       in the same frame. Relationship to landmarks: direct, from
+       the same shoulder-elbow-wrist triples used above.
+       Limitation: freestyle/butterfly arms are rarely in the same
+       phase at the same instant, so a single-frame difference is
+       noisy; it becomes meaningful mainly when averaged and read
+       alongside stroke-cycle data (Phase 3), which is why the final
+       report treats it as descriptive rather than diagnostic.
 
-                /* ===== SUCCESS ===== */
-                alert("Profile saved successfully!");
+       Hip alignment — tilt of the hip-to-hip line from horizontal.
+       Definition: angle between the line joining both hips and the
+       horizontal image axis. Relationship to landmarks: direct.
+       Limitation: this is a 2D projection; true hip rotation about
+       the swimmer's long axis (roll) cannot be measured from a
+       single side-view camera.
 
-            } catch (error) {
-                console.error("Save Profile Error:", error);
-                alert("Failed to save profile.");
+       Knee angle — angle at the knee (hip-knee-ankle), averaged
+       across visible legs. Relationship to landmarks: direct.
+       Limitation: without stroke-cycle segmentation, this is a
+       whole-video average, not a peak flexion/extension value,
+       so it cannot yet describe kick amplitude or timing.
+
+       Lateral drift — nose x-position, recorded per frame; its
+       spread (standard deviation) across the whole clip approximates
+       how much the swimmer moves side-to-side in frame.
+       Limitation: this reflects camera framing and swimmer drift
+       combined — it cannot separate "swimmer moved off their line"
+       from "camera panned."
+    ----------------------------------------------------- */
+
+    const armSymmetry =
+        (Number.isFinite(leftElbowAngle) && Number.isFinite(rightElbowAngle))
+            ? Math.abs(leftElbowAngle - rightElbowAngle)
+            : null;
+
+    const hipAlignment =
+        isVisible(leftHip) && isVisible(rightHip)
+            ? calculateLineAngle(leftHip, rightHip)
+            : null;
+
+    const leftKneeAngle =
+        isVisible(leftHip) && isVisible(leftKnee) && isVisible(leftAnkle)
+            ? chaseCalculateAngle(leftHip, leftKnee, leftAnkle)
+            : null;
+
+    const rightKneeAngle =
+        isVisible(rightHip) && isVisible(rightKnee) && isVisible(rightAnkle)
+            ? chaseCalculateAngle(rightHip, rightKnee, rightAnkle)
+            : null;
+
+    const kneeAngle = averageValid([leftKneeAngle, rightKneeAngle]);
+
+    const lateralX = isVisible(nose) ? nose.x : (shoulderMid ? shoulderMid.x : null);
+
+    /* Phase 3 input signal: minimum visible wrist height (smaller y
+       = higher in frame = arm out of the water on recovery). This
+       produces a roughly periodic signal for freestyle that we can
+       later scan for recovery peaks. */
+    const wristYCandidates = [];
+    if (isVisible(leftWrist)) wristYCandidates.push(leftWrist.y);
+    if (isVisible(rightWrist)) wristYCandidates.push(rightWrist.y);
+    const wristMinY = wristYCandidates.length ? Math.min(...wristYCandidates) : null;
+
+    /* -----------------------------------------------------
+       STORE FRAME (index-aligned with timestamps — see the
+       comment on metricsHistory's declaration for why this
+       alignment matters for Phase 3).
+    ----------------------------------------------------- */
+
+    const hasAnyMetric =
+        Number.isFinite(elbowAngle) ||
+        Number.isFinite(bodyAlignment) ||
+        Number.isFinite(shoulderAsymmetry) ||
+        Number.isFinite(armSymmetry) ||
+        Number.isFinite(hipAlignment) ||
+        Number.isFinite(kneeAngle) ||
+        Number.isFinite(lateralX) ||
+        Number.isFinite(wristMinY);
+
+    if (hasAnyMetric) {
+
+        metricsHistory.elbow.push(Number.isFinite(elbowAngle) ? elbowAngle : null);
+        metricsHistory.alignment.push(Number.isFinite(bodyAlignment) ? bodyAlignment : null);
+        metricsHistory.rotation.push(Number.isFinite(shoulderAsymmetry) ? shoulderAsymmetry : null);
+        metricsHistory.armSymmetry.push(Number.isFinite(armSymmetry) ? armSymmetry : null);
+        metricsHistory.hipAlignment.push(Number.isFinite(hipAlignment) ? hipAlignment : null);
+        metricsHistory.kneeAngle.push(Number.isFinite(kneeAngle) ? kneeAngle : null);
+        metricsHistory.lateralX.push(Number.isFinite(lateralX) ? lateralX : null);
+        metricsHistory.wristMinY.push(Number.isFinite(wristMinY) ? wristMinY : null);
+        metricsHistory.timestamps.push(video.currentTime * 1000);
+
+        const MAX_HISTORY = 900;
+        Object.keys(metricsHistory).forEach((key) => {
+            if (metricsHistory[key].length > MAX_HISTORY) {
+                metricsHistory[key].shift();
             }
+        });
+    }
 
-        };
+    window.lastMetrics = {
+        elbowAngle,
+        bodyAlignment,
+        shoulderAsymmetry,
+        armSymmetry,
+        hipAlignment,
+        kneeAngle,
+        lateralX,
+        timestamp: video.currentTime
+    };
 
+    /* -----------------------------------------------------
+       DRAW SKELETON ONLY
+    ----------------------------------------------------- */
 
+    drawChaseSkeleton(ctx, lm, drawWidthCss, drawHeightCss);
 
-        /* ===== REALTIME ANALYSIS ===== */
-        let analyzing = false;
-        let pose;
+    ctx.restore();
 
-        function upload() {
+    displayLiveChaseMetrics();
+}
 
-            const video = document.getElementById("analyzerPlayer");
+/* ---------------------------------------------------------
+   LIVE OUTPUT (during playback)
+--------------------------------------------------------- */
 
-            if (!video || !video.src) {
-                alert("Upload video first.");
-                return;
-            }
+function displayLiveChaseMetrics() {
 
-            metricsHistory = {
-                elbow: [],
-                alignment: [],
-                rotation: [],
-                timestamps: []
-            };
+    const metrics = document.getElementById("metrics");
+    if (!metrics) return;
 
-            document.getElementById("feedback").innerHTML = "";
+    const elbow = summariseMetric(metricsHistory.elbow);
+    const alignment = summariseMetric(metricsHistory.alignment);
+    const rotation = summariseMetric(metricsHistory.rotation);
 
-            video.currentTime = 0;
-            video.play();
+    metrics.innerHTML = `
+        <div class="metric-box">
+            <h2>CHASE AI — Live Motion Analysis</h2>
 
-            const metricsDiv = document.getElementById("metrics");
-
-            const analysisInterval = setInterval(() => {
-
-                if (video.paused || video.ended) return;
-
-                // Simulated AI scores (replace with real Mediapipe later)
-                let elbow = Math.floor(75 + Math.random() * 25);
-                let alignment = Math.floor(75 + Math.random() * 25);
-                let rotation = Math.floor(75 + Math.random() * 25);
-
-                metricsHistory.elbow.push(elbow);
-                metricsHistory.alignment.push(alignment);
-                metricsHistory.rotation.push(rotation);
-                metricsHistory.timestamps.push(Date.now());
-
-                metricsDiv.innerHTML = `
-            <div class="metric-box">
-                <h3>Live Performance Metrics</h3>
-                <p>Elbow Recovery Efficiency: ${elbow}%</p>
-                <p>Body Alignment: ${alignment}%</p>
-                <p>Hip Rotation Timing: ${rotation}%</p>
-            </div>
-        `;
-
-            }, 500);
-
-            video.onended = function () {
-
-                clearInterval(analysisInterval);
-
-                finalFeedback();
-            };
-        }
-
-        // =========================================
-        // SAVE ANALYSIS REPORT SYSTEM
-        // =========================================
-        function saveAnalysisReport() {
-            const stroke = document.getElementById("stroke").value;
-            const feedback = document.getElementById("feedback").innerHTML;
-            const videoFile = document.getElementById("videoUpload").files[0];
-
-            if (!feedback) {
-                alert("Please analyze a swim video first.");
-                return;
-            }
-
-            const report = {
-                id: Date.now(),
-                date: new Date().toLocaleString(),
-                stroke: stroke,
-                videoName: videoFile ? videoFile.name : "Unknown Video",
-                feedback: feedback
-            };
-
-            let reports = JSON.parse(localStorage.getItem("swimReports")) || [];
-
-            reports.push(report);
-
-            localStorage.setItem("swimReports", JSON.stringify(reports));
-
-            alert("Analysis report saved successfully.");
-
-            if (window.auth.currentUser) {
-                saveUserData(window.auth.currentUser.uid);
-            }
-        }
-
-        // =========================================
-        // LOAD SAVED REPORTS
-        // =========================================
-        function loadSavedReports() {
-            let reports = JSON.parse(localStorage.getItem("swimReports")) || [];
-
-            const container = document.getElementById("savedReports");
-
-            if (reports.length === 0) {
-                container.innerHTML = "<p>No saved reports yet.</p>";
-                return;
-            }
-
-            let html = `<h3>Saved Analysis Reports</h3>`;
-
-            reports.reverse().forEach(report => {
-                html += `
-        <div class="report-card">
-            <h4>${report.videoName}</h4>
-            <p><strong>Date:</strong> ${report.date}</p>
-            <p><strong>Stroke:</strong> ${report.stroke}</p>
-
-            <details>
-                <summary>View AI Feedback</summary>
-                <div>${report.feedback}</div>
-            </details>
-
-            <button class="btn" onclick="deleteReport(${report.id})">
-                Delete Report
-            </button>
+            <p><strong>Frames analysed:</strong> ${currentAnalysis.validFrames}</p>
+            <p><strong>Elbow angle:</strong> ${elbow.count ? elbow.mean.toFixed(1) + "°" : "Tracking…"}</p>
+            <p><strong>Body alignment:</strong> ${alignment.count ? alignment.mean.toFixed(1) + "°" : "Tracking…"}</p>
+            <p><strong>Shoulder asymmetry:</strong> ${rotation.count ? rotation.mean.toFixed(3) : "Tracking…"}</p>
         </div>
-        <br>
-        `;
-            });
+    `;
+}
 
-            container.innerHTML = html;
+/* ---------------------------------------------------------
+   FINISH ANALYSIS
+--------------------------------------------------------- */
+
+function finishChaseAnalysis() {
+
+    if (!analyzing && !currentAnalysis.startedAt) {
+        return;
+    }
+
+    analyzing = false;
+    window.chaseAI.analyzing = false;
+
+    if (chaseAnalysisTimer) {
+        clearInterval(chaseAnalysisTimer);
+        chaseAnalysisTimer = null;
+    }
+
+    currentAnalysis.endedAt = performance.now();
+
+    const feedback = document.getElementById("feedback");
+
+    const hasAnyData =
+        metricsHistory.elbow.some(Number.isFinite) ||
+        metricsHistory.alignment.some(Number.isFinite) ||
+        metricsHistory.rotation.some(Number.isFinite);
+
+    if (!hasAnyData) {
+
+        if (feedback) {
+            feedback.innerHTML = `
+                <div class="metric-box">
+                    <h3>Analysis Incomplete</h3>
+                    <p>Chase AI could not obtain reliable body-tracking data from this video.</p>
+                    <p>Try a clear side-view video with the swimmer's full body visible.</p>
+                </div>
+            `;
         }
 
-        // =========================================
-        // DELETE REPORT
-        // =========================================
-        function deleteReport(id) {
-            let reports = JSON.parse(localStorage.getItem("swimReports")) || [];
+        setChaseStatus("INSUFFICIENT POSE DATA");
+        return;
+    }
 
-            reports = reports.filter(report => report.id !== id);
+    displayChaseMetrics();
+    generateChaseFeedback();
+    setChaseStatus("ANALYSIS COMPLETE");
+}
 
-            localStorage.setItem("swimReports", JSON.stringify(reports));
+/* ---------------------------------------------------------
+   STATISTICS
+--------------------------------------------------------- */
 
-            loadSavedReports();
+function summariseMetric(values) {
+
+    const valid = values.filter(value => Number.isFinite(value));
+
+    if (!valid.length) {
+        return { count: 0, mean: 0, stdDev: 0, min: 0, max: 0 };
+    }
+
+    const mean = valid.reduce((sum, value) => sum + value, 0) / valid.length;
+
+    const variance =
+        valid.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / valid.length;
+
+    return {
+        count: valid.length,
+        mean,
+        stdDev: Math.sqrt(variance),
+        min: Math.min(...valid),
+        max: Math.max(...valid)
+    };
+}
+
+/* ---------------------------------------------------------
+   PHASE 3: FREESTYLE STROKE-CYCLE DETECTION
+
+   Approach: the recovery arm lifts out of the water once per
+   stroke, producing a local minimum in wristMinY (smaller y =
+   higher in the frame). We scan the stored signal for local minima
+   at least `refractoryMs` apart (to avoid tracking jitter being
+   counted as extra strokes), then treat each gap between
+   consecutive minima as one stroke cycle. For each cycle we
+   average whatever elbow-angle samples fall inside that time
+   window.
+
+   This is a real, if simple, cycle detector — not an illusion of
+   one. Its accuracy depends entirely on wrist-tracking quality and
+   camera angle, which is why the final report states this
+   explicitly rather than presenting cycle numbers as precise.
+--------------------------------------------------------- */
+
+function chaseDetectFreestyleCycles() {
+
+    const y = metricsHistory.wristMinY;
+    const t = metricsHistory.timestamps;
+    const elbow = metricsHistory.elbow;
+
+    if (!y || y.length < 8) return [];
+
+    const refractoryMs = 300;
+    const minima = [];
+    let lastMinimaTime = -Infinity;
+
+    for (let i = 1; i < y.length - 1; i++) {
+
+        if (!Number.isFinite(y[i]) || !Number.isFinite(y[i - 1]) || !Number.isFinite(y[i + 1])) {
+            continue;
         }
 
-
-        function initRaceAI() {
-            racePose = new Pose({
-                locateFile: file =>
-                    `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-            });
-
-            racePose.setOptions({
-                modelComplexity: 1,
-                smoothLandmarks: true
-            });
-
-            racePose.onResults(onRaceResults);
-        }
-
-        async function processRaceFrame() {
-
-            if (!measuring) return;
-
-            const video = document.getElementById("racePlayer");
-
-            if (video.paused || video.ended) {
-                requestAnimationFrame(processRaceFrame);
-                return;
+        if (y[i] < y[i - 1] && y[i] <= y[i + 1]) {
+            if (t[i] - lastMinimaTime > refractoryMs) {
+                minima.push({ index: i, time: t[i] });
+                lastMinimaTime = t[i];
             }
-
-            await racePose.send({ image: video });
-
-            requestAnimationFrame(processRaceFrame);
         }
+    }
 
-        function startAI() {
-            const video = document.getElementById("analyzerPlayer");
+    if (minima.length < 2) return [];
 
-            async function processFrame() {
-                if (!analyzing) return;
+    const cycles = [];
 
-                await pose.send({ image: video });
+    for (let i = 0; i < minima.length - 1; i++) {
 
-                requestAnimationFrame(processFrame);
+        const startTime = minima[i].time;
+        const endTime = minima[i + 1].time;
+
+        const elbowInWindow = [];
+
+        for (let j = 0; j < t.length; j++) {
+            if (t[j] >= startTime && t[j] < endTime && Number.isFinite(elbow[j])) {
+                elbowInWindow.push(elbow[j]);
             }
-
-            processFrame();
         }
 
-        function extractFeatures() {
+        const elbowStats = summariseMetric(elbowInWindow);
+        const durationMs = endTime - startTime;
 
-            const avg = arr =>
-                arr.length
-                    ? arr.reduce((a, b) => a + b, 0) / arr.length
-                    : 0;
+        cycles.push({
+            cycleNumber: i + 1,
+            durationMs,
+            strokeRatePerMin: durationMs > 0 ? 60000 / durationMs : null,
+            elbowMean: elbowStats.count ? elbowStats.mean : null,
+            elbowStdDev: elbowStats.count ? elbowStats.stdDev : null,
+            sampleCount: elbowStats.count
+        });
+    }
 
-            const stdDev = arr => {
-                if (arr.length < 2) return 0;
+    return cycles;
+}
 
-                const mean = avg(arr);
+/* ---------------------------------------------------------
+   PHASE 5: EVIDENCE-BASED COACHING RULES
+   Each rule: observed measurement -> biomechanical interpretation
+   -> swimming-specific context -> recommendation. A rule only
+   produces output when its stat actually has data (stats.count > 0).
+   No rule invents a claim beyond what the stat supports.
+--------------------------------------------------------- */
 
-                return Math.sqrt(
-                    arr.reduce((sum, val) =>
-                        sum + Math.pow(val - mean, 2), 0
-                    ) / arr.length
-                );
-            };
-
+const CHASE_COACHING_RULES = [
+    {
+        key: "elbow",
+        title: "Elbow Angle",
+        evaluate(stats) {
+            if (!stats.count) return null;
+            const inconsistent = stats.stdDev > 25;
             return {
-                avgElbow: avg(metricsHistory.elbow),
-                avgAlignment: avg(metricsHistory.alignment),
-                avgRotation: avg(metricsHistory.rotation),
-
-                elbowConsistency: stdDev(metricsHistory.elbow),
-                alignmentConsistency: stdDev(metricsHistory.alignment),
-                rotationConsistency: stdDev(metricsHistory.rotation)
+                observed: `Mean elbow angle ${stats.mean.toFixed(1)}°, variation ±${stats.stdDev.toFixed(1)}°.`,
+                interpretation: inconsistent
+                    ? "Elbow position varies considerably across the analysed frames."
+                    : "Elbow angle is relatively consistent across the analysed frames.",
+                context: "A repeatable elbow angle through the catch and pull is generally associated with a more consistent arm path in freestyle and butterfly.",
+                recommendation: inconsistent
+                    ? "Review the catch and pull path with a coach — inconsistent elbow position can indicate variable propulsion between strokes."
+                    : "This consistency is a reasonable baseline to maintain in training."
             };
         }
+    },
+    {
+        key: "alignment",
+        title: "Body Alignment",
+        evaluate(stats) {
+            if (!stats.count) return null;
+            const unstable = stats.stdDev > 20;
+            return {
+                observed: `Mean body-alignment angle ${stats.mean.toFixed(1)}°, variation ±${stats.stdDev.toFixed(1)}°.`,
+                interpretation: unstable
+                    ? "Body alignment (shoulder-hip-ankle line) changes noticeably during the clip."
+                    : "Body alignment is relatively stable across the clip.",
+                context: "A stable line through the trunk generally reduces drag while the limbs generate propulsion.",
+                recommendation: unstable
+                    ? "Focus on maintaining a stable trunk line; noticeable changes here often reflect a dropping hip or head position."
+                    : "Continue reinforcing this stable body line."
+            };
+        }
+    },
+    {
+        key: "rotation",
+        title: "Shoulder Asymmetry",
+        evaluate(stats) {
+            if (!stats.count) return null;
+            const notable = stats.mean > 0.08;
+            return {
+                observed: `Mean shoulder height difference (normalised) ${stats.mean.toFixed(3)}.`,
+                interpretation: notable
+                    ? "The two shoulders show a noticeable vertical difference on average."
+                    : "Shoulder height difference is relatively low on average.",
+                context: "This is a 2D proxy for shoulder roll, not a direct measurement of rotation about the body's long axis.",
+                recommendation: notable
+                    ? "Check shoulder rotation and breathing-side timing if this persists across many stroke cycles."
+                    : "Continue monitoring both sides for consistency."
+            };
+        }
+    },
+    {
+        key: "armSymmetry",
+        title: "Arm Symmetry",
+        evaluate(stats) {
+            if (!stats.count) return null;
+            const asymmetric = stats.mean > 15;
+            return {
+                observed: `Mean left/right elbow-angle difference ${stats.mean.toFixed(1)}°.`,
+                interpretation: asymmetric
+                    ? "The two arms show a noticeable average difference in elbow angle."
+                    : "The two arms show a fairly similar average elbow angle.",
+                context: "Some difference is expected since the arms are usually in different phases of the stroke at any instant; a large average difference across the whole clip is more informative than any single frame.",
+                recommendation: asymmetric
+                    ? "Compare footage of both arm strokes with a coach to check for a technical difference between sides, not just stroke-phase timing."
+                    : "No strong side-to-side difference stood out in this clip."
+            };
+        }
+    },
+    {
+        key: "hipAlignment",
+        title: "Hip Alignment",
+        evaluate(stats) {
+            if (!stats.count) return null;
+            const tilted = stats.mean > 8;
+            return {
+                observed: `Mean hip-line tilt ${stats.mean.toFixed(1)}° from horizontal.`,
+                interpretation: tilted
+                    ? "The hip line is tilted from horizontal on average."
+                    : "The hip line is close to horizontal on average.",
+                context: "This reflects the hips' position in the 2D camera frame, not true rotation around the swimmer's long axis, which a single side-view camera cannot measure.",
+                recommendation: tilted
+                    ? "Worth reviewing with a coach alongside body-alignment data, since a tilted hip line can accompany a dropped hip."
+                    : "No notable hip tilt was measured in this clip."
+            };
+        }
+    },
+    {
+        key: "kneeAngle",
+        title: "Knee Angle (kick)",
+        evaluate(stats) {
+            if (!stats.count) return null;
+            return {
+                observed: `Mean knee angle ${stats.mean.toFixed(1)}°, averaged across the whole clip.`,
+                interpretation: "This is a whole-clip average, not a peak flexion or extension value.",
+                context: "Kick amplitude and timing require segmenting the kick cycle, which this version of Chase does not yet do.",
+                recommendation: "Treat this figure as descriptive only; it is not yet a basis for kick-technique recommendations."
+            };
+        }
+    },
+    {
+        key: "lateral",
+        title: "Lateral Movement",
+        evaluate(stats) {
+            if (!stats.count) return null;
+            const drifting = stats.stdDev > 0.05;
+            return {
+                observed: `Lateral position variation (normalised) ±${stats.stdDev.toFixed(3)}.`,
+                interpretation: drifting
+                    ? "The swimmer's position in frame moves side-to-side more than a small amount during the clip."
+                    : "The swimmer's position in frame is fairly steady side-to-side.",
+                context: "This measurement cannot separate the swimmer actually drifting off their line from the camera panning during filming.",
+                recommendation: drifting
+                    ? "If the camera was fixed during filming, this may indicate the swimmer drifting off a straight line — worth reviewing the raw footage to confirm."
+                    : "No notable lateral drift stood out, assuming the camera was fixed."
+            };
+        }
+    }
+];
 
-        function calculateAIScore(features) {
+function chaseRunCoachingRules() {
 
-            let score = 100;
+    const stats = {
+        elbow: summariseMetric(metricsHistory.elbow),
+        alignment: summariseMetric(metricsHistory.alignment),
+        rotation: summariseMetric(metricsHistory.rotation),
+        armSymmetry: summariseMetric(metricsHistory.armSymmetry),
+        hipAlignment: summariseMetric(metricsHistory.hipAlignment),
+        kneeAngle: summariseMetric(metricsHistory.kneeAngle),
+        lateral: summariseMetric(metricsHistory.lateralX)
+    };
 
-            // ELBOW
-            if (features.avgElbow < 70) score -= 25;
-            else if (features.avgElbow < 80) score -= 15;
-            else if (features.avgElbow < 90) score -= 5;
+    return CHASE_COACHING_RULES
+        .map(rule => {
+            const result = rule.evaluate(stats[rule.key]);
+            return result ? { title: rule.title, ...result } : null;
+        })
+        .filter(Boolean);
+}
 
-            // ALIGNMENT
-            if (features.avgAlignment < 70) score -= 25;
-            else if (features.avgAlignment < 80) score -= 15;
-            else if (features.avgAlignment < 90) score -= 5;
+/* ---------------------------------------------------------
+   FINAL RENDER — TASK 5 STRUCTURE
+   #metrics -> Video Quality + Movement Metrics (+ cycles if freestyle)
+   #feedback -> Observations + Technical Priorities + Confidence/Limitations
+--------------------------------------------------------- */
 
-            // ROTATION
-            if (features.avgRotation < 70) score -= 20;
-            else if (features.avgRotation < 80) score -= 10;
-            else if (features.avgRotation < 90) score -= 5;
+function displayChaseMetrics() {
 
-            // CONSISTENCY PENALTIES
-            score -= features.elbowConsistency * 0.5;
-            score -= features.alignmentConsistency * 0.5;
-            score -= features.rotationConsistency * 0.5;
+    const metrics = document.getElementById("metrics");
+    if (!metrics) return;
 
-            score = Math.round(
-                Math.max(0, Math.min(100, score))
-            );
+    const video = document.getElementById("analyzerPlayer");
+    const strokeKey = document.getElementById("stroke")?.value || "freestyle";
+    const strokeInfo = CHASE_STROKE_SUPPORT[strokeKey] || CHASE_STROKE_SUPPORT.freestyle;
 
-            return score;
+    const elbow = summariseMetric(metricsHistory.elbow);
+    const alignment = summariseMetric(metricsHistory.alignment);
+    const rotation = summariseMetric(metricsHistory.rotation);
+    const armSymmetry = summariseMetric(metricsHistory.armSymmetry);
+    const hipAlignment = summariseMetric(metricsHistory.hipAlignment);
+    const kneeAngle = summariseMetric(metricsHistory.kneeAngle);
+    const lateral = summariseMetric(metricsHistory.lateralX);
+
+    const reliability = currentAnalysis.frames > 0
+        ? (currentAnalysis.validFrames / currentAnalysis.frames) * 100
+        : 0;
+
+    const durationSeconds = Number.isFinite(video?.duration)
+        ? video.duration
+        : (metricsHistory.timestamps.length
+            ? (metricsHistory.timestamps[metricsHistory.timestamps.length - 1] - metricsHistory.timestamps[0]) / 1000
+            : 0);
+
+    let cycleSectionHtml = "";
+
+    if (strokeInfo.supported) {
+
+        const cycles = chaseDetectFreestyleCycles();
+
+        if (cycles.length > 0) {
+            cycleSectionHtml = `
+                <h3>Stroke Cycles (Freestyle)</h3>
+                <p style="opacity:.7;font-size:.85rem;">
+                    Detected from recovery-arm height in the video. Accuracy depends on
+                    wrist-tracking quality and camera angle.
+                </p>
+                <ul>
+                    ${cycles.map(c => `
+                        <li>
+                            Cycle ${c.cycleNumber}:
+                            ${c.strokeRatePerMin ? c.strokeRatePerMin.toFixed(1) + " strokes/min" : "rate unavailable"},
+                            elbow angle ${c.elbowMean !== null ? c.elbowMean.toFixed(1) + "°" : "N/A"}
+                            ${c.elbowStdDev !== null ? "(±" + c.elbowStdDev.toFixed(1) + "°)" : ""}
+                        </li>
+                    `).join("")}
+                </ul>
+            `;
+        } else {
+            cycleSectionHtml = `
+                <h3>Stroke Cycles (Freestyle)</h3>
+                <p>Not enough consistent wrist-tracking data in this clip to reliably detect individual stroke cycles.</p>
+            `;
         }
 
-        function finalFeedback() {
+    } else {
+        cycleSectionHtml = `
+            <h3>Stroke Cycles</h3>
+            <p>Stroke-cycle detection is currently implemented for freestyle only. ${strokeInfo.label} support is limited to the generic pose metrics below.</p>
+        `;
+    }
 
-            const stroke = document.getElementById("stroke").value;
-
-            if (metricsHistory.elbow.length < 10) {
-                alert("Not enough data collected");
-                return;
-            }
-
-            // ===== CALCULATIONS =====
-            const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
-
-            const stdDev = arr => {
-                const mean = avg(arr);
-                return Math.sqrt(
-                    arr.reduce((a, b) => a + (b - mean) ** 2, 0) / arr.length
-                );
-            };
-
-            const avgElbow = avg(metricsHistory.elbow);
-            const avgAlign = avg(metricsHistory.alignment);
-            const avgRotation = avg(metricsHistory.rotation);
-
-            const elbowVar = stdDev(metricsHistory.elbow);
-            const alignVar = stdDev(metricsHistory.alignment);
-
-            const features = extractFeatures();
-            const aiScore = calculateAIScore(features);
-
-            let timingConsistency = 0;
-
-            if (metricsHistory.timestamps.length > 5) {
-
-                let intervals = [];
-
-                for (let i = 1; i < metricsHistory.timestamps.length; i++) {
-                    intervals.push(
-                        (metricsHistory.timestamps[i] -
-                            metricsHistory.timestamps[i - 1]) / 1000
-                    );
-                }
-
-                timingConsistency = stdDev(intervals);
-            }
-
-            let elite = [];
-            let strengths = [];
-            let improvements = [];
-
-            // =====================================================
-            // FREESTYLE
-            // =====================================================
-            if (stroke === "freestyle") {
-
-                if (avgElbow > 125 && avgElbow < 150)
-                    strengths.push("✔ You maintained a strong high-elbow catch through most of the stroke cycle.");
-
-                if (avgElbow >= 140)
-                    elite.push("🔥 Your arm extension and catch position are at an elite level, maximizing propulsion.");
-
-                if (avgElbow < 105)
-                    improvements.push("⚠ Your elbow drops during the pull phase, reducing efficiency in the catch.");
-
-                if (avgAlign > 150)
-                    strengths.push("✔ Your body alignment is consistently horizontal, minimizing drag.");
-
-                if (avgAlign > 160)
-                    elite.push("🔥 Excellent streamline position — comparable to elite swimmers.");
-
-                if (avgAlign < 140)
-                    improvements.push("⚠ Your hips and legs drop during the stroke, increasing resistance.");
-
-                if (avgRotation > 0.03)
-                    strengths.push("✔ Good body rotation, helping generate power.");
-
-                if (avgRotation > 0.05)
-                    elite.push("🔥 Your rotation timing is highly efficient and well-coordinated.");
-
-                if (avgRotation < 0.02)
-                    improvements.push("⚠ Limited body rotation is restricting stroke efficiency.");
-
-                if (elbowVar < 10)
-                    elite.push("🔥 Very consistent stroke mechanics — excellent repeatability.");
-
-                if (elbowVar > 20)
-                    improvements.push("⚠ Stroke inconsistency detected — focus on repeating the same movement pattern.");
-            }
-
-            // =====================================================
-            // BUTTERFLY
-            // =====================================================
-            if (stroke === "butterfly") {
-
-                if (avgElbow > 120)
-                    strengths.push("✔ Strong pull phase generating good propulsion.");
-
-                if (avgElbow > 140)
-                    elite.push("🔥 Powerful catch and pull — near elite butterfly mechanics.");
-
-                if (avgElbow < 100)
-                    improvements.push("⚠ Weak catch reducing forward propulsion.");
-
-                if (avgAlign > 145)
-                    strengths.push("✔ Good body wave rhythm.");
-
-                if (avgAlign > 155)
-                    elite.push("🔥 Excellent dolphin motion — strong core control.");
-
-                if (avgAlign < 135)
-                    improvements.push("⚠ Hips dropping — disrupts body wave.");
-            }
-
-            // =====================================================
-            // BREASTSTROKE
-            // =====================================================
-            if (stroke === "breaststroke") {
-
-                if (avgElbow < 115)
-                    strengths.push("✔ Compact and efficient pull phase.");
-
-                if (avgElbow < 100)
-                    elite.push("🔥 Elite narrow pull minimizing drag.");
-
-                if (avgElbow > 140)
-                    improvements.push("⚠ Pull too wide — increases resistance.");
-
-                if (avgAlign > 150)
-                    strengths.push("✔ Good glide phase.");
-
-                if (avgAlign > 160)
-                    elite.push("🔥 Excellent streamline during glide.");
-
-                if (avgAlign < 140)
-                    improvements.push("⚠ Poor glide reducing efficiency.");
-            }
-
-            // =====================================================
-            // BACKSTROKE
-            // =====================================================
-            if (stroke === "backstroke") {
-
-                if (avgRotation > 0.03 && avgRotation < 0.06)
-                    strengths.push("✔ Balanced and effective rotation.");
-
-                if (avgRotation > 0.06)
-                    elite.push("🔥 Excellent rotation mechanics.");
-
-                if (avgRotation < 0.02)
-                    improvements.push("⚠ Not rotating enough.");
-
-                if (avgAlign > 150)
-                    strengths.push("✔ Strong body position.");
-
-                if (avgAlign > 160)
-                    elite.push("🔥 Perfect streamlined posture.");
-
-                if (avgAlign < 140)
-                    improvements.push("⚠ Body sinking — increasing drag.");
-            }
-
-            // =====================================================
-            // TIMING
-            // =====================================================
-            if (timingConsistency < 30)
-                elite.push("🔥 Stroke timing is very consistent — excellent rhythm.");
-
-            if (timingConsistency > 80)
-                improvements.push("⚠ Stroke timing varies significantly — work on rhythm and pacing.");
-
-            // =====================================================
-            // OVERALL TIER
-            // =====================================================
-            let performanceTier = "";
-
-            if (aiScore >= 90) {
-                performanceTier = "ELITE PERFORMANCE";
-            } else if (aiScore >= 75) {
-                performanceTier = "HIGH PERFORMANCE";
-            } else if (aiScore >= 60) {
-                performanceTier = "COMPETITIVE";
-            } else {
-                performanceTier = "DEVELOPING";
-            }
-
-            // =====================================================
-            // DISPLAY
-            // =====================================================
-            document.getElementById("feedback").innerHTML = `
+    metrics.innerHTML = `
         <div class="metric-box">
 
-            <h2>🏊 Advanced AI Stroke Report</h2>
+            <h2>CHASE AI — Motion Analysis</h2>
 
-            <p><strong>Stroke:</strong> ${stroke.toUpperCase()}</p>
-            <p><strong>AI Performance Score:</strong> ${aiScore}/100</p>
-            <p><strong>Performance Tier:</strong> ${performanceTier}</p>
+            <h3>Video Quality</h3>
+            <p><strong>Frames analysed:</strong> ${currentAnalysis.validFrames} of ${currentAnalysis.frames}</p>
+            <p><strong>Approximate analysis duration:</strong> ${durationSeconds.toFixed(1)} s</p>
+            <p><strong>Detection reliability:</strong> ${reliability.toFixed(0)}% of frames had usable pose data</p>
 
             <hr>
 
-            ${elite.length
-                    ? "<h3>🔥 Elite Indicators</h3><ul>" +
-                    elite.map(item => `<li>${item}</li>`).join("") +
-                    "</ul>"
-                    : ""
-                }
+            <h3>Movement Metrics</h3>
+            <p>Elbow Angle — Mean: <strong>${elbow.count ? elbow.mean.toFixed(1) + "°" : "N/A"}</strong>, Variation: <strong>${elbow.count ? "±" + elbow.stdDev.toFixed(1) + "°" : "N/A"}</strong></p>
+            <p>Body Alignment — Mean: <strong>${alignment.count ? alignment.mean.toFixed(1) + "°" : "N/A"}</strong>, Variation: <strong>${alignment.count ? "±" + alignment.stdDev.toFixed(1) + "°" : "N/A"}</strong></p>
+            <p>Shoulder Asymmetry — Mean: <strong>${rotation.count ? rotation.mean.toFixed(3) : "N/A"}</strong>, Variation: <strong>${rotation.count ? "±" + rotation.stdDev.toFixed(3) : "N/A"}</strong></p>
+            <p>Arm Symmetry — Mean diff: <strong>${armSymmetry.count ? armSymmetry.mean.toFixed(1) + "°" : "N/A"}</strong></p>
+            <p>Hip Alignment — Mean tilt: <strong>${hipAlignment.count ? hipAlignment.mean.toFixed(1) + "°" : "N/A"}</strong></p>
+            <p>Knee Angle (whole-clip average) — Mean: <strong>${kneeAngle.count ? kneeAngle.mean.toFixed(1) + "°" : "N/A"}</strong></p>
+            <p>Lateral Movement — Variation: <strong>${lateral.count ? "±" + lateral.stdDev.toFixed(3) : "N/A"}</strong> (normalised frame position)</p>
 
-            ${strengths.length
-                    ? "<h3>✅ Strengths</h3><ul>" +
-                    strengths.map(item => `<li>${item}</li>`).join("") +
-                    "</ul>"
-                    : ""
-                }
+            <hr>
 
-            ${improvements.length
-                    ? "<h3>⚠ Technical Improvements</h3><ul>" +
-                    improvements.map(item => `<li>${item}</li>`).join("") +
-                    "</ul>"
-                    : ""
-                }
-
-            <h3>📊 Metric Breakdown</h3>
-            <p>Elbow Efficiency: ${avgElbow.toFixed(1)}</p>
-            <p>Alignment Efficiency: ${avgAlign.toFixed(1)}</p>
-            <p>Rotation Efficiency: ${avgRotation.toFixed(3)}</p>
-            <p>Stroke Consistency Variability: ${elbowVar.toFixed(2)}</p>
-            <p>Timing Rhythm Variability: ${timingConsistency.toFixed(2)}</p>
+            ${cycleSectionHtml}
 
         </div>
     `;
-        }
+}
 
+function generateChaseFeedback() {
 
-        function generateFeedback() {
+    const feedback = document.getElementById("feedback");
+    if (!feedback) return;
 
-            if (!analyzing) return;
+    const strokeKey = document.getElementById("stroke")?.value || "freestyle";
+    const strokeInfo = CHASE_STROKE_SUPPORT[strokeKey] || CHASE_STROKE_SUPPORT.freestyle;
 
-            const video = document.getElementById("analyzerPlayer");
-            const stroke = document.getElementById("stroke").value;
+    const ruleResults = chaseRunCoachingRules();
 
-            if (video.paused || video.ended) {
-                setTimeout(generateFeedback, 1000);
-                return;
-            }
+    const observations = ruleResults.map(r => `<strong>${r.title}:</strong> ${r.observed} ${r.interpretation}`);
+    const priorities = ruleResults.map(r => `<strong>${r.title}:</strong> ${r.recommendation}`);
 
-            let feedback = "";
-            let r = Math.random();
+    const supportNotice = strokeInfo.supported
+        ? ""
+        : `<p><strong>Note:</strong> ${strokeInfo.label} does not yet have a stroke-specific biomechanical model in Chase AI. The metrics above are generic pose measurements, not ${strokeInfo.label.toLowerCase()}-specific technique analysis.</p>`;
 
-            if (stroke === "freestyle") {
-                feedback = r < 0.3 ? "High elbow catch – good" :
-                    r < 0.6 ? "Hand entry wide – adjust" :
-                        "Maintain body rotation";
-            }
+    feedback.innerHTML = `
+        <div class="metric-box">
 
-            if (stroke === "backstroke") {
-                feedback = r < 0.3 ? "Good shoulder rotation" :
-                    r < 0.6 ? "Rotate more" :
-                        "Kick consistent";
-            }
+            <h2>CHASE AI — Coach Feedback</h2>
 
-            if (stroke === "breaststroke") {
-                feedback = r < 0.3 ? "Good glide" :
-                    r < 0.6 ? "Kick timing off" :
-                        "Pull too wide";
-            }
+            <p>Stroke selected: <strong>${strokeInfo.label}</strong></p>
 
-            if (stroke === "butterfly") {
-                feedback = r < 0.3 ? "Strong catch phase" :
-                    r < 0.6 ? "Hips dropping" :
-                        "Kick timing good";
-            }
+            ${supportNotice}
 
-            document.getElementById("feedback").innerHTML =
-                `<div class="metric-box">${feedback}</div>`;
+            <h3>Observations</h3>
+            <ul>
+                ${observations.length ? observations.map(item => `<li>${item}</li>`).join("") : "<li>No reliable measurements were available to report.</li>"}
+            </ul>
 
-            setTimeout(generateFeedback, 1000);
-        }
+            <h3>Technical Priorities</h3>
+            <ul>
+                ${priorities.length ? priorities.map(item => `<li>${item}</li>`).join("") : "<li>Not enough data to generate priorities from this clip.</li>"}
+            </ul>
 
-        document.getElementById("analyzerPlayer").addEventListener("pause", () => {
-            analyzing = false;
-        });
+            <h3>Confidence &amp; Limitations</h3>
+            <ul>
+                <li><strong>Directly measured:</strong> 2D joint angles and positions from MediaPipe pose landmarks, sampled roughly every 120ms during playback.</li>
+                <li><strong>Inferred:</strong> stroke cycles (freestyle only) are estimated from wrist-height oscillation, not a ground-truth stroke count.</li>
+                <li><strong>Cannot be determined from this camera angle:</strong> true 3D body rotation, force production, water resistance, and any measurement that would require a second camera angle or underwater view.</li>
+                <li>${chaseReferenceDisclaimer(strokeKey)}</li>
+            </ul>
+
+            <p style="opacity:.65; margin-top:20px; font-size:.9rem;">
+                Chase AI analyses 2D pose landmarks from this video. These measurements are motion indicators, not a clinical or complete biomechanical assessment, and this is not medical or injury-diagnostic advice.
+            </p>
+
+        </div>
+    `;
+}
+
+/* ---------------------------------------------------------
+   UI HELPERS
+--------------------------------------------------------- */
+
+function clearChaseOutput() {
+
+    const metrics = document.getElementById("metrics");
+    const feedback = document.getElementById("feedback");
+
+    if (metrics) metrics.innerHTML = "";
+    if (feedback) feedback.innerHTML = "";
+
+    const canvas = document.getElementById("canvas");
+
+    if (canvas) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+function setChaseStatus(text) {
+
+    console.log("CHASE AI STATUS:", text);
+
+    const status = document.getElementById("chaseStatus");
+    if (status) {
+        status.textContent = "● " + text;
+    }
+}
+
+window.addEventListener(
+    "DOMContentLoaded",
+    () => {
+        initialiseChasePose();
+    },
+    { once: true }
+);
 
         /* ===== PB SYSTEM ===== */
         let editIndex = -1;
@@ -5241,38 +8871,6 @@ window.showPage = showPage;
         /* ===== RACE ===== */
         
 
-        async function analyzeRace() {
-
-            const file = document.getElementById("raceVideo").files[0];
-
-
-            if (!file) {
-                alert("Upload video first");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append("file", file);
-
-
-            document.getElementById("splits").innerHTML = "Analyzing race...";
-
-            try {
-                const res = await fetch("http://127.0.0.1:8000/race-analysis", {
-                    method: "POST",
-                    body: formData
-                });
-
-                const data = await res.json();
-
-                showSplits(data.splits);
-
-            } catch (err) {
-                document.getElementById("splits").innerText = "Error connecting to backend";
-            }
-        }
-
-
         const swimmingWorldRecords = {
 
             men: {
@@ -5341,16 +8939,9 @@ window.showPage = showPage;
 
             startX = null;
             laneCenterY = null;
-
-            previousDirection = null;
             lastTurnTime = 0;
 
-            autoSplits = [];
-
             wallContactActive = false;
-            lastWallSide = null;
-
-            maxTravelX = null;
 
             document.getElementById("splits").innerHTML = "";
             document.getElementById("timer").innerText = "0.00 s";
@@ -5366,7 +8957,6 @@ window.showPage = showPage;
             lastHipX = null;
 
             strokePhase = "down";
-            metricFrames = 0;
             window.lastFrameTime = null;
 
             document.getElementById("raceMetrics").innerHTML = `
@@ -5426,9 +9016,6 @@ window.showPage = showPage;
                     const deltaX = hip.x - lastHipX;
                     const currentVelocity = Math.abs(deltaX);
 
-                    const direction =
-                        deltaX > 0 ? "forward" : "backward";
-
                     const nearWall =
                         hip.x < WALL_THRESHOLD ||
                         hip.x > (1 - WALL_THRESHOLD);
@@ -5450,8 +9037,6 @@ window.showPage = showPage;
                         const splitTime =
                             currentTime - startTime;
 
-                        autoSplits.push(splitTime);
-
                         const div =
                             document.createElement("div");
 
@@ -5465,8 +9050,6 @@ window.showPage = showPage;
                     if (!nearWall) {
                         wallContactActive = false;
                     }
-
-                    previousDirection = direction;
                 }
             }
 
@@ -5561,8 +9144,6 @@ window.showPage = showPage;
                     ) / recentSpeeds.length;
             }
 
-            metricFrames++;
-
             // ===== DISPLAY =====
             document.getElementById("raceMetrics").innerHTML = `
         <div class="metric-box">Stroke Rate: ${spm.toFixed(1)} spm</div>
@@ -5621,17 +9202,7 @@ window.showPage = showPage;
     `;
         });
 
-        function showSplits(splits) {
-            const container = document.getElementById("splits");
-            container.innerHTML = "";
-
-            splits.forEach((t, i) => {
-                const div = document.createElement("div");
-                div.innerText = `Turn ${i + 1}: ${t.toFixed(2)} s`;
-                container.appendChild(div);
-            });
-        }
-
+        
         function pauseTimer() { document.getElementById("racePlayer").pause(); running = false; }
 
         function updateTimer() {
@@ -5668,68 +9239,8 @@ window.showPage = showPage;
             return angle * (180 / Math.PI);
         }
 
-        function onResults(results) {
+        
 
-            const canvas = document.getElementById("canvas");
-            const ctx = canvas.getContext("2d");
-            const video = document.getElementById("analyzerPlayer");
-
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (!results.poseLandmarks) return;
-
-            const lm = results.poseLandmarks;
-
-            // DRAW SKELETON
-            drawConnectors(ctx, lm, POSE_CONNECTIONS,
-                { color: "#00FFFF", lineWidth: 2 });
-            drawLandmarks(ctx, lm,
-                { color: "#00FFFF", lineWidth: 1 });
-
-            // ===== METRICS =====
-            const shoulder = lm[12];
-            const elbow = lm[14];
-            const wrist = lm[16];
-
-            const hip = lm[24];
-            const ankle = lm[28];
-
-            const shoulderMid = {
-                x: (lm[11].x + lm[12].x) / 2,
-                y: (lm[11].y + lm[12].y) / 2
-            };
-
-            const elbowAngle = calculateAngle(shoulder, elbow, wrist);
-            const bodyAlign = calculateAngle(shoulderMid, hip, ankle);
-            const rotation = Math.abs(lm[11].y - lm[12].y);
-
-            // ===== STORE HISTORY =====
-            metricsHistory.elbow.push(elbowAngle);
-            metricsHistory.alignment.push(bodyAlign);
-            metricsHistory.rotation.push(rotation);
-            metricsHistory.timestamps.push(Date.now());
-
-            // keep last 100 frames only (performance)
-            if (metricsHistory.elbow.length > 100) {
-                metricsHistory.elbow.shift();
-                metricsHistory.alignment.shift();
-                metricsHistory.rotation.shift();
-                metricsHistory.timestamps.shift();
-            }
-
-            // STORE FOR FINAL FEEDBACK
-            window.lastMetrics = { elbowAngle, bodyAlign, rotation };
-
-            // DISPLAY ONLY REQUIRED METRICS
-            document.getElementById("metrics").innerHTML = `
-        <div class="metric-box">Elbow: ${elbowAngle.toFixed(1)}</div>
-        <div class="metric-box">Alignment: ${bodyAlign.toFixed(1)}</div>
-        <div class="metric-box">Rotation: ${rotation.toFixed(3)}</div>
-    `;
-        }
 
         /* ===== UPGRADE loadProfile() ===== */
 
@@ -6100,32 +9611,7 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
             return s.charAt(0).toUpperCase() + s.slice(1);
         }
 
-        function uploadPhoto(stroke) {
-
-            const input = document.createElement("input");
-            input.type = "file";
-
-            input.onchange = e => {
-
-                const file = e.target.files[0];
-                const reader = new FileReader();
-
-                reader.onload = function () {
-
-                    strokeData[stroke].photo = reader.result;
-
-                    localStorage.setItem("strokeData", JSON.stringify(strokeData));
-
-                    renderStrokeCards();
-
-                };
-
-                reader.readAsDataURL(file);
-            };
-
-            input.click();
-        }
-
+        
         function getPB(eventName) {
 
             for (let pb of pbs) {
@@ -6137,17 +9623,7 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
             return "--";
         }
 
-        function updateStroke(stroke, data) {
-
-            strokeData[stroke] = {
-                ...strokeData[stroke],
-                ...data
-            };
-
-            localStorage.setItem("strokeData", JSON.stringify(strokeData));
-            renderStrokeCards();
-        }
-
+        
 
         function uploadProfileImage() {
 
@@ -7092,24 +10568,7 @@ function toggleCoach() {
         }
 
 
-        function updateBodyPartColor(part) {
-
-            const element =
-                document.getElementById(part);
-
-            const state =
-                sorenessMap[part];
-
-            const colors = {
-                0: "rgba(255,255,255,0.15)",
-                1: "limegreen",
-                2: "orange",
-                3: "red"
-            };
-
-            element.style.fill = colors[state];
-        }
-
+        
         // ===============================
         // THEME TOGGLE SYSTEM
         // ===============================
@@ -7223,6 +10682,1326 @@ window.addEventListener("scroll", () => {
     </button>
 
 
+<!-- =========================================================
+     SWIMTICS PREMIUM ANIMATION ENGINE
+     ========================================================= -->
+<script>
+
+/* =========================================================
+   ECOSYSTEM INTRO
+   ========================================================= */
+
+function setupEcosystemIntro(doc) {
+
+    const section =
+        doc.querySelector(
+            "#homeFeatures"
+        );
+
+    if (!section) return;
+
+
+    const title =
+        section.querySelector(
+            ".features-title"
+        );
+
+    const subtitle =
+        section.querySelector(
+            ".features-subtitle"
+        );
+
+
+    if (!title) return;
+
+
+    /*
+       Wrap the existing title/subtitle
+       without changing their content.
+    */
+
+    if (
+        !title.parentElement.classList.contains(
+            "swimtics-ecosystem-intro"
+        )
+    ) {
+
+        const wrapper =
+            doc.createElement("div");
+
+        wrapper.className =
+            "swimtics-ecosystem-intro";
+
+
+        title.parentNode.insertBefore(
+            wrapper,
+            title
+        );
+
+
+        wrapper.appendChild(title);
+
+
+        if (subtitle) {
+
+            wrapper.appendChild(
+                subtitle
+            );
+
+        }
+
+    }
+
+
+    const wrapper =
+        title.parentElement;
+
+
+    /*
+       Initial state.
+    */
+
+    swimticsGSAP.set(
+
+    wrapper,
+
+    {
+
+        opacity: 0,
+
+        y: 100,
+
+        clipPath:
+            "inset(0 0 25% 0)",
+
+        filter:
+            "blur(12px)"
+
+    }
+
+);
+
+    /*
+       Scroll animation.
+    */
+
+    swimticsGSAP.to(
+
+    wrapper,
+
+    {
+
+        opacity: 1,
+
+        y: 0,
+
+        clipPath:
+            "inset(0 0 0% 0)",
+
+        filter:
+            "blur(0px)",
+
+        duration: 1.35,
+
+        ease:
+            "power4.out",
+
+        scrollTrigger: {
+
+            trigger:
+                section,
+
+            start:
+                "top 82%",
+
+            toggleActions:
+                "play none none reverse"
+
+        }
+
+    }
+
+);
+
+}
+
+/* =========================================================
+   CHASE AI SHOWCASE
+   ========================================================= */
+
+function setupChaseAIShowcase(doc) {
+
+    const ecosystem =
+        doc.querySelector("#homeFeatures");
+
+    if (!ecosystem) return;
+
+
+    /* Prevent duplicate creation */
+
+    if (
+        doc.querySelector(".swimtics-chase-showcase")
+    ) return;
+
+
+    /* -----------------------------------------------------
+       CREATE SECTION
+       ----------------------------------------------------- */
+
+    const section =
+        doc.createElement("section");
+
+    section.className =
+        "swimtics-chase-showcase";
+
+
+    section.innerHTML = `
+
+        <div class="chase-showcase-inner">
+
+            <div class="chase-showcase-header">
+
+
+                <h2>
+                    CHASE AI
+                </h2>
+
+                <p>
+                    See what the eye misses with Chase AI, the epitome of motion analysis.
+                </p>
+
+            </div>
+
+
+            <div class="chase-analysis-stage">
+
+                <div class="chase-analysis-grid"></div>
+
+
+                <div class="chase-analysis-number">
+                    01
+                </div>
+
+
+                <div class="chase-analysis-center">
+
+                    <div class="chase-analysis-label">
+                        SWIMTICS / MOTION ANALYSIS
+                    </div>
+
+                    <div class="chase-analysis-line"></div>
+
+                    <div class="chase-analysis-status">
+                        VIDEO ANALYSIS SYSTEM
+                    </div>
+
+                </div>
+
+
+                <div class="chase-analysis-corner
+                            chase-corner-tl">
+                </div>
+
+                <div class="chase-analysis-corner
+                            chase-corner-tr">
+                </div>
+
+                <div class="chase-analysis-corner
+                            chase-corner-bl">
+                </div>
+
+                <div class="chase-analysis-corner
+                            chase-corner-br">
+                </div>
+
+
+                <div class="chase-analysis-meta
+                            chase-meta-left">
+
+                    <span>01</span>
+                    MOTION
+
+                </div>
+
+
+                <div class="chase-analysis-meta
+                            chase-meta-right">
+
+                    <span>02</span>
+                    TECHNIQUE
+
+                </div>
+
+
+                <div class="chase-analysis-bottom">
+
+                    <span>
+                        UPLOAD
+                    </span>
+
+                    <span>
+                        ANALYZE
+                    </span>
+
+                    <span>
+                        IMPROVE
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="chase-showcase-footer">
+
+                <div>
+                    PERFORMANCE INTELLIGENCE
+                </div>
+
+                <div>
+                    PRECISION / POWER / PROGRESS
+                </div>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    /*
+       Place after ecosystem.
+    */
+
+    ecosystem.appendChild(section);
+    
+
+
+    /* -----------------------------------------------------
+       ENTRANCE ANIMATION
+       ----------------------------------------------------- */
+
+    swimticsGSAP.fromTo(
+
+        section,
+
+        {
+            opacity: 0,
+            y: 100
+        },
+
+        {
+            opacity: 1,
+            y: 0,
+            duration: 1.2,
+            ease: "power4.out",
+
+            scrollTrigger: {
+
+                trigger: section,
+
+                start: "top 80%",
+
+                toggleActions:
+                    "play none none reverse"
+
+            }
+
+        }
+
+    );
+
+
+    /* -----------------------------------------------------
+       ANALYSIS STAGE
+       ----------------------------------------------------- */
+
+    const stage =
+        section.querySelector(
+            ".chase-analysis-stage"
+        );
+
+
+    swimticsGSAP.fromTo(
+
+        stage,
+
+        {
+            opacity: 0,
+            scale: .94,
+            filter: "blur(8px)"
+        },
+
+        {
+            opacity: 1,
+            scale: 1,
+            filter: "blur(0px)",
+            duration: 1.4,
+            ease: "power4.out",
+
+            scrollTrigger: {
+
+                trigger: stage,
+
+                start: "top 85%",
+
+                toggleActions:
+                    "play none none reverse"
+
+            }
+
+        }
+
+    );
+
+
+    /* -----------------------------------------------------
+       GIANT NUMBER PARALLAX
+       ----------------------------------------------------- */
+
+    const number =
+        section.querySelector(
+            ".chase-analysis-number"
+        );
+
+
+    swimticsGSAP.to(
+
+        number,
+
+        {
+            y: -80,
+
+            ease: "none",
+
+            scrollTrigger: {
+
+                trigger: section,
+
+                start: "top bottom",
+
+                end: "bottom top",
+
+                scrub: true
+
+            }
+
+        }
+
+    );
+
+}
+
+
+/* =========================================================
+   SCROLL PROGRESS
+   ========================================================= */
+
+function createScrollProgress(doc) {
+
+    if (
+        doc.getElementById(
+            "swimticsScrollProgress"
+        )
+    ) return;
+
+
+    const progress =
+        doc.createElement("div");
+
+    progress.id =
+        "swimticsScrollProgress";
+
+
+    const bar =
+        doc.createElement("span");
+
+
+    progress.appendChild(bar);
+
+    doc.body.appendChild(progress);
+
+
+    const scrollContainer =
+        doc.scrollingElement ||
+        doc.documentElement;
+
+
+    function updateProgress() {
+
+        const max =
+            scrollContainer.scrollHeight -
+            scrollContainer.clientHeight;
+
+
+        const percentage =
+            max > 0
+                ? (scrollContainer.scrollTop / max) * 100
+                : 0;
+
+
+        bar.style.height =
+            `${percentage}%`;
+
+    }
+
+
+    doc.addEventListener(
+        "scroll",
+        updateProgress,
+        { passive: true }
+    );
+
+
+    updateProgress();
+
+}
+
+
+/* =========================================================
+   FEATURE CARDS
+   ========================================================= */
+
+function setupFeatureCards(doc) {
+
+    const cards =
+        doc.querySelectorAll(
+            ".feature-card"
+        );
+
+
+    if (!cards.length) return;
+
+
+    cards.forEach((card, index) => {
+
+        /* -------------------------------------------------
+   PERFORMANCE SYSTEM METADATA
+   ------------------------------------------------- */
+
+const number =
+    String(index + 1).padStart(2, "0");
+
+card.setAttribute(
+    "data-index",
+    number
+);
+
+card.setAttribute(
+    "data-system",
+    index + 1
+); 
+
+/* -------------------------------------------------
+   TECHNICAL CORNER
+   ------------------------------------------------- */
+
+if (
+    !card.querySelector(
+        ".swimtics-tech-corner"
+    )
+) {
+
+    const corner =
+        doc.createElement("div");
+
+    corner.className =
+        "swimtics-tech-corner";
+
+    corner.style.top =
+        "0";
+
+    corner.style.left =
+        "0";
+
+    card.appendChild(corner);
+
+}
+
+
+        /* -------------------------------------------------
+           BORDER SWEEP
+           ------------------------------------------------- */
+
+        if (
+            !card.querySelector(
+                ".swimtics-border-sweep"
+            )
+        ) {
+
+            const sweep =
+                doc.createElement("div");
+
+            sweep.className =
+                "swimtics-border-sweep";
+
+            card.appendChild(sweep);
+
+        }
+
+
+        /* -------------------------------------------------
+           MOUSE LIGHT
+           ------------------------------------------------- */
+
+        const light =
+            doc.createElement("div");
+
+        light.className =
+            "swimtics-card-light";
+
+        card.appendChild(light);
+
+
+        card.addEventListener(
+            "mousemove",
+            event => {
+
+                const rect =
+                    card.getBoundingClientRect();
+
+
+                const x =
+                    event.clientX -
+                    rect.left;
+
+
+                const y =
+                    event.clientY -
+                    rect.top;
+
+
+                light.style.left =
+                    `${x}px`;
+
+                light.style.top =
+                    `${y}px`;
+
+                light.style.opacity =
+                    "1";
+
+
+                const rotateX =
+                    ((y / rect.height) - .5)
+                    * -5;
+
+
+                const rotateY =
+                    ((x / rect.width) - .5)
+                    * 5;
+
+
+                swimticsGSAP.to(
+                    card,
+                    {
+
+                        rotateX,
+                        rotateY,
+
+                        scale: 1.018,
+
+                        duration: .45,
+
+                        ease:
+                            "power3.out",
+
+                        overwrite: true
+
+                    }
+                );
+
+            }
+        );
+
+
+        card.addEventListener(
+            "mouseleave",
+            () => {
+
+                light.style.opacity =
+                    "0";
+
+
+                swimticsGSAP.to(
+                    card,
+                    {
+
+                        rotateX: 0,
+
+                        rotateY: 0,
+
+                        scale: 1,
+
+                        duration: .7,
+
+                        ease:
+                            "power3.out",
+
+                        overwrite: true
+
+                    }
+                );
+
+            }
+        );
+
+
+        /* -------------------------------------------------
+           CARD ENTRANCE
+           ------------------------------------------------- */
+
+        swimticsGSAP.fromTo(
+
+    card,
+
+    {
+
+        opacity: 0,
+
+        y: 90,
+
+        rotateX: 8,
+
+        scale: .94,
+
+        filter:
+            "blur(10px)"
+
+    },
+
+    {
+
+        opacity: 1,
+
+        y: 0,
+
+        rotateX: 0,
+
+        scale: 1,
+
+        filter:
+            "blur(0px)",
+
+        duration: 1.15,
+
+        delay:
+            index * .14,
+
+        ease:
+            "power4.out",
+
+        scrollTrigger: {
+
+            trigger: card,
+
+            start:
+                "top 88%",
+
+            toggleActions:
+                "play none none reverse"
+
+        }
+
+    }
+
+);
+
+
+
+    });
+
+    /* =================================================
+   GIANT SYSTEM NUMBERS
+   ================================================= */
+
+cards.forEach((card) => {
+
+    swimticsGSAP.to(
+
+        card,
+
+        {
+
+            backgroundPosition:
+                "20% 80%",
+
+            ease:
+                "none",
+
+            scrollTrigger: {
+
+                trigger: card,
+
+                start:
+                    "top bottom",
+
+                end:
+                    "bottom top",
+
+                scrub: true
+
+            }
+
+        }
+
+    );
+
+});
+
+}
+
+
+/* =========================================================
+   GENERAL SCROLL REVEALS
+   ========================================================= */
+
+function setupScrollReveals(doc) {
+
+    const selectors = [
+
+        ".features-title",
+
+        ".features-subtitle",
+
+        ".glass",
+
+        ".page h1",
+
+        ".page h2",
+
+        ".page h3",
+
+        ".analyzer-container",
+
+        ".pb-item",
+
+        ".report-card",
+
+        ".metric-box",
+
+        ".profile-card",
+
+        ".account-card",
+
+        ".warroom-card",
+
+        ".dashboard-card"
+
+    ];
+
+
+    const elements =
+        doc.querySelectorAll(
+            selectors.join(",")
+        );
+
+
+    elements.forEach(
+        (element, index) => {
+
+            if (
+                element.dataset
+                    .swimticsAnimated
+            ) {
+
+                return;
+
+            }
+
+
+            element.dataset
+                .swimticsAnimated =
+                "true";
+
+
+            swimticsGSAP.fromTo(
+
+                element,
+
+                {
+
+                    opacity: 0,
+
+                    y: 45,
+
+                    filter:
+                        "blur(7px)"
+
+                },
+
+                {
+
+                    opacity: 1,
+
+                    y: 0,
+
+                    filter:
+                        "blur(0px)",
+
+                    duration: 1,
+
+                    delay:
+                        (index % 5) * .08,
+
+                    ease:
+                        "power4.out",
+
+                    scrollTrigger: {
+
+                        trigger: element,
+
+                        start:
+                            "top 90%",
+
+                        toggleActions:
+                            "play none none reverse"
+
+                    }
+
+                }
+
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   PARALLAX
+   ========================================================= */
+
+function setupParallax(doc) {
+
+    const targets =
+        doc.querySelectorAll(
+            "#bgVideo, .hero-title, .features-section"
+        );
+
+
+    targets.forEach(
+        (element, index) => {
+
+            swimticsGSAP.to(
+            element,
+
+                {
+
+                    y:
+                        index === 0
+                            ? -80
+                            : -35,
+
+                    ease:
+                        "none",
+
+                    scrollTrigger: {
+
+                        trigger:
+                            element,
+
+                        start:
+                            "top top",
+
+                        end:
+                            "bottom top",
+
+                        scrub: true
+
+                    }
+
+                }
+
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   PAGE OBSERVER
+   ========================================================= */
+
+function setupPageObserver(doc) {
+
+    const pages =
+        doc.querySelectorAll(
+            ".page"
+        );
+
+
+    if (!pages.length) return;
+
+
+    pages.forEach(page => {
+
+        const observer =
+            new MutationObserver(
+                mutations => {
+
+                    mutations.forEach(
+                        mutation => {
+
+                            if (
+                                mutation.attributeName !==
+                                "class"
+                            ) return;
+
+
+                            if (
+                                page.classList.contains(
+                                    "active"
+                                )
+                            ) {
+
+                                animatePageEntrance(
+                                    page
+                                );
+
+                            }
+
+                        }
+                    );
+
+                }
+            );
+
+
+        observer.observe(
+            page,
+            {
+                attributes: true
+            }
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   PAGE ENTRANCE
+   ========================================================= */
+
+function animatePageEntrance(page) {
+
+    if (!window.swimticsGSAP) return;
+
+
+    const elements =
+        page.querySelectorAll(
+            "h1, h2, h3, .glass, button, input, select, textarea, .pb-item"
+        );
+
+
+    swimticsGSAP.fromTo(
+
+        elements,
+
+        {
+
+            opacity: 0,
+
+            y: 25
+
+        },
+
+        {
+
+            opacity: 1,
+
+            y: 0,
+
+            duration: .65,
+
+            stagger: .035,
+
+            ease:
+                "power3.out",
+
+            clearProps:
+                "transform"
+
+        }
+
+    );
+
+}
+
+
+/* =========================================================
+   MICRO INTERACTIONS
+   ========================================================= */
+
+function setupMicroInteractions(doc) {
+
+
+    /* -----------------------------------------------------
+       BUTTON MAGNETIC EFFECT
+       ----------------------------------------------------- */
+
+    const buttons =
+        doc.querySelectorAll(
+            ".btn, .premium-upload"
+        );
+
+
+    buttons.forEach(button => {
+
+        button.addEventListener(
+            "mousemove",
+            event => {
+
+                const rect =
+                    button.getBoundingClientRect();
+
+
+                const x =
+                    event.clientX -
+                    rect.left -
+                    rect.width / 2;
+
+
+                const y =
+                    event.clientY -
+                    rect.top -
+                    rect.height / 2;
+
+
+                swimticsGSAP.to(
+                 button,
+
+                    {
+
+                        x:
+                            x * .08,
+
+                        y:
+                            y * .08,
+
+                        duration:
+                            .35,
+
+                        ease:
+                            "power3.out"
+
+                    }
+
+                );
+
+            }
+        );
+
+
+        button.addEventListener(
+            "mouseleave",
+            () => {
+
+                swimticsGSAP.to(
+                   button,
+
+                    {
+
+                        x: 0,
+
+                        y: 0,
+
+                        duration:
+                            .5,
+
+                        ease:
+                            "elastic.out(1,.5)"
+
+                    }
+
+                );
+
+            }
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   FALLBACK
+   ========================================================= */
+
+function initialiseFallbackAnimations(doc) {
+
+    const elements =
+        doc.querySelectorAll(
+            ".feature-card, .glass, .features-title"
+        );
+
+
+    const observer =
+        new IntersectionObserver(
+
+            entries => {
+
+                entries.forEach(
+                    entry => {
+
+                        if (
+                            entry.isIntersecting
+                        ) {
+
+                            entry.target.classList.add(
+                                "visible"
+                            );
+
+                            observer.unobserve(
+                                entry.target
+                            );
+
+                        }
+
+                    }
+                );
+
+            },
+
+            {
+                threshold: .12
+            }
+
+        );
+
+
+    elements.forEach(
+        element =>
+            observer.observe(element)
+    );
+
+}
+
+
+/* =========================================================
+   PREMIUM STYLE INJECTION
+   ========================================================= */
+
+
+/* =========================================================
+   SWIMTICS PREMIUM EXPERIENCE — DIRECT MODE
+   Merged from premium.html into index.html.
+   ========================================================= */
+
+(function initialiseSwimticsPremium() {
+
+    const start = () => {
+
+        if (typeof gsap === "undefined") {
+            console.warn("SWIMTICS premium: GSAP unavailable.");
+            initialiseFallbackAnimations(document);
+            return;
+        }
+
+        if (typeof ScrollTrigger === "undefined") {
+            console.warn("SWIMTICS premium: ScrollTrigger unavailable.");
+            initialiseFallbackAnimations(document);
+            return;
+        }
+
+        window.swimticsGSAP = gsap;
+        window.swimticsScrollTrigger = ScrollTrigger;
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        const doc = document;
+
+        createScrollProgress(doc);
+        setupEcosystemIntro(doc);
+        setupFeatureCards(doc);
+        setupScrollReveals(doc);
+        setupChaseAIShowcase(doc);
+        setupParallax(doc);
+        setupPageObserver(doc);
+        setupMicroInteractions(doc);
+
+        ScrollTrigger.refresh();
+
+    };
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", start, { once: true });
+    } else {
+        start();
+    }
+
+})();
+
+
+/* =========================================================
+   SWIMTICS CINEMATIC ENTRY GATE — DIRECT MODE
+   ========================================================= */
+
+(function setupSwimticsEntryGate() {
+
+    const entryGate = document.getElementById("entryGate");
+    const enterButton = document.getElementById("enterButton");
+    const entryBackground = document.getElementById("entryBackground");
+
+    if (!entryGate || !enterButton || !entryBackground) return;
+
+    function enterSwimtics() {
+
+        if (entryGate.classList.contains("exit")) return;
+
+        entryGate.classList.add("exit");
+
+        /* Return control of scrolling to the actual application. */
+        document.documentElement.style.overflowY = "auto";
+        document.body.style.overflowY = "auto";
+
+        window.setTimeout(() => {
+            entryGate.style.visibility = "hidden";
+            entryGate.style.pointerEvents = "none";
+        }, 1200);
+
+        if (window.gsap) {
+            window.gsap.fromTo(
+                "#home .overlay",
+                { opacity: 0, y: 18 },
+                { opacity: 1, y: 0, duration: 1.1, ease: "power4.out", delay: .15 }
+            );
+        }
+
+    }
+
+    enterButton.addEventListener("click", enterSwimtics);
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Enter" && !entryGate.classList.contains("exit")) {
+            enterSwimtics();
+        }
+    });
+
+    document.addEventListener("mousemove", event => {
+        if (entryGate.classList.contains("exit")) return;
+
+        const x = (event.clientX / window.innerWidth) - .5;
+        const y = (event.clientY / window.innerHeight) - .5;
+
+        entryBackground.style.transform = `
+            scale(1.075)
+            translate3d(${x * -12}px, ${y * -8}px, 0)
+        `;
+    });
+
+    document.addEventListener("mouseleave", () => {
+        if (entryGate.classList.contains("exit")) return;
+        entryBackground.style.transform = "scale(1.10)";
+    });
+
+})();
+
+
+</script>
 </body>
 
 </html>
