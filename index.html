@@ -7209,6 +7209,7 @@ body {
     </script>
 
 
+    <script src="src/chase-engine/geometry.js"></script>
     <script>
 
         function showPage(pageId) {
@@ -7373,17 +7374,6 @@ window.addEventListener("DOMContentLoaded", () => {
    GEOMETRY HELPERS
 --------------------------------------------------------- */
 
-function midpoint(a, b) {
-
-    if (!a || !b) return null;
-
-    return {
-        x: (a.x + b.x) / 2,
-        y: (a.y + b.y) / 2,
-        z: ((a.z ?? 0) + (b.z ?? 0)) / 2
-    };
-}
-
 function averageValid(values) {
 
     const valid = values.filter(value => Number.isFinite(value));
@@ -7391,46 +7381,6 @@ function averageValid(values) {
     if (!valid.length) return null;
 
     return valid.reduce((sum, value) => sum + value, 0) / valid.length;
-}
-
-function chaseCalculateAngle(a, b, c) {
-
-    if (!a || !b || !c) return null;
-
-    const abx = a.x - b.x;
-    const aby = a.y - b.y;
-    const cbx = c.x - b.x;
-    const cby = c.y - b.y;
-
-    const magnitudeAB = Math.hypot(abx, aby);
-    const magnitudeCB = Math.hypot(cbx, cby);
-
-    if (!magnitudeAB || !magnitudeCB) return null;
-
-    const cosine =
-        (abx * cbx + aby * cby) /
-        (magnitudeAB * magnitudeCB);
-
-    return Math.acos(
-        Math.max(-1, Math.min(1, cosine))
-    ) * 180 / Math.PI;
-}
-
-function calculateLineAngle(a, b) {
-
-    if (!a || !b) return null;
-
-    return Math.abs(
-        Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI
-    );
-}
-
-function isVisible(point, threshold = 0.35) {
-
-    return !!(
-        point &&
-        (point.visibility ?? 1) >= threshold
-    );
 }
 
 /* ---------------------------------------------------------

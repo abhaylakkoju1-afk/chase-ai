@@ -145,11 +145,7 @@ function extractBalancedBlock(text, openIndex) {
 // an anchor is missing or ambiguous (found more than once).
 
 const TARGETS = {
-  midpoint: "function midpoint(a, b) {",
   averageValid: "function averageValid(values) {",
-  chaseCalculateAngle: "function chaseCalculateAngle(a, b, c) {",
-  calculateLineAngle: "function calculateLineAngle(a, b) {",
-  isVisible: "function isVisible(point, threshold = 0.35) {",
   summariseMetric: "function summariseMetric(values) {",
   chaseDetectFreestyleCycles: "function chaseDetectFreestyleCycles() {",
   CHASE_COACHING_RULES: "const CHASE_COACHING_RULES = [",
@@ -205,11 +201,7 @@ function readIndexHtml() {
 }
 
 const PURE_FUNCTION_NAMES = [
-  "midpoint",
   "averageValid",
-  "chaseCalculateAngle",
-  "calculateLineAngle",
-  "isVisible",
   "summariseMetric",
   "timeToSeconds",
   "formatTime",
@@ -220,7 +212,7 @@ const PURE_FUNCTION_NAMES = [
  * Extracts the approved Chase pure functions and CHASE_COACHING_RULES
  * from the current index.html source and evaluates them in a fresh,
  * isolated vm sandbox. Returns the sandbox object, which exposes each
- * extracted function/constant as a property (e.g. `chase.midpoint`,
+ * extracted function/constant as a property (e.g. `chase.summariseMetric`,
  * `chase.CHASE_COACHING_RULES`), plus a mutable `metricsHistory` object
  * that `chaseDetectFreestyleCycles` reads as a global — this is
  * synthetic test fixture data supplied by the harness, not something
