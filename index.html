@@ -7212,6 +7212,7 @@ body {
     <script src="src/chase-engine/geometry.js"></script>
     <script src="src/chase-engine/stats.js"></script>
     <script src="src/chase-engine/stroke-cycles.js"></script>
+    <script src="src/chase-engine/pose-frame.js"></script>
     <script>
 
         function showPage(pageId) {
@@ -7320,6 +7321,26 @@ let metricsHistory = {
     wristMinY: [],         // min(visible wrist y) — used for stroke-cycle detection
     timestamps: []
 };
+
+/* ADDITIVE, PARALLEL raw-evidence capture — see
+   src/chase-engine/pose-frame.js and the PoseFrame / TrackedSequence
+   research report. Does NOT replace metricsHistory and is not read by
+   any existing metric/coaching code; it exists so raw MediaPipe output
+   (both landmark coordinate systems, raw visibility, and whether a
+   pose was found at all) survives past the single frame it arrived in,
+   for future work only. Reset once per analysis run (see upload()).
+   Currently unbounded for the duration of one analysis run — see the
+   PoseFrame implementation report's memory-implications note; this is
+   flagged for human review rather than given an invented cap here. */
+let chasePoseFrameHistory = [];
+
+/* Literal, hand-written description of the currently configured pose
+   model (see initialiseChasePose()'s pose.setOptions() call and the
+   <script> tag loading @mediapipe/pose above) — not derived from any
+   new state, per the instruction not to introduce new architecture
+   for this. Update this string if the model/version/complexity
+   configured there ever changes. */
+const CHASE_POSE_MODEL_SOURCE = "mediapipe-pose-legacy@0.5.1675469404 (modelComplexity=1)";
 
 let currentAnalysis = {
     frames: 0,
@@ -7654,6 +7675,8 @@ async function upload() {
     metricsHistory.wristMinY = [];
     metricsHistory.timestamps = [];
 
+    chasePoseFrameHistory = [];
+
     currentAnalysis = {
         frames: 0,
         validFrames: 0,
@@ -7796,6 +7819,28 @@ window.addEventListener("DOMContentLoaded", () => {
    POSE RESULTS — landmark extraction + Phase 2 metrics
 --------------------------------------------------------- */
 
+/* ADDITIVE, PARALLEL raw-evidence capture for one MediaPipe result —
+   see src/chase-engine/pose-frame.js and chasePoseFrameHistory's
+   declaration above. Called from both branches of onChasePoseResults()
+   below (pose found and pose not found) so the two cases remain
+   distinguishable. Does not read or write metricsHistory, and does not
+   affect any existing metric calculation, drawing, or coaching output.
+   Safe to delete this function and its two call sites below to fully
+   remove this feature. */
+function chaseCaptureAdditivePoseFrame(video, results) {
+
+    if (!video || typeof chaseBuildPoseFrame !== "function") return;
+
+    chasePoseFrameHistory.push(chaseBuildPoseFrame({
+        results,
+        frameIndex: chasePoseFrameHistory.length,
+        videoTimestampMs: video.currentTime * 1000,
+        imageWidth: chaseAnalysisCanvas.width,
+        imageHeight: chaseAnalysisCanvas.height,
+        modelSource: CHASE_POSE_MODEL_SOURCE
+    }));
+}
+
 function onChasePoseResults(results) {
 
     const video = document.getElementById("analyzerPlayer");
@@ -7805,6 +7850,7 @@ function onChasePoseResults(results) {
 
         if (analyzing) {
             currentAnalysis.frames++;
+            chaseCaptureAdditivePoseFrame(video, results);
         }
 
         return;
@@ -7829,6 +7875,8 @@ function onChasePoseResults(results) {
 
     currentAnalysis.frames++;
     currentAnalysis.validFrames++;
+
+    chaseCaptureAdditivePoseFrame(video, results);
 
     /* -----------------------------------------------------
        LANDMARKS
