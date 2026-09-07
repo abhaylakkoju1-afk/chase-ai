@@ -334,3 +334,90 @@ export function createExperiment({
   );
   return record;
 }
+
+// ---------------------------------------------------------------------
+// 7. Experiment run (additive — does NOT replace or modify createExperiment())
+// ---------------------------------------------------------------------
+//
+// createExperiment() above is left exactly as merged. This is a
+// separate, forward-looking contract for the same underlying idea —
+// one run of the evaluator over a dataset — structured to avoid a
+// problem createExperiment() has: it re-declares dataset_version,
+// annotation_version, evaluation_version, and detector_commit as its
+// own top-level fields, duplicating whatever those same four values
+// already are on the EvaluationConfig that was actually used. Two
+// copies of the same fact with nothing enforcing they agree is exactly
+// the kind of drift Protocol §17's reproducibility requirement exists
+// to prevent.
+//
+// createExperimentRun() instead holds ONE EvaluationConfig object
+// (createEvaluationConfig()) as `config` — the version tuple lives
+// there, once, and is read from there. It does not re-accept
+// dataset_version/annotation_version/evaluation_version/detector_commit/
+// event_type/matching_tolerance_ms as parameters of its own; passing
+// them here would do nothing, since they are not part of this
+// function's destructured parameters — the single source of truth is
+// `config`.
+//
+// A run spans a DATASET (potentially many clips), not one clip:
+// `results` holds one EvaluationResult (createEvaluationResult() /
+// evaluateClip()) per clip evaluated in this run. This factory does
+// not compute anything — see aggregate.js for the pure run-level
+// rollup of `results`.
+//
+// No ID or timestamp is generated here. `experiment_id` and
+// `created_at` must both be supplied by the caller, keeping this
+// factory a pure, deterministic function of its inputs — the same
+// inputs always produce the same record, regardless of when it is
+// called.
+export function createExperimentRun({
+  experiment_id,
+  config,
+  results,
+  created_at,
+  notes = null,
+} = {}) {
+  const record = { experiment_id, config, results, created_at, notes };
+
+  requireFields(record, ["experiment_id", "config", "results", "created_at"], "createExperimentRun");
+
+  if (typeof experiment_id !== "string" || experiment_id.trim().length === 0) {
+    throw new Error("createExperimentRun: experiment_id must be a non-empty string");
+  }
+  if (typeof config !== "object" || config === null) {
+    throw new Error("createExperimentRun: config must be an EvaluationConfig object (see createEvaluationConfig)");
+  }
+  if (!Array.isArray(results)) {
+    throw new Error("createExperimentRun: results must be an array of EvaluationResult objects");
+  }
+  if (!isValidIso8601Timestamp(created_at)) {
+    throw new Error(
+      "createExperimentRun: created_at must be a caller-supplied, valid ISO-8601 timestamp string " +
+      "(e.g. new Date().toISOString() -> \"2026-09-07T00:00:00.000Z\") — it is never generated " +
+      "internally by this factory."
+    );
+  }
+
+  return record;
+}
+
+// Validates that `value` is a real, parseable ISO-8601 timestamp — not
+// just "some non-empty string". Deliberately dependency-free: a value
+// round-trips only if `new Date(value)` parses to a real instant AND
+// re-serializing that instant via the platform's own `toISOString()`
+// reproduces the exact input string. This rejects "not-a-date" and
+// other non-date text (Date.parse yields NaN), rejects "" (caught by
+// the same NaN check), and rejects strings that merely look date-ish
+// but aren't the canonical extended format `toISOString()` produces
+// (e.g. a bare "2026-09-07" round-trips to
+// "2026-09-07T00:00:00.000Z", not to itself, so it is rejected as a
+// *timestamp* — the field the caller must supply is a moment in time,
+// not a calendar date). It accepts exactly the format
+// `new Date().toISOString()` already produces, which is what every
+// caller in this codebase is expected to pass.
+function isValidIso8601Timestamp(value) {
+  if (typeof value !== "string" || value.length === 0) return false;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed.toISOString() === value;
+}

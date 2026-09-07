@@ -14,6 +14,7 @@ import {
   createEvaluationConfig,
   createEvaluationResult,
   createExperiment,
+  createExperimentRun,
 } from "../../src/evaluation/contracts.js";
 
 describe("createClipMetadata()", () => {
@@ -214,5 +215,214 @@ describe("createExperiment()", () => {
 
   test("throws when a required field is missing", () => {
     assert.throws(() => createExperiment({ experiment_id: "SYNTHETIC-EXPERIMENT-001" }));
+  });
+});
+
+describe("createExperimentRun()", () => {
+  function syntheticConfig() {
+    return createEvaluationConfig({
+      dataset_version: "synthetic-fixture-v0",
+      annotation_version: "synthetic-fixture-v0",
+      evaluation_version: "eval-v0",
+      detector_commit: "SYNTHETIC-COMMIT-0000000",
+      event_type: "synthetic_test_event",
+      matching_tolerance_ms: 50,
+    });
+  }
+
+  function syntheticResult(clip_id, overrides = {}) {
+    return createEvaluationResult({
+      clip_id,
+      config: syntheticConfig(),
+      matches: [],
+      unmatchedPredictedIndices: [],
+      unmatchedGroundTruthIndices: [],
+      truePositives: 0,
+      falsePositives: 0,
+      falseNegatives: 0,
+      precision: null,
+      recall: null,
+      f1: null,
+      boundaryTimingErrorsMs: [],
+      ...overrides,
+    });
+  }
+
+  test("builds a valid run bundling multiple EvaluationResults under one config", () => {
+    const config = syntheticConfig();
+    const run = createExperimentRun({
+      experiment_id: "SYNTHETIC-EXPERIMENT-RUN-001",
+      config,
+      results: [syntheticResult("SYNTHETIC-CLIP-001"), syntheticResult("SYNTHETIC-CLIP-002")],
+      created_at: "2026-09-07T00:00:00.000Z",
+    });
+
+    assert.strictEqual(run.experiment_id, "SYNTHETIC-EXPERIMENT-RUN-001");
+    assert.strictEqual(run.config, config);
+    assert.strictEqual(run.results.length, 2);
+    assert.strictEqual(run.created_at, "2026-09-07T00:00:00.000Z");
+    assert.strictEqual(run.notes, null);
+  });
+
+  test("accepts an empty results array (a run with no evaluated clips yet)", () => {
+    const run = createExperimentRun({
+      experiment_id: "SYNTHETIC-EXPERIMENT-RUN-EMPTY",
+      config: syntheticConfig(),
+      results: [],
+      created_at: "2026-09-07T00:00:00.000Z",
+    });
+    assert.deepStrictEqual(run.results, []);
+  });
+
+  test("does not accept or duplicate version fields as its own parameters", () => {
+    // Passing these should have NO effect: they are not part of
+    // createExperimentRun()'s destructured parameters, so they are
+    // silently absent from the returned record. The version tuple must
+    // be read from `config` only.
+    const config = syntheticConfig();
+    const run = createExperimentRun({
+      experiment_id: "SYNTHETIC-EXPERIMENT-RUN-002",
+      config,
+      results: [],
+      created_at: "2026-09-07T00:00:00.000Z",
+      // Deliberately attempting to smuggle in duplicated version fields:
+      dataset_version: "SHOULD-BE-IGNORED",
+      annotation_version: "SHOULD-BE-IGNORED",
+      evaluation_version: "SHOULD-BE-IGNORED",
+      detector_commit: "SHOULD-BE-IGNORED",
+      event_type: "SHOULD-BE-IGNORED",
+      matching_tolerance_ms: 999,
+    });
+
+    assert.strictEqual(run.dataset_version, undefined);
+    assert.strictEqual(run.annotation_version, undefined);
+    assert.strictEqual(run.evaluation_version, undefined);
+    assert.strictEqual(run.detector_commit, undefined);
+    assert.strictEqual(run.event_type, undefined);
+    assert.strictEqual(run.matching_tolerance_ms, undefined);
+    // The real values live only on config, exactly once.
+    assert.strictEqual(run.config.dataset_version, "synthetic-fixture-v0");
+    assert.strictEqual(run.config.detector_commit, "SYNTHETIC-COMMIT-0000000");
+  });
+
+  test("throws when a required field is missing", () => {
+    assert.throws(() =>
+      createExperimentRun({ experiment_id: "SYNTHETIC-EXPERIMENT-RUN-003", config: syntheticConfig(), results: [] })
+    );
+  });
+
+  test("throws when experiment_id is an empty string", () => {
+    assert.throws(() =>
+      createExperimentRun({
+        experiment_id: "   ",
+        config: syntheticConfig(),
+        results: [],
+        created_at: "2026-09-07T00:00:00.000Z",
+      })
+    );
+  });
+
+  test("throws when results is not an array", () => {
+    assert.throws(() =>
+      createExperimentRun({
+        experiment_id: "SYNTHETIC-EXPERIMENT-RUN-004",
+        config: syntheticConfig(),
+        results: "not-an-array",
+        created_at: "2026-09-07T00:00:00.000Z",
+      })
+    );
+  });
+
+  test("throws when config is missing or not an object", () => {
+    assert.throws(() =>
+      createExperimentRun({
+        experiment_id: "SYNTHETIC-EXPERIMENT-RUN-005",
+        config: null,
+        results: [],
+        created_at: "2026-09-07T00:00:00.000Z",
+      })
+    );
+  });
+
+  describe("created_at validation", () => {
+    test("accepts the canonical ISO-8601 timestamp format (new Date().toISOString())", () => {
+      const run = createExperimentRun({
+        experiment_id: "SYNTHETIC-EXPERIMENT-RUN-006",
+        config: syntheticConfig(),
+        results: [],
+        created_at: "2026-09-07T00:00:00.000Z",
+      });
+      assert.strictEqual(run.created_at, "2026-09-07T00:00:00.000Z");
+    });
+
+    test("accepts a freshly generated new Date().toISOString() value", () => {
+      const now = new Date().toISOString();
+      const run = createExperimentRun({
+        experiment_id: "SYNTHETIC-EXPERIMENT-RUN-007",
+        config: syntheticConfig(),
+        results: [],
+        created_at: now,
+      });
+      assert.strictEqual(run.created_at, now);
+    });
+
+    test("throws when created_at is an empty string", () => {
+      assert.throws(() =>
+        createExperimentRun({
+          experiment_id: "SYNTHETIC-EXPERIMENT-RUN-008",
+          config: syntheticConfig(),
+          results: [],
+          created_at: "",
+        })
+      );
+    });
+
+    test("throws when created_at is an obviously non-date string", () => {
+      assert.throws(() =>
+        createExperimentRun({
+          experiment_id: "SYNTHETIC-EXPERIMENT-RUN-009",
+          config: syntheticConfig(),
+          results: [],
+          created_at: "not-a-date",
+        })
+      );
+    });
+
+    test("throws when created_at is an arbitrary non-date string", () => {
+      assert.throws(() =>
+        createExperimentRun({
+          experiment_id: "SYNTHETIC-EXPERIMENT-RUN-010",
+          config: syntheticConfig(),
+          results: [],
+          created_at: "synthetic-placeholder-text",
+        })
+      );
+    });
+
+    test("throws when created_at is a bare calendar date, not a timestamp", () => {
+      // "2026-09-07" parses as a valid Date, but round-trips through
+      // toISOString() to "2026-09-07T00:00:00.000Z" (a different
+      // string) -- it is a date, not the timestamp format this field
+      // requires.
+      assert.throws(() =>
+        createExperimentRun({
+          experiment_id: "SYNTHETIC-EXPERIMENT-RUN-011",
+          config: syntheticConfig(),
+          results: [],
+          created_at: "2026-09-07",
+        })
+      );
+    });
+
+    test("throws when created_at is not a string at all", () => {
+      assert.throws(() =>
+        createExperimentRun({
+          experiment_id: "SYNTHETIC-EXPERIMENT-RUN-012",
+          config: syntheticConfig(),
+          results: [],
+          created_at: 1757200000000,
+        })
+      );
+    });
   });
 });

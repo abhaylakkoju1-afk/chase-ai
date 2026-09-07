@@ -23,6 +23,11 @@ exists yet.
   (plus a distribution summary of timing error).
 - Wires matching and metrics together for one clip
   (`src/evaluation/evaluate.js`) into a single `EvaluationResult`.
+- Bundles multiple clips' `EvaluationResult`s into one dataset-level
+  `ExperimentRun` (`createExperimentRun()`, `src/evaluation/contracts.js`)
+  and pools their counts into one precision/recall/F1
+  (`aggregateEvaluationResults()`, `src/evaluation/aggregate.js`) — see
+  "EvaluationResult vs. ExperimentRun" below.
 - Is exercised end-to-end today only by synthetic, hand-constructed
   timestamp fixtures (`test/evaluation/fixtures.js`), covering the
   matcher/metrics' mechanical edge cases.
@@ -44,8 +49,9 @@ exists yet.
   real-world detection accuracy. No benchmark has been run; none of
   this code has ever touched a real clip.
 - It does not build an annotation tool, a dashboard, a database, or any
-  persistence layer. `createExperiment()` only shapes a reproducibility
-  record in memory — nothing writes it to disk or a service.
+  persistence layer. `createExperiment()` and `createExperimentRun()`
+  only shape a reproducibility record in memory — nothing writes either
+  one to disk or a service.
 - It does not modify `docs/evaluation/ANNOTATION_PROTOCOL_V0.1.md`,
   the stroke-cycle detector, or any production contract in
   `docs/ARCHITECTURE.md` §2.4.
@@ -84,14 +90,64 @@ entirely the caller's concern and is invisible to this module. This is
 what lets real detector output be fed in later without changing any
 evaluation code.
 
+## EvaluationResult vs. ExperimentRun
+
+Two distinct scopes exist, and they are represented by two distinct
+contracts:
+
+- **`EvaluationResult`** (`createEvaluationResult()`) — the outcome for
+  **one clip**, produced by `evaluateClip()`. It carries that clip's
+  matches, unmatched indices, TP/FP/FN counts, and precision/recall/F1.
+- **`ExperimentRun`** (`createExperimentRun()`) — **one dataset run**:
+  references exactly one `EvaluationConfig` (`config`) and contains an
+  array of `EvaluationResult`s (`results`), one per clip evaluated
+  under that config, plus `experiment_id`, `created_at`, and optional
+  `notes`.
+
+`ExperimentRun` does **not** re-declare `dataset_version`,
+`annotation_version`, `evaluation_version`, `detector_commit`,
+`event_type`, or `matching_tolerance_ms` as its own fields — those live
+exactly once, on `config`. This is a deliberate difference from the
+older `createExperiment()` contract (still present, unchanged, and not
+reshaped by this addition), which does re-declare that tuple as its
+own top-level fields; `createExperimentRun()` is the forward-looking
+shape going forward specifically to avoid that duplication.
+
+`src/evaluation/aggregate.js`'s `aggregateEvaluationResults()` pools
+TP/FP/FN across an `ExperimentRun`'s `results` and recomputes
+precision/recall/F1 from the pooled totals using the same
+`precision()`/`recall()`/`f1Score()` primitives each clip already
+uses — this is **micro-averaging across events**, not an average of
+each clip's own F1 score, and it introduces no new metric or
+weighting scheme.
+
+Neither `ExperimentRun` nor its aggregation writes anything to disk —
+no persistence layer exists yet for either contract (see "What this
+infrastructure does NOT do" above).
+
 ## How versions are recorded
 
-`createExperiment()` and `createEvaluationConfig()` together capture
-the exact version tuple `ANNOTATION_PROTOCOL_V0.1.md` §17 requires for
-any reported result to be attributable: `dataset_version`,
-`annotation_version`, `evaluation_version`, and `detector_commit`. No
-function in this module infers or defaults any of these — a caller
-must supply all four explicitly, every time.
+`createExperiment()`, `createExperimentRun()` (via its `config`), and
+`createEvaluationConfig()` together capture the exact version tuple
+`ANNOTATION_PROTOCOL_V0.1.md` §17 requires for any reported result to
+be attributable: `dataset_version`, `annotation_version`,
+`evaluation_version`, and `detector_commit`. No function in this
+module infers or defaults any of these — a caller must supply all four
+explicitly, every time. Specifically:
+
+- **`evaluation_version`** is a manually-versioned string (e.g.
+  `"eval-v0"`), bumped by hand whenever the matching/metrics
+  *definitions* meaningfully change — the same convention already used
+  for `protocol_version` in `ANNOTATION_PROTOCOL_V0.1.md`. It is not
+  derived from git, and this module never shells out to git or reads
+  repository state to generate it.
+- **`dataset_version`** names an immutable snapshot of a clip set. A
+  version string always refers to the same fixed set of clips; adding,
+  removing, or replacing a clip requires a new `dataset_version`, never
+  editing the meaning of an existing one in place.
+- **`detector_commit`** identifies the exact commit of the detector
+  code (`src/chase-engine/`) that produced the predictions being
+  evaluated — supplied by the caller, not derived automatically.
 
 ## How tolerance is supplied
 
