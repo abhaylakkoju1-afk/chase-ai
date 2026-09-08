@@ -7214,6 +7214,7 @@ body {
     <script src="src/chase-engine/stroke-cycles.js"></script>
     <script src="src/chase-engine/pose-frame.js"></script>
     <script src="src/chase-engine/frame-timing.js"></script>
+    <script src="src/chase-engine/tracked-sequence.js"></script>
     <script>
 
         function showPage(pageId) {
@@ -7404,7 +7405,16 @@ let currentAnalysis = {
 window.chaseAI = {
     ready: false,
     analyzing: false,
-    metricsHistory
+    metricsHistory,
+    /* Additive, ephemeral TrackedSequence snapshot for the most
+       recently completed analysis session — see
+       src/chase-engine/tracked-sequence.js and finishChaseAnalysis()
+       below. null before any analysis has completed, and explicitly
+       reset to null (not a misleadingly "valid-looking" empty
+       sequence) when an analysis session captured zero PoseFrames.
+       Never persisted (no Firebase, no localStorage); session-scoped
+       only, exactly like chasePoseFrameHistory. */
+    lastTrackedSequence: null
 };
 
 /* ---------------------------------------------------------
@@ -8353,6 +8363,34 @@ function finishChaseAnalysis() {
     chaseStopVideoFrameTicker(document.getElementById("analyzerPlayer"));
 
     currentAnalysis.endedAt = performance.now();
+
+    /* Additive TrackedSequence snapshot — built from chasePoseFrameHistory
+       (the raw, frame-accurate PoseFrame capture), independently of
+       whether metricsHistory ended up with any usable metrics below.
+       chasePoseFrameHistory is gated only by `analyzing` (pushes on
+       every MediaPipe result, pose found or not), while metricsHistory
+       is additionally gated by hasAnyMetric — the two can differ in
+       length, so this must not be placed after (or made conditional
+       on) the hasAnyData check just below. Deliberately does not
+       affect, and is not affected by, anything past this point:
+       metricsHistory, chaseDetectFreestyleCycles(), coaching, and the
+       displayed analyzer output all continue exactly as before.
+
+       Per an explicit product decision, a session that captured zero
+       PoseFrames does not get a (misleadingly "valid-looking") empty
+       sequence object — window.chaseAI.lastTrackedSequence is set to
+       null instead. */
+    window.chaseAI.lastTrackedSequence = chasePoseFrameHistory.length > 0
+        ? chaseBuildTrackedSequence({
+            sequenceId: chaseGenerateSequenceId(chaseAnalysisGeneration),
+            generation: chaseAnalysisGeneration,
+            timestampMode: window.chaseAI.videoTimestampMode ?? null,
+            modelSource: CHASE_POSE_MODEL_SOURCE,
+            frames: chasePoseFrameHistory,
+            startedAt: currentAnalysis.startedAt,
+            endedAt: currentAnalysis.endedAt
+        })
+        : null;
 
     const feedback = document.getElementById("feedback");
 

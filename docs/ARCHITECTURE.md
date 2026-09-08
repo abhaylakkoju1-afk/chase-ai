@@ -159,9 +159,16 @@ future stage targets the same vocabulary. Refine them in the PR that
 first implements each stage, and update this section when they change.
 
 - **`PoseFrame`** — one video frame's pose result: timestamp, per-landmark
-  `{x, y, z, visibility}`, and the frame's own quality/validity flag.
-- **`TrackedSequence`** — an ordered sequence of `PoseFrame`s with
-  temporal smoothing/interpolation applied, plus per-frame confidence.
+  `{x, y, z, visibility}`, and the frame's own pose-found flag
+  (`hasPose`). It does not carry a quality/confidence score — that
+  remains a future derived layer, not a `PoseFrame` field.
+- **`TrackedSequence`** — an ordered, session-scoped collection of raw
+  `PoseFrame`s (sampled/inference observations, not necessarily every
+  decoded video frame), plus session-level identity and provenance
+  (timing mode, model source, generation). It does not apply smoothing
+  or interpolation and does not carry a confidence score. Those are
+  derived data and belong to a separate, later layer built on top of
+  `TrackedSequence`, never inside it.
 - **`StrokePhaseLabel`** — a labeled span of a `TrackedSequence` (e.g.
   catch / pull / push / recovery / entry) with a confidence score and
   the camera-angle assumption it depends on.
