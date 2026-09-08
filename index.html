@@ -7213,6 +7213,7 @@ body {
     <script src="src/chase-engine/stats.js"></script>
     <script src="src/chase-engine/stroke-cycles.js"></script>
     <script src="src/chase-engine/pose-frame.js"></script>
+    <script src="src/chase-engine/frame-timing.js"></script>
     <script>
 
         function showPage(pageId) {
@@ -7333,6 +7334,57 @@ let metricsHistory = {
    PoseFrame implementation report's memory-implications note; this is
    flagged for human review rather than given an invented cap here. */
 let chasePoseFrameHistory = [];
+
+/* Frame-accurate PoseFrame timing — see src/chase-engine/frame-timing.js
+   for the pure decision logic and the problem this solves (the
+   PROVISIONAL note on videoTimestampMs above, in
+   src/chase-engine/pose-frame.js).
+
+   requestVideoFrameCallback() (where supported) IS the frame-selection
+   clock: chaseStartVideoFrameTicker()'s callback receives
+   metadata.mediaTime for the frame the browser just presented, decides
+   (via chaseIsSampleDue()) whether ~120ms has elapsed since the last
+   analyzed sample, and — only if so — draws THAT frame and dispatches
+   it, carrying that SAME metadata.mediaTime value forward. Nothing
+   here re-derives or caches a timestamp separately from the callback
+   that selected the frame; the CHASE_SAMPLE_INTERVAL_MS cadence is
+   enforced by comparing mediaTimes directly, not by a separate polling
+   timer running alongside rVFC. This associates the sampled frame with
+   the mediaTime supplied by that same rVFC invocation — not a claim of
+   mathematically perfect frame synchronization.
+
+   `chaseAnalysisGeneration` is a minimal session token, incremented
+   once per upload() call. It exists solely so a pose.send() result
+   that resolves AFTER a new analysis session has already started
+   (new upload while the previous frame's inference was still in
+   flight) can be recognized as stale and never attributed a
+   timestamp from the wrong session — see chaseSelectFrameTimestamp().
+   Nothing here queues multiple in-flight requests; chaseAnalysisBusy
+   guarantees only one inference runs at a time (both the rVFC path and
+   the no-rVFC fallback path check it before dispatching, and skip —
+   never queue — a sample that becomes due while it is still true), so
+   a single pending-timing slot is sufficient.
+
+   `chaseLastAnalyzedMediaTimeMs` is the mediaTime of the last frame
+   actually DISPATCHED to MediaPipe (not merely displayed) — the
+   baseline chaseIsSampleDue() measures the ~120ms cadence against.
+
+   `chasePendingFrameTiming` is set synchronously, immediately before
+   each pose.send() dispatch, and consumed once when that dispatch's
+   result arrives (in chaseCaptureAdditivePoseFrame) — it is what lets
+   the associated frame's timestamp survive MediaPipe's asynchronous
+   inference instead of being overwritten by whatever video.currentTime
+   reads as once inference completes.
+
+   `chaseVideoFrameCallbackHandle` is the live requestVideoFrameCallback
+   registration id, kept so it can be explicitly cancelled via
+   cancelVideoFrameCallback() on stop/reset rather than relying only on
+   the callback declining to re-register itself. */
+const CHASE_SAMPLE_INTERVAL_MS = 120;
+let chaseAnalysisGeneration = 0;
+let chaseLastAnalyzedMediaTimeMs = null;
+let chasePendingFrameTiming = null;
+let chaseVideoFrameCallbackHandle = null;
 
 /* Literal, hand-written description of the currently configured pose
    model (see initialiseChasePose()'s pose.setOptions() call and the
@@ -7635,6 +7687,169 @@ function prepareChaseAnalysisCanvas(video) {
 }
 
 /* ---------------------------------------------------------
+   VIDEO FRAME TIMING (requestVideoFrameCallback, where supported)
+--------------------------------------------------------- */
+
+/* Draws ONE already-selected video frame to the analysis canvas and
+   dispatches it to MediaPipe, carrying `pendingTiming` (built by the
+   caller — either from this same rVFC callback's metadata.mediaTime,
+   or from the no-rVFC fallback) through to chaseCaptureAdditivePoseFrame
+   via chasePendingFrameTiming.
+
+   Callers MUST have already confirmed chaseAnalysisBusy is false
+   before calling this — chaseAnalysisBusy is set here, synchronously,
+   before any `await`, which (given JS run-to-completion semantics) is
+   what prevents two overlapping calls from both starting even though
+   this function is async: a caller that checked-then-called cannot be
+   interleaved with another such check before this synchronous prefix
+   (including the drawImage() below) has already run.
+
+   drawImage() is deliberately the first thing this function does after
+   the busy-flag: when called from the rVFC path, it happens
+   synchronously inside the same callback invocation that received
+   metadata.mediaTime, before that callback returns and before the
+   browser can present a new frame. This associates the pixels
+   pose.send() receives with the mediaTime supplied by that same
+   requestVideoFrameCallback invocation — it is not a claim of
+   mathematically perfect frame synchronization, only that the drawn
+   pixels and `pendingTiming` originate from the same rVFC callback. */
+async function chaseDispatchPoseInference(video, pendingTiming) {
+
+    chaseAnalysisBusy = true;
+
+    try {
+
+        if (
+            !chaseAnalysisCanvas.width ||
+            !chaseAnalysisCanvas.height
+        ) {
+            prepareChaseAnalysisCanvas(video);
+        }
+
+        chaseAnalysisCtx.drawImage(
+            video,
+            0,
+            0,
+            chaseAnalysisCanvas.width,
+            chaseAnalysisCanvas.height
+        );
+
+        chasePendingFrameTiming = pendingTiming;
+
+        await pose.send({
+            image: chaseAnalysisCanvas
+        });
+
+    } catch (error) {
+
+        console.error("CHASE AI frame error:", error);
+        setChaseStatus("FRAME ERROR — CHECK CONSOLE");
+
+    } finally {
+        chaseAnalysisBusy = false;
+    }
+}
+
+/* Self-chaining requestVideoFrameCallback() loop — the frame-selection
+   clock. Fires once per displayed video frame (native frame rate); on
+   EVERY firing it decides, from THIS callback's own metadata.mediaTime,
+   whether a sample is due yet (chaseIsSampleDue(), preserving the
+   existing ~120ms cadence — MediaPipe is not run on every displayed
+   frame just because rVFC fires that often). Only when due does it draw
+   and dispatch, and it does so using this same callback's mediaTime —
+   never a value cached from an earlier firing — which is what
+   associates the dispatched frame with the mediaTime supplied by that
+   same requestVideoFrameCallback invocation, rather than a value
+   sourced from a separate cache.
+
+   If a sample is due but chaseAnalysisBusy is still true from a
+   previous dispatch, this firing is skipped entirely (no draw, no
+   dispatch, no queue) — chaseLastAnalyzedMediaTimeMs is left unchanged,
+   so the NEXT firing will see the same (or larger) elapsed time and
+   try again as soon as the previous inference completes.
+
+   Guards against exactly two things, both required by the lifecycle
+   rules for this feature:
+   - runaway callbacks: re-registration stops as soon as `analyzing` is
+     false or `generation` no longer matches the live session, so a
+     video paused/stopped/reset does not keep this chain alive forever
+     even before chaseStopVideoFrameTicker() explicitly cancels it.
+   - stale sessions: `generation` is captured once, at the moment this
+     ticker starts, and compared against the live chaseAnalysisGeneration
+     on every firing — a new upload() bumps that generation, which is
+     the smallest mechanism that lets a leftover callback from the
+     previous <video> src recognize it no longer belongs to the current
+     session and stop itself instead of feeding stale timing forward. */
+function chaseStartVideoFrameTicker(video, generation) {
+
+    if (!chaseSupportsVideoFrameCallback(video)) {
+        return;
+    }
+
+    const onVideoFrame = (_now, metadata) => {
+
+        if (!analyzing || generation !== chaseAnalysisGeneration) {
+            chaseVideoFrameCallbackHandle = null;
+            return;
+        }
+
+        const candidateMediaTimeMs = metadata.mediaTime * 1000;
+
+        const due = chaseIsSampleDue({
+            lastAnalyzedMediaTimeMs: chaseLastAnalyzedMediaTimeMs,
+            currentMediaTimeMs: candidateMediaTimeMs,
+            sampleIntervalMs: CHASE_SAMPLE_INTERVAL_MS
+        });
+
+        if (
+            due &&
+            !chaseAnalysisBusy &&
+            !video.ended &&
+            video.readyState >= 2
+        ) {
+
+            chaseLastAnalyzedMediaTimeMs = candidateMediaTimeMs;
+
+            const pendingTiming = chaseBuildPendingFrameTiming({
+                candidateMediaTimeMs,
+                supportsVideoFrameCallback: true,
+                generation,
+                fallbackVideoTimeMs: video.currentTime * 1000
+            });
+
+            /* Not awaited: chaseDispatchPoseInference()'s drawImage()
+               call runs synchronously (before its first await), which
+               is what captures THIS frame's pixels before this
+               callback returns; pose.send() then continues in the
+               background, guarded by chaseAnalysisBusy. */
+            chaseDispatchPoseInference(video, pendingTiming);
+        }
+
+        chaseVideoFrameCallbackHandle = video.requestVideoFrameCallback(onVideoFrame);
+    };
+
+    chaseVideoFrameCallbackHandle = video.requestVideoFrameCallback(onVideoFrame);
+}
+
+/* Explicitly cancels the live requestVideoFrameCallback registration,
+   where the browser supports cancellation, instead of relying only on
+   onVideoFrame's own generation/analyzing check to eventually decline
+   to re-register. Called from stopChaseAnalysis()/finishChaseAnalysis()
+   so no rVFC callback is left pending across a stop/reset. */
+function chaseStopVideoFrameTicker(video) {
+
+    if (
+        video &&
+        chaseVideoFrameCallbackHandle !== null &&
+        typeof video.cancelVideoFrameCallback === "function"
+    ) {
+        video.cancelVideoFrameCallback(chaseVideoFrameCallbackHandle);
+    }
+
+    chaseVideoFrameCallbackHandle = null;
+}
+
+/* ---------------------------------------------------------
    START ANALYSIS
 --------------------------------------------------------- */
 
@@ -7676,6 +7891,14 @@ async function upload() {
     metricsHistory.timestamps = [];
 
     chasePoseFrameHistory = [];
+
+    /* New analysis session: bump the generation token and clear any
+       timing state left over from a previous session/video (see the
+       chaseAnalysisGeneration comment above chasePoseFrameHistory's
+       declaration). */
+    chaseAnalysisGeneration++;
+    chaseLastAnalyzedMediaTimeMs = null;
+    chasePendingFrameTiming = null;
 
     currentAnalysis = {
         frames: 0,
@@ -7719,18 +7942,54 @@ async function upload() {
     analyzing = true;
     window.chaseAI.analyzing = true;
 
-    setChaseStatus("ANALYZING VIDEO…");
+    /* PoseFrame timestamps are frame-accurate only when the browser
+       supports requestVideoFrameCallback; otherwise every PoseFrame in
+       this session explicitly falls back to the provisional
+       video.currentTime mechanism (see chaseSelectFrameTimestamp() in
+       src/chase-engine/frame-timing.js). Exposed here, rather than on
+       PoseFrame itself, so which mode is active stays identifiable
+       without changing PoseFrame's existing, tested shape.
 
-    chaseAnalysisTimer = setInterval(() => {
-        runChaseAnalysis(video);
-    }, 120);
+       Exactly one driver is started, never both: when rVFC is
+       supported it IS the sampling clock (chaseStartVideoFrameTicker
+       enforces the ~120ms cadence itself via chaseIsSampleDue — see
+       its comment above), so the old setInterval polling loop is not
+       also started; a setInterval running alongside it would be a
+       second, competing trigger for pose.send(), which is exactly what
+       "rVFC is the frame clock, not the inference frequency" rules
+       out. Only when rVFC is unsupported does the interval-driven
+       fallback (runChaseAnalysis, unchanged) run, at the same
+       CHASE_SAMPLE_INTERVAL_MS cadence as before. */
+    if (chaseSupportsVideoFrameCallback(video)) {
+
+        window.chaseAI.videoTimestampMode = "requestVideoFrameCallback";
+        chaseStartVideoFrameTicker(video, chaseAnalysisGeneration);
+
+    } else {
+
+        window.chaseAI.videoTimestampMode = "currentTime-fallback-provisional";
+        chaseAnalysisTimer = setInterval(() => {
+            runChaseAnalysis(video);
+        }, CHASE_SAMPLE_INTERVAL_MS);
+    }
+
+    setChaseStatus("ANALYZING VIDEO…");
 
 }
 
 /* ---------------------------------------------------------
-   RUN ONE POSE INFERENCE
+   RUN ONE POSE INFERENCE (no-rVFC fallback path only)
 --------------------------------------------------------- */
 
+/* Only used when requestVideoFrameCallback is unsupported (see
+   upload() — the two drivers are mutually exclusive, never both
+   running). Driven by the existing CHASE_SAMPLE_INTERVAL_MS
+   setInterval, exactly as before; the only change from the original
+   implementation is delegating the draw+dispatch body to
+   chaseDispatchPoseInference() so both paths share one implementation,
+   and building the pending-timing record via chaseBuildPendingFrameTiming
+   with supportsVideoFrameCallback:false so it's explicitly marked
+   provisional. */
 async function runChaseAnalysis(video) {
 
     if (
@@ -7742,37 +8001,14 @@ async function runChaseAnalysis(video) {
         return;
     }
 
-    chaseAnalysisBusy = true;
+    const pendingTiming = chaseBuildPendingFrameTiming({
+        candidateMediaTimeMs: null,
+        supportsVideoFrameCallback: false,
+        generation: chaseAnalysisGeneration,
+        fallbackVideoTimeMs: video.currentTime * 1000
+    });
 
-    try {
-
-        if (
-            !chaseAnalysisCanvas.width ||
-            !chaseAnalysisCanvas.height
-        ) {
-            prepareChaseAnalysisCanvas(video);
-        }
-
-        chaseAnalysisCtx.drawImage(
-            video,
-            0,
-            0,
-            chaseAnalysisCanvas.width,
-            chaseAnalysisCanvas.height
-        );
-
-        await pose.send({
-            image: chaseAnalysisCanvas
-        });
-
-    } catch (error) {
-
-        console.error("CHASE AI frame error:", error);
-        setChaseStatus("FRAME ERROR — CHECK CONSOLE");
-
-    } finally {
-        chaseAnalysisBusy = false;
-    }
+    await chaseDispatchPoseInference(video, pendingTiming);
 }
 
 /* ---------------------------------------------------------
@@ -7788,6 +8024,8 @@ function stopChaseAnalysis(clearOutput = true) {
         clearInterval(chaseAnalysisTimer);
         chaseAnalysisTimer = null;
     }
+
+    chaseStopVideoFrameTicker(document.getElementById("analyzerPlayer"));
 
     chaseAnalysisBusy = false;
 
@@ -7831,10 +8069,28 @@ function chaseCaptureAdditivePoseFrame(video, results) {
 
     if (!video || typeof chaseBuildPoseFrame !== "function") return;
 
+    /* videoTimestampMs comes from the pending record captured at
+       dispatch time (see chaseDispatchPoseInference(), called from
+       either chaseStartVideoFrameTicker()'s rVFC callback or the
+       runChaseAnalysis() fallback), not a fresh read of video.currentTime
+       here — that fresh read would describe the video's position now,
+       after MediaPipe's asynchronous inference has completed, not the
+       frame whose pixels were actually sent. chaseSelectFrameTimestamp()
+       also rejects a pending record left over from a previous analysis
+       session (see its comment in src/chase-engine/frame-timing.js); a
+       freshly-read currentTime is supplied only as the safe fallback
+       for that case and for when requestVideoFrameCallback is
+       unsupported. */
+    const frameTiming = chaseSelectFrameTimestamp({
+        pendingTiming: chasePendingFrameTiming,
+        currentGeneration: chaseAnalysisGeneration,
+        fallbackVideoTimeMs: video.currentTime * 1000
+    });
+
     chasePoseFrameHistory.push(chaseBuildPoseFrame({
         results,
         frameIndex: chasePoseFrameHistory.length,
-        videoTimestampMs: video.currentTime * 1000,
+        videoTimestampMs: frameTiming.videoTimestampMs,
         imageWidth: chaseAnalysisCanvas.width,
         imageHeight: chaseAnalysisCanvas.height,
         modelSource: CHASE_POSE_MODEL_SOURCE
@@ -8093,6 +8349,8 @@ function finishChaseAnalysis() {
         clearInterval(chaseAnalysisTimer);
         chaseAnalysisTimer = null;
     }
+
+    chaseStopVideoFrameTicker(document.getElementById("analyzerPlayer"));
 
     currentAnalysis.endedAt = performance.now();
 
