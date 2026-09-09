@@ -175,6 +175,12 @@ function buildEvent(session, input, atMs) {
 }
 
 function recordStart(session, input, atMs) {
+    // Unreachable via chronosRecordEvent(), which now checks this same
+    // condition earlier (see the "start-already-recorded" short-circuit
+    // above) so the specific reason isn't masked by the generic
+    // status-legality rejection. Kept here as a defensive backstop rather
+    // than removed, since recordStart() is only ever reached in a state
+    // where this can no longer fire.
     if (findEvent(session, "start")) {
         return reject(session, "start-already-recorded");
     }
@@ -204,6 +210,12 @@ function recordFinish(session, input, atMs) {
         return reject(session, "finish-before-start");
     }
 
+    // Unreachable via chronosRecordEvent(), which now checks this same
+    // condition earlier (see the "finish-already-recorded" short-circuit
+    // above) so the specific reason isn't masked by the generic
+    // status-legality rejection. Kept here as a defensive backstop rather
+    // than removed, for the same reason recordStart()'s analogous check
+    // is kept.
     if (findEvent(session, "finish")) {
         return reject(session, "finish-already-recorded");
     }
@@ -291,6 +303,27 @@ export function chronosRecordEvent(session, input) {
     const shapeReason = validateEventShape(input);
     if (shapeReason) {
         return reject(session, shapeReason);
+    }
+
+    // Duplicate start must surface its own specific, documented reason
+    // (docs/CHRONOS_ARCHITECTURE.md §11: "start-already-recorded") rather
+    // than the generic status-legality rejection below — checked first
+    // because by the time a second "start" candidate arrives, the first
+    // one has already moved status from "armed" to "running", which would
+    // otherwise mask the more specific reason behind
+    // "event-type-illegal-in-status-running".
+    if (input.type === "start" && findEvent(session, "start")) {
+        return reject(session, "start-already-recorded");
+    }
+
+    // Same reasoning as duplicate start above, mirrored for finish: once
+    // the first "finish" is accepted, status moves to "finished", whose
+    // LEGAL_EVENT_TYPES_BY_STATUS entry is empty — which would otherwise
+    // mask a second finish attempt behind the generic
+    // "event-type-illegal-in-status-finished" rather than the specific,
+    // consistent "finish-already-recorded".
+    if (input.type === "finish" && findEvent(session, "finish")) {
+        return reject(session, "finish-already-recorded");
     }
 
     const legalTypes = LEGAL_EVENT_TYPES_BY_STATUS[session.status] || [];
