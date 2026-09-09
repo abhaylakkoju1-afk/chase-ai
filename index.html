@@ -7284,6 +7284,7 @@ window.showPage = showPage;
         const WALL_THRESHOLD = 0.25; // near screen edge
 
         let pbs = JSON.parse(localStorage.getItem("pbs")) || [];
+        let strokeData = JSON.parse(localStorage.getItem("strokeData")) || {};
 
         /* =========================================================
    CHASE AI — SWIMMING ANALYSIS ENGINE
