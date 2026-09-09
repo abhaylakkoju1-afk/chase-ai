@@ -510,7 +510,57 @@ No silent identity switch is possible by construction: every path either
 satisfies the same projected-position test that steady-state tracking
 uses, or the session moves to a state (`TARGET_LOST`/`ANALYSIS_DEGRADED`)
 whose target-pose-stream output is nothing (§8.3, §13) — there is no
-third path where an unverified pose reaches the detectors.
+third path where an unverified pose reaches the detectors. **This claim
+is scoped to the loss/reacquisition paths described in §12.1–§12.3 — see
+§12.4 immediately below for the one case it does not cover.**
+
+### 12.4 V1 identity limitation — steady-state single-pose-source contamination
+
+§12.1–§12.3 describe how identity is protected across a temporary loss
+and its bounded reacquisition, using projected-position continuity as
+the evidence. That same continuity check is also the *only* identity
+signal this v1 design has anywhere, at any stage — including ordinary
+observations while already `TARGET_LOCKED` (§11) and while still
+establishing a lock (§10).
+
+This has one honest, currently-unaddressed consequence, distinct from
+loss/reacquisition: **while a session remains continuously
+`TARGET_LOCKED` (never dropping to `TARGET_LOST` at all), if the
+upstream single-pose source (§3) hands the tracker a *different*
+swimmer's landmarks for one frame, and that swimmer's position happens
+to fall within `maxSteadyStatePositionError` of the target's own
+projected position, the tracker has no way to tell the two apart.**
+Position-only continuity cannot distinguish "the target kept moving
+normally" from "a different, spatially-coincident swimmer was handed to
+the tracker instead" — both produce an identical, acceptable
+`continuityError`. The same narrower version of this applies while
+still `TARGET_LOCKING` (§10), via `maxLockingPositionError`.
+
+This is not a bug and not a deviation from §10–§12.3 — those rules are
+followed exactly as written in every case. It is a **limit of what
+position-only continuity can ever prove**, inherent to the v1 approach
+chosen in §5, not something more careful implementation could close.
+`session.status` gives no signal when this happens — status remains
+`TARGET_LOCKED` throughout, since nothing about the observation is
+otherwise distinguishable from a legitimate one.
+
+**This means §1's stated invariant — "the system must never silently
+switch from the selected swimmer to another swimmer" — is, in v1,
+precise only with respect to the identity signal actually available to
+it: position and velocity plausibility. It is not, and cannot yet be, a
+guarantee against a spatially-coincident different swimmer during
+ordinary steady-state tracking. The tracker must not be read as
+claiming a stronger identity guarantee than its available signal
+supports, and this document does not promise one for this specific
+case.**
+
+Closing this gap — via appearance embeddings, re-identification, a
+multi-person detector, or any other technique — is explicitly deferred
+(§17): it requires new detection/tracking capability, an evaluation
+harness, and labeled multi-swimmer data, none of which exist today
+(§3). No such technique is proposed or approximated here. Camera-pan
+compensation (§12.1 #10) remains a separate, already-documented v1
+limitation with the same not-attempted, not-approximated posture.
 
 ## 13. Timing Integrity Invariant
 
@@ -626,6 +676,12 @@ Explicitly out of scope for this document and for Stage 4C as a whole:
   multi-person detector), a real multi-swimmer evaluation dataset, an
   evaluation harness, identity-switch metrics, false-lock metrics, and
   agreed acceptable-confidence thresholds. None of these exist today.
+- **Steady-state / mid-lock re-identification** — closing the §12.4 gap
+  (rejecting a spatially-coincident different swimmer while already
+  `TARGET_LOCKED`) requires the same missing capability as fully
+  automatic selection above (multi-person detection, an evaluation
+  harness, labeled data) — deferred for the identical reasons, not
+  approximated with a heuristic in the meantime.
 - Appearance-embedding-based identity — no supporting infrastructure,
   explicitly rejected per the brief.
 - Camera-motion compensation (§12.1 #10).

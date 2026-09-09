@@ -450,7 +450,15 @@ function observeWhileTargetLost(session, sample, cfg) {
         outcome = "ambiguous";
     } else {
         const error = computeContinuityError(representativePosition, projectedPosition);
-        if (error > cfg.maxReacquisitionPositionError) {
+        // docs/SWIMMER_TRACKING_ARCHITECTURE.md §12.3: the elapsed-time
+        // reacquisition window is checked BEFORE continuity/visibility can
+        // succeed — a candidate arriving after maxReacquisitionWindowMs
+        // has elapsed must never reacquire, regardless of how well it
+        // matches the projected position. `windowExhausted` is computed
+        // above; gating it into this same condition (rather than only
+        // checking it later, on the already-not-confirmed path) is what
+        // makes that ordering hold.
+        if (windowExhausted || error > cfg.maxReacquisitionPositionError) {
             outcome = "ambiguous";
         } else {
             outcome = "confirmed";
