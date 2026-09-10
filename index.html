@@ -6117,7 +6117,231 @@ body {
     }
 
 }
-    </style>
+    
+
+/* =========================================================
+   SWIMTICS USER GUIDANCE
+   Additive UI only. No existing tool logic or IDs changed.
+   ========================================================= */
+.swimtics-guide {
+    width: 85%;
+    max-width: 1100px;
+    margin: 28px auto 52px;
+    color: white;
+}
+
+.swimtics-guide-intro {
+    margin: 0 0 24px;
+}
+
+.swimtics-guide-eyebrow {
+    display: inline-block;
+    margin-bottom: 9px;
+    color: #00d9ff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.swimtics-guide-title {
+    margin: 0 0 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(1.7rem, 3vw, 2.55rem);
+    letter-spacing: 1px;
+    color: white;
+}
+
+.swimtics-guide-copy {
+    max-width: 780px;
+    margin: 0;
+    color: rgba(255,255,255,.68);
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+.swimtics-guide-section {
+    margin-top: 34px;
+}
+
+.swimtics-guide-section h3 {
+    margin: 0 0 16px;
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+}
+
+.swimtics-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.swimtics-guide-card,
+.swimtics-guide-tip,
+.swimtics-guide-disclaimer {
+    box-sizing: border-box;
+    border: 1px solid rgba(0, 255, 255, .12);
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(10,18,45,.72), rgba(5,10,30,.82));
+    box-shadow: 0 0 25px rgba(0, 217, 255, .035);
+    backdrop-filter: blur(14px);
+}
+
+.swimtics-guide-card {
+    min-height: 150px;
+    padding: 20px;
+}
+
+.swimtics-guide-number {
+    display: block;
+    margin-bottom: 14px;
+    color: #00d9ff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.swimtics-guide-card h4 {
+    margin: 0 0 8px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 750;
+}
+
+.swimtics-guide-card p,
+.swimtics-guide-card li,
+.swimtics-guide-tip p,
+.swimtics-guide-disclaimer p {
+    color: rgba(255,255,255,.64);
+    font-family: 'Inter', sans-serif;
+    font-size: .9rem;
+    line-height: 1.6;
+}
+
+.swimtics-guide-card p,
+.swimtics-guide-tip p,
+.swimtics-guide-disclaimer p {
+    margin: 0;
+}
+
+.swimtics-guide-card ul {
+    margin: 10px 0 0;
+    padding-left: 18px;
+}
+
+.swimtics-guide-card li + li {
+    margin-top: 4px;
+}
+
+.swimtics-guide-tip {
+    margin-top: 16px;
+    padding: 18px 20px;
+    border-color: rgba(0, 217, 255, .18);
+}
+
+.swimtics-guide-tip strong {
+    color: #00d9ff;
+}
+
+.swimtics-guide-wide-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.swimtics-guide-compact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.swimtics-guide-compact {
+    padding: 15px 16px;
+    border: 1px solid rgba(0, 255, 255, .10);
+    border-radius: 14px;
+    background: rgba(8, 18, 40, .55);
+    color: rgba(255,255,255,.68);
+    font-family: 'Inter', sans-serif;
+    font-size: .82rem;
+    line-height: 1.45;
+}
+
+.swimtics-guide-compact strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #00d9ff;
+    font-size: .7rem;
+    letter-spacing: 1.4px;
+}
+
+.swimtics-guide-disclaimer {
+    margin-top: 28px;
+    padding: 16px 18px;
+    border-color: rgba(255,255,255,.07);
+    background: rgba(255,255,255,.025);
+    box-shadow: none;
+}
+
+.swimtics-guide-disclaimer p {
+    opacity: .62;
+    font-size: .78rem;
+}
+
+body.light-mode .swimtics-guide-title,
+body.light-mode .swimtics-guide-section h3,
+body.light-mode .swimtics-guide-card h4 {
+    color: #111 !important;
+}
+
+body.light-mode .swimtics-guide-copy,
+body.light-mode .swimtics-guide-card p,
+body.light-mode .swimtics-guide-card li,
+body.light-mode .swimtics-guide-tip p,
+body.light-mode .swimtics-guide-disclaimer p {
+    color: rgba(0,0,0,.66) !important;
+}
+
+body.light-mode .swimtics-guide-card,
+body.light-mode .swimtics-guide-tip,
+body.light-mode .swimtics-guide-disclaimer {
+    background: linear-gradient(145deg, rgba(255,255,255,.88), rgba(248,244,232,.78));
+    border-color: rgba(0,0,0,.08);
+    box-shadow: 0 8px 26px rgba(0,0,0,.06);
+}
+
+body.light-mode .swimtics-guide-compact {
+    background: rgba(255,255,255,.62);
+    border-color: rgba(0,0,0,.07);
+    color: rgba(0,0,0,.66);
+}
+
+@media (max-width: 900px) {
+    .swimtics-guide-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .swimtics-guide-wide-grid { grid-template-columns: 1fr; }
+    .swimtics-guide-compact-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+@media (max-width: 600px) {
+    .swimtics-guide {
+        width: calc(100% - 28px);
+        margin-top: 22px;
+        margin-bottom: 38px;
+    }
+    .swimtics-guide-grid,
+    .swimtics-guide-wide-grid,
+    .swimtics-guide-compact-grid { grid-template-columns: 1fr; }
+    .swimtics-guide-card { min-height: 0; }
+    .swimtics-guide-title { font-size: 1.55rem; }
+    .swimtics-guide-copy { font-size: .92rem; }
+}
+
+</style>
 
 </head>
 
@@ -6431,6 +6655,13 @@ body {
     <!-- ANALYZER -->
     <div id="analyzer" class="page">
         <div class="glass">
+            <section class="swimtics-guide-intro">
+                <span class="swimtics-guide-eyebrow">CHASE AI / TECHNIQUE</span>
+                <h2 class="swimtics-guide-title">Analyze Your Technique</h2>
+                <p class="swimtics-guide-copy">Upload a swimming video to study your stroke and identify areas that may be affecting your performance.</p>
+            </section>
+
+            
 
             <h2>Chase AI : Your Personal Swim Analyzer</h2>
 
@@ -6488,11 +6719,88 @@ body {
             <div id="savedReports"></div>
 
         </div>
-    </div>
+    <section class="swimtics-guide-section">
+                <h3>How to Use the Analyzer</h3>
+                <div class="swimtics-guide-grid">
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">01</span>
+                        <h4>Select Your Stroke</h4>
+                        <p>Choose the stroke you want to analyze.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">02</span>
+                        <h4>Upload Your Video</h4>
+                        <p>Upload a clear and stable swimming video with the swimmer fully visible.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">03</span>
+                        <h4>Review the Footage</h4>
+                        <p>Use the video player to review your movement and stroke mechanics.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">04</span>
+                        <h4>Apply the Insights</h4>
+                        <p>Use the observations to identify areas to work on during training, then retest your technique over time.</p>
+                    </article>
+                </div>
+            </section>
+
+            <div class="swimtics-guide-tip"><p><strong>VIDEO TIP</strong> Stable, well-lit footage with the swimmer clearly visible will produce more useful analysis than shaky or obstructed footage.</p></div>
+
+            <section class="swimtics-guide-section">
+                <h3>Meet Chase</h3>
+                <p class="swimtics-guide-copy">Chase is SwimTics' AI performance assistant, designed to help swimmers think more deeply about training, racing, technique, and performance.</p>
+            </section>
+
+            <section class="swimtics-guide-section">
+                <h3>How to Get Better Answers from Chase</h3>
+                <div class="swimtics-guide-grid">
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">01</span>
+                        <h4>Ask a Specific Question</h4>
+                        <p>Instead of broad questions, give Chase a specific problem or goal. Example: “What should I focus on to improve my freestyle efficiency?”</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">02</span>
+                        <h4>Give Chase Context</h4>
+                        <p>When relevant, include your stroke, event, current performance, training goal, or the specific issue you are working on.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">03</span>
+                        <h4>Add Video When Relevant</h4>
+                        <p>For technique-related questions, clear swimming footage can provide additional context for analysis.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">04</span>
+                        <h4>Use the Feedback</h4>
+                        <p>Review the response, consider the recommendations, and discuss meaningful training or technique changes with your coach.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="swimtics-guide-section"><h3>What You Can Ask Chase About</h3><div class="swimtics-guide-wide-grid"><article class="swimtics-guide-card"><h4>TRAINING</h4><p>Training structure, focus areas, and performance habits.</p></article><article class="swimtics-guide-card"><h4>RACING</h4><p>Race preparation, pacing concepts, and competition questions.</p></article><article class="swimtics-guide-card"><h4>TECHNIQUE</h4><p>Swimming mechanics and video-based movement observations.</p></article><article class="swimtics-guide-card"><h4>PERFORMANCE</h4><p>PB progression, performance patterns, and goals.</p></article><article class="swimtics-guide-card"><h4>RECOVERY</h4><p>General recovery and readiness questions, with coach guidance where appropriate.</p></article></div></section>
+
+            <section class="swimtics-guide-section"><h3>Video Requirements</h3><p class="swimtics-guide-copy">For the most useful technique feedback, use clear, stable footage where the swimmer remains visible throughout the movement.</p><div class="swimtics-guide-compact-grid" style="margin-top:16px;"><div class="swimtics-guide-compact"><strong>FORMAT</strong>MP4 or MOV recommended.</div><div class="swimtics-guide-compact"><strong>RESOLUTION</strong>720p minimum. 1080p recommended.</div><div class="swimtics-guide-compact"><strong>FRAME RATE</strong>30 fps minimum. 60 fps recommended when available.</div><div class="swimtics-guide-compact"><strong>ORIENTATION</strong>Landscape is recommended.</div><div class="swimtics-guide-compact"><strong>CAMERA</strong>A stable camera or tripod-mounted setup is preferred.</div><div class="swimtics-guide-compact"><strong>LIGHTING</strong>Use bright, clear footage with minimal glare.</div><div class="swimtics-guide-compact"><strong>SUBJECT</strong>Keep one swimmer clearly visible throughout the clip.</div><div class="swimtics-guide-compact"><strong>LENGTH</strong>Use focused clips that contain enough movement to evaluate the technique.</div></div></section>
+
+            <section class="swimtics-guide-section"><h3>Recommended Camera Angles</h3><div class="swimtics-guide-wide-grid"><article class="swimtics-guide-card"><span class="swimtics-guide-number">01</span><h4>SIDE VIEW</h4><p><strong>Best general-purpose angle</strong><br>Position the camera approximately perpendicular to the swimmer’s direction.</p><p style="margin-top:10px;">Useful for: Body alignment, head position, arm movement, hand entry, pull pattern, hip position, kick, body rotation, overall stroke mechanics.</p></article><article class="swimtics-guide-card"><span class="swimtics-guide-number">02</span><h4>UNDERWATER SIDE VIEW</h4><p><strong>Best for underwater mechanics</strong><br>Position the camera underwater and approximately perpendicular to the swimmer.</p><p style="margin-top:10px;">Useful for: Underwater pull, kick, body position, hand path, streamline, underwater movement.</p></article><article class="swimtics-guide-card"><span class="swimtics-guide-number">03</span><h4>ABOVE-WATER / ELEVATED VIEW</h4><p><strong>Useful for overall stroke and race footage</strong><br>Keep the entire swimmer visible and avoid filming from extremely far away.</p><p style="margin-top:10px;">Useful for: Overall stroke and race footage.</p></article></div></section>
+
+            <section class="swimtics-guide-section"><h3>Race Footage</h3><p class="swimtics-guide-copy">For race analysis, full-race footage is ideal when available. If that is not possible, focused clips can still be useful.</p><div class="swimtics-guide-compact-grid" style="margin-top:16px;"><div class="swimtics-guide-compact"><strong>START + FIRST 15M</strong>Useful focused race footage segment.</div><div class="swimtics-guide-compact"><strong>MID-POOL</strong>Useful focused race footage segment.</div><div class="swimtics-guide-compact"><strong>TURN</strong>Useful focused race footage segment.</div><div class="swimtics-guide-compact"><strong>UNDERWATER PHASE</strong>Useful focused race footage segment.</div><div class="swimtics-guide-compact"><strong>FINAL 15M</strong>Useful focused race footage segment.</div><div class="swimtics-guide-compact"><strong>FINISH</strong>Useful focused race footage segment.</div></div></section>
+
+            <section class="swimtics-guide-section"><h3>What to Avoid</h3><div class="swimtics-guide-tip"><ul style="margin:0; padding-left:20px;"><li>Shaky handheld footage</li><li>Extremely dark footage</li><li>Heavy glare on the water</li><li>The swimmer being partially out of frame</li><li>Extremely distant camera positions</li><li>Excessive zoom</li><li>Multiple swimmers blocking the subject</li><li>Footage where the swimmer repeatedly disappears from view</li><li>Clips that are too short to contain enough movement</li></ul><p style="margin-top:12px;"><strong>For technique analysis:</strong> one clearly visible swimmer is much more useful than a crowded pool scene.</p></div></section>
+            <div class="swimtics-guide-disclaimer"><p>Chase provides AI-generated performance insights for informational purposes. It is designed to complement, not replace, qualified coaching and professional guidance.</p></div>
+
+        </div>
 
     <!-- PB PAGE -->
     <div id="pb" class="page">
         <div class="glass">
+            <section class="swimtics-guide-intro">
+                <span class="swimtics-guide-eyebrow">WALL OF RECORDS / PBs</span>
+                <h2 class="swimtics-guide-title">Track Your Progress</h2>
+                <p class="swimtics-guide-copy">Keep your personal bests organized and see how your performances change over time.</p>
+            </section>
+
+            
 
             <h2>Log Your Personal Best</h2>
 
@@ -6531,11 +6839,46 @@ body {
             <div id="pbList"></div>
 
         </div>
-    </div>
+    <section class="swimtics-guide-section">
+                <h3>How to Use Your PB Tracker</h3>
+                <div class="swimtics-guide-grid">
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">01</span>
+                        <h4>Add a PB</h4>
+                        <p>Enter your event, time, and the relevant performance information.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">02</span>
+                        <h4>Keep Your Records Updated</h4>
+                        <p>When you achieve a faster performance, update your PB record.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">03</span>
+                        <h4>View Your Progression</h4>
+                        <p>Use the performance history and charts to see how your times have changed.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">04</span>
+                        <h4>Look for Trends</h4>
+                        <p>Compare performances over time to understand your progression across different events.</p>
+                    </article>
+                </div>
+            </section>
+
+            <div class="swimtics-guide-tip"><p><strong>TIP</strong> Keep your PB records accurate and consistently formatted so your performance history remains useful.</p></div>
+
+        </div>
 
     <!-- RACE -->
     <div id="race" class="page">
         <div class="glass">
+            <section class="swimtics-guide-intro">
+                <span class="swimtics-guide-eyebrow">CHRONOS ENGINE / RACE</span>
+                <h2 class="swimtics-guide-title">Break Down Your Race</h2>
+                <p class="swimtics-guide-copy">A final time tells you the result. Race analysis helps you understand the performance behind it.</p>
+            </section>
+
+            
 
             <h2>Race Analysis</h2>
 
@@ -6585,11 +6928,46 @@ body {
             <div id="splits"></div>
 
         </div>
-    </div>
+    <section class="swimtics-guide-section">
+                <h3>How to Use Race Analysis</h3>
+                <div class="swimtics-guide-grid">
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">01</span>
+                        <h4>Add Your Race</h4>
+                        <p>Enter the relevant event and performance information.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">02</span>
+                        <h4>Add Your Split Data</h4>
+                        <p>Enter your available splits to build a clearer picture of how your race progressed.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">03</span>
+                        <h4>Review the Race</h4>
+                        <p>Examine different phases of your performance and look for meaningful patterns.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">04</span>
+                        <h4>Find Areas to Improve</h4>
+                        <p>Use the information to identify sections of your race that deserve attention in training.</p>
+                    </article>
+                </div>
+            </section>
+
+            <div class="swimtics-guide-tip"><p><strong>TIP</strong> Accurate split data makes race comparisons much more useful. Keep your entries consistent when tracking performances over time.</p></div>
+
+        </div>
 
     <!-- PROFILE -->
     <div id="profile" class="page">
         <div class="glass">
+            <section class="swimtics-guide-intro">
+                <span class="swimtics-guide-eyebrow">ATHLETE PROFILE</span>
+                <h2 class="swimtics-guide-title">Build Your Athlete Profile</h2>
+                <p class="swimtics-guide-copy">Create a complete swimming profile so your performance history, goals, training context, and athlete identity stay organized in one place.</p>
+            </section>
+
+            
 
             <h2>Your Profile</h2>
             
@@ -6628,7 +7006,35 @@ body {
             </div>
 
             <div id="strokeCards"
-                style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin-top:20px;"></div>
+                style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin-top:20px;"><section class="swimtics-guide-section">
+                <h3>How to Set Up Your Profile</h3>
+                <div class="swimtics-guide-grid">
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">01</span>
+                        <h4>Start with Basic Info</h4>
+                        <p>Enter your name, date of birth, gender, nationality, and club or state.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">02</span>
+                        <h4>Define Your Swimming Profile</h4>
+                        <p>Add your primary and secondary strokes, preferred events, and distance type.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">03</span>
+                        <h4>Add Performance Context</h4>
+                        <p>Record relevant strengths, weakness areas, training level, weekly hours, coach, and facility.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">04</span>
+                        <h4>Set Your Goals</h4>
+                        <p>Add short-term and long-term goals, target competition, and useful competition history, then save your profile.</p>
+                    </article>
+                </div>
+            </section>
+
+            <div class="swimtics-guide-tip"><p><strong>TIP</strong> Keep your profile information current. Accurate goals, training context, and performance details make the profile more useful as your swimming develops.</p></div>
+
+        </div>
 
             <div class="profile-container">
 
@@ -6713,6 +7119,13 @@ body {
     <!-- WAR ROOM -->
     <div id="dashboard" class="page">
         <div class="glass">
+            <section class="swimtics-guide-intro">
+                <span class="swimtics-guide-eyebrow">WAR ROOM / READINESS</span>
+                <h2 class="swimtics-guide-title">Prepare With Context</h2>
+                <p class="swimtics-guide-copy">Use your current training, recovery, nutrition, mental readiness, and race context to generate a structured War Room assessment.</p>
+            </section>
+
+            
 
 
             <h2>WAR ROOM</h2>
@@ -6749,7 +7162,35 @@ body {
                 <button type="button" onclick="showBodyView('front')">Front</button>
                 <button type="button" onclick="showBodyView('back')">Back</button>
                 <button type="button" onclick="resetSorenessMap()">Reset</button>
-            </div>
+            <section class="swimtics-guide-section">
+                <h3>How to Use the War Room</h3>
+                <div class="swimtics-guide-grid">
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">01</span>
+                        <h4>Enter Meet Context</h4>
+                        <p>Set the days until your meet and select the race type that best matches your target event.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">02</span>
+                        <h4>Rate Your Current State</h4>
+                        <p>Provide your current fatigue, sleep, soreness, training intensity, nutrition, and mental-readiness inputs.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">03</span>
+                        <h4>Map Soreness</h4>
+                        <p>Use the body map to indicate relevant areas and severity so the assessment has more context.</p>
+                    </article>
+                    <article class="swimtics-guide-card">
+                        <span class="swimtics-guide-number">04</span>
+                        <h4>Generate & Review</h4>
+                        <p>Generate the War Room Plan, then review the readiness score and plan as a structured input for your training decisions.</p>
+                    </article>
+                </div>
+            </section>
+
+            <div class="swimtics-guide-tip"><p><strong>TIP</strong> Be consistent and honest with your inputs. The usefulness of the assessment depends on the quality of the information you provide.</p></div>
+
+        </div>
 
             <div class="body-map-wrapper">
 
