@@ -10674,7 +10674,16 @@ function toggleCoach() {
         // (Without dashboard title logic)
         // ==========================================
 
-
+        // Regression fix: this declaration was accidentally dropped during
+        // a prior file reorganization (git history confirms it existed as
+        // `let sorenessMap = {};` before commit e9edfab, which moved this
+        // section without carrying the declaration along), leaving every
+        // reader/writer below referencing an undefined global. That silent
+        // ReferenceError broke both body-part selection (cycleSoreness)
+        // and War Room plan generation (generateWarRoomPlan's soreness
+        // loop). Restored with its original shape: a plain object keyed by
+        // body-part name, populated lazily as parts are clicked.
+        let sorenessMap = {};
 
         function cycleSoreness(part, element) {
 
