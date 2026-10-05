@@ -306,8 +306,15 @@ describe("session lifecycle — illegal transitions", () => {
 
 describe("public API surface — window.ChronosEngine (src/chronos-engine/index.js)", () => {
   test("exposes exactly the intended methods — no getSession, no raw transition", () => {
+    // Stage 4D.3 added buildReport/comparePB (src/chronos-engine/report.js,
+    // pb-comparison.js), exactly the two additional methods
+    // docs/CHRONOS_ARCHITECTURE.md §18's own indicative list already
+    // named — this list grew accordingly, but the exclusions below
+    // (getSession, raw transition) still hold.
     const exposedNames = Object.keys(ChronosEngine).sort();
-    assert.deepEqual(exposedNames, ["abortSession", "armSession", "createSession", "recordEvent"]);
+    assert.deepEqual(exposedNames, [
+      "abortSession", "armSession", "buildReport", "comparePB", "createSession", "recordEvent"
+    ]);
     assert.equal(ChronosEngine.getSession, undefined);
     assert.equal(ChronosEngine.transition, undefined);
   });

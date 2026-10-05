@@ -37,12 +37,16 @@ import {
 } from "./session.js";
 
 import { chronosRecordEvent } from "./events.js";
+import { chronosBuildReport } from "./report.js";
+import { chronosComparePB } from "./pb-comparison.js";
 
 export const ChronosEngine = {
     createSession: chronosCreateSession,
     armSession: chronosArmSession,
     recordEvent: chronosRecordEvent,
-    abortSession: chronosAbortSession
+    abortSession: chronosAbortSession,
+    buildReport: chronosBuildReport,
+    comparePB: chronosComparePB
 };
 
 if (typeof window !== "undefined") {
