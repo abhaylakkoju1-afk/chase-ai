@@ -1,10 +1,11 @@
 // Test-only source extractor for Chase's pure functions.
 //
-// index.html is a single monolithic file with no module boundaries — its
-// functions cannot be `import`ed. This module reads index.html AS TEXT
-// (it is never written to, and never modified), locates the exact,
-// current source of a small set of approved pure functions/constants by
-// their real signatures, and evaluates ONLY those extracted declarations
+// index.html (and, for the functions relocated by the Phase B structural
+// extraction, src/app/pages/pb.js and src/app/pages/profile.js) are read AS TEXT — never
+// written to, never modified. Classic `<script src>` files have no
+// module boundaries either, so this module locates the exact, current
+// source of a small set of approved pure functions/constants by their
+// real signatures, and evaluates ONLY those extracted declarations
 // inside isolated Node `vm` sandboxes.
 //
 // It also reads src/chase-engine/stats.js and src/chase-engine/
@@ -29,6 +30,8 @@ import vm from "node:vm";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const INDEX_HTML_PATH = join(__dirname, "..", "index.html");
+const PB_MODULE_PATH = join(__dirname, "..", "src", "app", "pages", "pb.js");
+const PROFILE_MODULE_PATH = join(__dirname, "..", "src", "app", "pages", "profile.js");
 const STATS_MODULE_PATH = join(__dirname, "..", "src", "chase-engine", "stats.js");
 const STROKE_CYCLES_MODULE_PATH = join(__dirname, "..", "src", "chase-engine", "stroke-cycles.js");
 
@@ -151,27 +154,44 @@ function extractBalancedBlock(text, openIndex) {
 // const signature, ending in the block's opening bracket. Anchors are
 // matched by exact substring, not regex, and extraction fails loudly if
 // an anchor is missing or ambiguous (found more than once).
+//
+// `source` names which file the anchor is searched in — "index" for
+// index.html, "pb" for src/app/pages/pb.js (where the Phase B structural
+// extraction relocated timeToSeconds/formatTime), "profile" for
+// src/app/pages/profile.js (where it relocated capitalize). This is a
+// location lookup only: the extracted source text and how it is
+// evaluated are unchanged.
 
-const TARGETS = {
-  CHASE_COACHING_RULES: "const CHASE_COACHING_RULES = [",
-  timeToSeconds: "function timeToSeconds(t) {",
-  formatTime: "function formatTime(seconds) {",
-  capitalize: "function capitalize(s) {",
+const SOURCE_LABELS = {
+  index: "index.html",
+  pb: "src/app/pages/pb.js",
+  profile: "src/app/pages/profile.js",
 };
 
-function extractDeclaration(source, name) {
-  const anchor = TARGETS[name];
+const TARGETS = {
+  CHASE_COACHING_RULES: { source: "index", anchor: "const CHASE_COACHING_RULES = [" },
+  timeToSeconds: { source: "pb", anchor: "function timeToSeconds(t) {" },
+  formatTime: { source: "pb", anchor: "function formatTime(seconds) {" },
+  capitalize: { source: "profile", anchor: "function capitalize(s) {" },
+};
 
-  if (!anchor) {
+function extractDeclaration(name, sourcesByName) {
+  const target = TARGETS[name];
+
+  if (!target) {
     throw new Error(`extractDeclaration: "${name}" is not an approved extraction target.`);
   }
+
+  const { anchor } = target;
+  const source = sourcesByName[target.source];
+  const sourceLabel = SOURCE_LABELS[target.source];
 
   const anchorIndex = source.indexOf(anchor);
 
   if (anchorIndex === -1) {
     throw new Error(
       `Chase source extraction failed for "${name}": could not find the expected ` +
-      `signature ${JSON.stringify(anchor)} in index.html. Either the function was ` +
+      `signature ${JSON.stringify(anchor)} in ${sourceLabel}. Either the function was ` +
       `renamed/removed/reshaped (a behavior change requiring approval per CLAUDE.md), ` +
       `or this extractor's anchor is stale and needs updating to match the current source.`
     );
@@ -182,7 +202,7 @@ function extractDeclaration(source, name) {
   if (secondIndex !== -1) {
     throw new Error(
       `Chase source extraction failed for "${name}": the signature ${JSON.stringify(anchor)} ` +
-      `appears more than once in index.html, so extraction is ambiguous.`
+      `appears more than once in ${sourceLabel}, so extraction is ambiguous.`
     );
   }
 
@@ -203,6 +223,24 @@ function readIndexHtml() {
     cachedSource = readFileSync(INDEX_HTML_PATH, "utf8");
   }
   return cachedSource;
+}
+
+let cachedPbSource = null;
+
+function readPbJs() {
+  if (cachedPbSource === null) {
+    cachedPbSource = readFileSync(PB_MODULE_PATH, "utf8");
+  }
+  return cachedPbSource;
+}
+
+let cachedProfileSource = null;
+
+function readProfileJs() {
+  if (cachedProfileSource === null) {
+    cachedProfileSource = readFileSync(PROFILE_MODULE_PATH, "utf8");
+  }
+  return cachedProfileSource;
 }
 
 const PURE_FUNCTION_NAMES = [
@@ -231,9 +269,9 @@ const STATS_FUNCTION_NAMES = ["averageValid", "summariseMetric"];
  * sandbox realm.
  */
 export function loadChaseFunctions() {
-  const source = readIndexHtml();
+  const sourcesByName = { index: readIndexHtml(), pb: readPbJs(), profile: readProfileJs() };
 
-  const declarations = PURE_FUNCTION_NAMES.map((name) => extractDeclaration(source, name));
+  const declarations = PURE_FUNCTION_NAMES.map((name) => extractDeclaration(name, sourcesByName));
 
   // averageValid and summariseMetric now live in src/chase-engine/stats.js.
   // The whole (small) file is read directly and included here — no anchor
@@ -256,7 +294,7 @@ export function loadChaseFunctions() {
   // after the untouched extracted declaration, purely to expose it to
   // the harness. This does not alter the extracted array or its
   // behavior in any way.
-  const coachingRulesDeclaration = extractDeclaration(source, "CHASE_COACHING_RULES");
+  const coachingRulesDeclaration = extractDeclaration("CHASE_COACHING_RULES", sourcesByName);
 
   const code = [
     ...declarations,
