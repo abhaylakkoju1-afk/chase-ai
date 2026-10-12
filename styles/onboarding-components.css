@@ -1,0 +1,896 @@
+.chase-showcase-inner {
+
+    width:
+        min(1250px, 86%);
+
+    margin:
+        0 auto;
+
+}
+
+
+/* ---------------------------------------------------------
+   HEADER
+   --------------------------------------------------------- */
+
+.chase-showcase-header {
+
+    position: relative;
+
+    margin-bottom: 65px;
+
+}
+
+
+.chase-kicker {
+
+    margin-bottom: 22px;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    letter-spacing: 4px;
+
+    color:
+        rgba(0,217,255,.7);
+
+}
+
+
+.chase-showcase-header h2 {
+
+    margin: 0;
+
+    font-family:
+        Michroma,
+        sans-serif;
+
+    font-size:
+        clamp(3rem, 7vw, 7.5rem);
+
+    line-height: .9;
+
+    letter-spacing: -3px;
+
+    color:
+        #f3f7fa;
+
+}
+
+
+.chase-showcase-header p {
+
+    margin-top: 28px;
+
+    font-family:
+        Inter,
+        sans-serif;
+
+    font-size:
+        clamp(1rem, 1.5vw, 1.2rem);
+
+    color:
+        rgba(235,242,248,.48);
+
+}
+
+
+/* ---------------------------------------------------------
+   ANALYSIS STAGE
+   --------------------------------------------------------- */
+
+.chase-analysis-stage {
+
+    position: relative;
+
+    height:
+        min(650px, 60vw);
+
+    min-height:
+        480px;
+
+    overflow: hidden;
+
+    border:
+        1px solid
+        rgba(255,255,255,.11);
+
+    background:
+
+        radial-gradient(
+            circle at center,
+            rgba(0,110,160,.10),
+            transparent 45%
+        ),
+
+        linear-gradient(
+            135deg,
+            rgba(255,255,255,.045),
+            rgba(255,255,255,.008)
+        );
+
+    box-shadow:
+        0 30px 100px
+        rgba(0,0,0,.45);
+
+}
+
+
+/* ---------------------------------------------------------
+   GRID
+   --------------------------------------------------------- */
+
+.chase-analysis-grid {
+
+    position: absolute;
+
+    inset: 0;
+
+    background-image:
+
+        linear-gradient(
+            rgba(0,217,255,.07) 1px,
+            transparent 1px
+        ),
+
+        linear-gradient(
+            90deg,
+            rgba(0,217,255,.07) 1px,
+            transparent 1px
+        );
+
+    background-size:
+        70px 70px;
+
+    mask-image:
+        radial-gradient(
+            ellipse at center,
+            black 0%,
+            transparent 80%
+        );
+
+    opacity: .35;
+
+}
+
+
+/* ---------------------------------------------------------
+   GIANT 02
+   --------------------------------------------------------- */
+
+.chase-analysis-number {
+
+    position: absolute;
+
+    right: -25px;
+
+    top: -80px;
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size:
+        clamp(18rem, 35vw, 35rem);
+
+    line-height: .8;
+
+    font-weight: 800;
+
+    letter-spacing: -30px;
+
+    color:
+        rgba(100,210,255,.035);
+
+    pointer-events: none;
+
+}
+
+
+/* ---------------------------------------------------------
+   CENTER SYSTEM
+   --------------------------------------------------------- */
+
+.chase-analysis-center {
+
+    position: absolute;
+
+    left: 50%;
+
+    top: 50%;
+
+    transform:
+        translate(-50%, -50%);
+
+    width:
+        min(500px, 70%);
+
+    text-align: center;
+
+}
+
+
+.chase-analysis-label {
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    letter-spacing: 5px;
+
+    color:
+        rgba(0,217,255,.65);
+
+}
+
+
+.chase-analysis-line {
+
+    width: 100%;
+
+    height: 1px;
+
+    margin: 22px 0;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(0,217,255,.6),
+            transparent
+        );
+
+}
+
+
+.chase-analysis-status {
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size:
+        clamp(.65rem, 1vw, .8rem);
+
+    letter-spacing:
+        4px;
+
+    color:
+        rgba(255,255,255,.35);
+
+}
+
+
+/* ---------------------------------------------------------
+   CORNERS
+   --------------------------------------------------------- */
+
+.chase-analysis-corner {
+
+    position: absolute;
+
+    width: 35px;
+
+    height: 35px;
+
+}
+
+
+.chase-analysis-corner::before,
+.chase-analysis-corner::after {
+
+    content: "";
+
+    position: absolute;
+
+    background:
+        rgba(0,217,255,.6);
+
+}
+
+
+.chase-analysis-corner::before {
+
+    width: 35px;
+
+    height: 1px;
+
+}
+
+
+.chase-analysis-corner::after {
+
+    width: 1px;
+
+    height: 35px;
+
+}
+
+
+.chase-corner-tl {
+
+    top: 20px;
+    left: 20px;
+
+}
+
+
+.chase-corner-tr {
+
+    top: 20px;
+    right: 20px;
+
+    transform:
+        rotate(90deg);
+
+}
+
+
+.chase-corner-bl {
+
+    bottom: 20px;
+    left: 20px;
+
+    transform:
+        rotate(-90deg);
+
+}
+
+
+.chase-corner-br {
+
+    bottom: 20px;
+    right: 20px;
+
+    transform:
+        rotate(180deg);
+
+}
+
+
+/* ---------------------------------------------------------
+   SIDE METADATA
+   --------------------------------------------------------- */
+
+.chase-analysis-meta {
+
+    position: absolute;
+
+    top: 50%;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing: 3px;
+
+    color:
+        rgba(255,255,255,.25);
+
+    writing-mode:
+        vertical-rl;
+
+}
+
+
+.chase-analysis-meta span {
+
+    color:
+        rgba(0,217,255,.65);
+
+    margin-bottom: 8px;
+
+}
+
+
+.chase-meta-left {
+
+    left: 25px;
+
+    transform:
+        translateY(-50%)
+        rotate(180deg);
+
+}
+
+
+.chase-meta-right {
+
+    right: 25px;
+
+    transform:
+        translateY(-50%);
+
+}
+
+
+/* ---------------------------------------------------------
+   BOTTOM PROCESS
+   --------------------------------------------------------- */
+
+.chase-analysis-bottom {
+
+    position: absolute;
+
+    left: 30px;
+
+    right: 30px;
+
+    bottom: 25px;
+
+    display: flex;
+
+    justify-content: space-between;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    font-weight: 600;
+
+    letter-spacing: 3px;
+
+    color:
+        rgba(255,255,255,.28);
+
+}
+
+
+.chase-analysis-bottom span {
+
+    position: relative;
+
+}
+
+
+.chase-analysis-bottom span::before {
+
+    content: "";
+
+    display: inline-block;
+
+    width: 5px;
+
+    height: 5px;
+
+    margin-right: 9px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(0,217,255,.6);
+
+}
+
+
+/* ---------------------------------------------------------
+   FOOTER
+   --------------------------------------------------------- */
+
+.chase-showcase-footer {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-top: 22px;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing: 3px;
+
+    color:
+        rgba(255,255,255,.25);
+
+}
+
+
+/* ---------------------------------------------------------
+   MOBILE
+   --------------------------------------------------------- */
+
+@media(max-width:800px) {
+
+    .swimtics-chase-showcase {
+
+        padding:
+            100px 0;
+
+    }
+
+
+    .chase-showcase-inner {
+
+        width: 90%;
+
+    }
+
+
+    .chase-analysis-stage {
+
+        height: 500px;
+
+        min-height: 500px;
+
+    }
+
+
+    .chase-analysis-number {
+
+        font-size: 15rem;
+
+    }
+
+
+    .chase-analysis-meta {
+
+        display: none;
+
+    }
+
+
+    .chase-analysis-bottom {
+
+        font-size: 7px;
+
+        letter-spacing: 2px;
+
+    }
+
+
+    .chase-showcase-footer {
+
+        flex-direction: column;
+
+        gap: 8px;
+
+    }
+
+}
+
+/* =========================================================
+   ONBOARDING / "GETTING STARTED" COMPONENTS
+   (used across Analyzer, Race, PB and Profile/War Room pages)
+   ========================================================= */
+
+.st-eyebrow {
+    display: inline-block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cyan, #00d9ff);
+    margin-bottom: 10px;
+}
+
+.st-intro {
+    max-width: 760px;
+    margin: 0 0 36px;
+}
+
+.st-intro h2 {
+    margin: 0 0 12px;
+    font-size: 2rem;
+}
+
+/* keep the intro title consistent even on pages with a bold custom h2 (e.g. War Room) */
+#dashboard .st-intro h2 {
+    font-family: 'Inter', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: normal;
+    text-transform: none;
+    color: white;
+    text-shadow: none;
+}
+
+.st-intro p {
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0;
+}
+
+.st-section {
+    margin-top: 50px;
+}
+
+.st-section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.25rem;
+    letter-spacing: 1px;
+    margin-bottom: 22px;
+    color: white;
+}
+
+.st-section-sub {
+    margin: -14px 0 22px;
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.6);
+    max-width: 640px;
+}
+
+/* numbered how-to cards */
+.howto-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.howto-grid.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.howto-card {
+    background: linear-gradient(145deg, rgba(0, 217, 255, 0.07), rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(0, 217, 255, 0.18);
+    border-radius: 20px;
+    padding: 24px 22px;
+    transition: all .3s ease;
+}
+
+.howto-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 217, 255, 0.4);
+    box-shadow: 0 12px 30px rgba(0, 217, 255, 0.12);
+}
+
+.howto-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--cyan, #00d9ff);
+    opacity: 0.85;
+    margin-bottom: 10px;
+}
+
+.howto-card h4 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    color: white;
+}
+
+.howto-card p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.howto-card .howto-example {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(0, 217, 255, 0.08);
+    font-size: 0.82rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* tip / callout strip */
+.tip-card {
+    margin-top: 22px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: rgba(0, 217, 255, 0.06);
+    border: 1px solid rgba(0, 217, 255, 0.2);
+    border-radius: 16px;
+    padding: 18px 22px;
+}
+
+.tip-card .tip-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.tip-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* topic chips */
+.topic-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+}
+
+.topic-card {
+    text-align: center;
+    padding: 20px 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: white;
+    font-size: 0.92rem;
+    transition: all .3s ease;
+}
+
+.topic-card:hover {
+    border-color: rgba(0, 217, 255, 0.4);
+    transform: translateY(-3px);
+}
+
+/* video requirements grid */
+.req-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.req-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    border-radius: 16px;
+    padding: 18px 20px;
+}
+
+.req-card .req-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    color: var(--cyan, #00d9ff);
+    margin-bottom: 8px;
+}
+
+.req-card p {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+/* camera angle cards */
+.angle-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.angle-card {
+    background: linear-gradient(145deg, rgba(0, 217, 255, 0.06), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(0, 217, 255, 0.18);
+    border-radius: 18px;
+    padding: 22px;
+}
+
+.angle-card .angle-label {
+    display: inline-block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    color: var(--cyan, #00d9ff);
+    background: rgba(0, 217, 255, 0.1);
+    border-radius: 999px;
+    padding: 5px 12px;
+    margin-bottom: 12px;
+}
+
+.angle-card h4 {
+    margin: 0 0 8px;
+    font-size: 1.02rem;
+    color: white;
+}
+
+.angle-card p {
+    margin: 0 0 12px;
+    font-size: 0.86rem;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.6;
+}
+
+.angle-card ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 0.83rem;
+    color: rgba(255, 255, 255, 0.62);
+    line-height: 1.8;
+}
+
+/* race footage strip */
+.footage-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+}
+
+.footage-chip {
+    text-align: center;
+    padding: 12px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    font-size: 0.76rem;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* avoid / warning card - reuses the site's existing red accent */
+.avoid-card {
+    margin-top: 20px;
+    background: rgba(255, 0, 51, 0.05);
+    border: 1px solid rgba(255, 0, 51, 0.25);
+    border-radius: 18px;
+    padding: 22px 26px;
+}
+
+.avoid-card h4 {
+    margin: 0 0 12px;
+    color: #ff5c7a;
+    font-size: 0.95rem;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+}
+
+.avoid-card ul {
+    margin: 0 0 14px;
+    padding-left: 20px;
+    columns: 2;
+}
+
+.avoid-card li {
+    font-size: 0.86rem;
+    line-height: 1.85;
+    color: rgba(255, 255, 255, 0.78);
+    break-inside: avoid;
+}
+
+.avoid-card .avoid-note {
+    margin: 0;
+    font-size: 0.84rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.st-disclaimer {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+@media(max-width:900px) {
+    .howto-grid, .howto-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
+    .req-grid { grid-template-columns: repeat(2, 1fr); }
+    .angle-grid { grid-template-columns: 1fr; }
+    .topic-grid { grid-template-columns: repeat(3, 1fr); }
+    .footage-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media(max-width:600px) {
+    .howto-grid, .howto-grid.cols-3 { grid-template-columns: 1fr; }
+    .req-grid { grid-template-columns: 1fr; }
+    .topic-grid { grid-template-columns: repeat(2, 1fr); }
+    .footage-grid { grid-template-columns: repeat(2, 1fr); }
+    .avoid-card ul { columns: 1; }
+    .st-intro h2 { font-size: 1.6rem; }
+    .st-section-title { font-size: 1.1rem; }
+}

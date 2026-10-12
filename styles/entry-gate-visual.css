@@ -1,0 +1,902 @@
+
+
+/* =========================================================
+   SWIMTICS — CINEMATIC ENTRY EXPERIENCE
+   ========================================================= */
+
+:root {
+
+    --black: #020508;
+    --navy: #061426;
+
+    --cyan: #00d9ff;
+    --cyan-soft: rgba(0,217,255,.55);
+
+    --white: #f3f7fa;
+
+    --muted: rgba(235,242,248,.48);
+
+    --border: rgba(255,255,255,.13);
+
+    --ease: cubic-bezier(.16,1,.3,1);
+
+}
+
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
+* {
+    box-sizing: border-box;
+}
+
+
+html,
+body {
+
+    width: 100%;
+
+    min-height: 100%;
+
+    margin: 0;
+    padding: 0;
+
+    background: var(--black);
+
+    overflow-x: hidden;
+
+    overflow-y: auto;
+
+}
+
+
+/* =========================================================
+   MAIN ENTRY
+   ========================================================= */
+
+#entryGate {
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 10000;
+
+    overflow: hidden;
+
+    background: #020508;
+
+    color: white;
+
+    font-family: Inter, sans-serif;
+
+    opacity: 1;
+
+    visibility: visible;
+
+    transition:
+
+        opacity 1.1s var(--ease),
+
+        visibility 1.1s var(--ease);
+
+}
+
+
+/* =========================================================
+   BACKGROUND IMAGE
+   ========================================================= */
+
+.entry-background {
+
+    position: absolute;
+
+    inset: -3%;
+
+    z-index: 0;
+
+    background-image:
+        url("../entry-bg.png");
+
+    background-size: cover;
+
+    background-position: center center;
+
+    background-repeat: no-repeat;
+
+    filter:
+
+        saturate(.72)
+
+        contrast(1.08)
+
+        brightness(.60)
+
+        blur(.15px);
+
+    transform: scale(1.035);
+
+    animation:
+        cinematicZoom 18s
+        cubic-bezier(.16,1,.3,1)
+        forwards;
+
+    transition:
+        transform 2s var(--ease);
+
+}
+
+
+/* slow cinematic zoom */
+
+@keyframes cinematicZoom {
+
+    0% {
+
+        transform:
+            scale(1.035)
+            translate3d(0,0,0);
+
+    }
+
+    100% {
+
+        transform:
+            scale(1.10)
+            translate3d(-.4%, -.3%, 0);
+
+    }
+
+}
+
+
+/* =========================================================
+   DARK CINEMATIC OVERLAY
+   ========================================================= */
+
+.entry-overlay {
+
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 1;
+
+    background:
+
+        linear-gradient(
+            180deg,
+
+            rgba(1,5,10,.72) 0%,
+
+            rgba(2,8,15,.20) 28%,
+
+            rgba(2,8,15,.18) 50%,
+
+            rgba(1,5,10,.82) 100%
+        ),
+
+        radial-gradient(
+            ellipse at center,
+
+            transparent 25%,
+
+            rgba(0,0,0,.58) 100%
+        );
+
+    pointer-events: none;
+
+}
+
+
+/* =========================================================
+   BLUE ATMOSPHERIC GLOW
+   ========================================================= */
+
+.entry-light {
+
+    position: absolute;
+
+    z-index: 2;
+
+    width: 65vw;
+
+    height: 65vw;
+
+    max-width: 900px;
+
+    max-height: 900px;
+
+    left: 50%;
+
+    top: 45%;
+
+    transform:
+        translate(-50%, -50%);
+
+    border-radius: 50%;
+
+    background:
+
+        radial-gradient(
+            circle,
+
+            rgba(0,170,255,.10),
+
+            rgba(0,80,180,.035) 40%,
+
+            transparent 70%
+        );
+
+    filter: blur(25px);
+
+    pointer-events: none;
+
+}
+
+
+/* =========================================================
+   TECHNICAL GRID
+   ========================================================= */
+
+.entry-grid {
+
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 3;
+
+    pointer-events: none;
+
+    opacity: .10;
+
+    background-image:
+
+        linear-gradient(
+            rgba(0,217,255,.12) 1px,
+            transparent 1px
+        ),
+
+        linear-gradient(
+            90deg,
+            rgba(0,217,255,.12) 1px,
+            transparent 1px
+        );
+
+    background-size:
+        90px 90px;
+
+    mask-image:
+        radial-gradient(
+            ellipse at center,
+            black 0%,
+            transparent 75%
+        );
+
+}
+
+
+/* =========================================================
+   GRAIN
+   ========================================================= */
+
+.entry-grain {
+
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 8;
+
+    pointer-events: none;
+
+    opacity: .045;
+
+    background-image:
+
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='.8'/%3E%3C/svg%3E");
+
+    mix-blend-mode: screen;
+
+}
+
+
+/* =========================================================
+   SCREEN BORDER
+   ========================================================= */
+
+.entry-frame {
+
+    position: absolute;
+
+    inset: 28px;
+
+    z-index: 6;
+
+    border:
+
+        1px solid
+        rgba(255,255,255,.14);
+
+    pointer-events: none;
+
+}
+
+
+.entry-frame::before,
+.entry-frame::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 7px;
+
+    height: 7px;
+
+    border-radius: 50%;
+
+    background:
+        var(--cyan);
+
+    box-shadow:
+        0 0 15px
+        rgba(0,217,255,.7);
+
+}
+
+
+.entry-frame::before {
+
+    top: -4px;
+
+    left: 17%;
+
+}
+
+
+.entry-frame::after {
+
+    top: -4px;
+
+    right: 17%;
+
+}
+
+
+/* =========================================================
+   SCAN LINE
+   ========================================================= */
+
+.scan-line {
+
+    position: absolute;
+
+    left: 0;
+
+    top: -10%;
+
+    width: 100%;
+
+    height: 1px;
+
+    z-index: 7;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(0,217,255,.65),
+            transparent
+        );
+
+    box-shadow:
+
+        0 0 20px
+        rgba(0,217,255,.5);
+
+    opacity: .35;
+
+    animation:
+        scanLine 8s linear infinite;
+
+}
+
+
+@keyframes scanLine {
+
+    from {
+        transform:
+            translateY(-10vh);
+    }
+
+    to {
+        transform:
+            translateY(120vh);
+    }
+
+}
+
+
+/* =========================================================
+   HUGE BACKGROUND NUMBER
+   ========================================================= */
+
+.background-number {
+
+    position: absolute;
+
+    z-index: 2;
+
+    right: 4vw;
+
+    top: 5vh;
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size:
+        clamp(16rem, 32vw, 38rem);
+
+    line-height: .8;
+
+    font-weight: 800;
+
+    color:
+
+        rgba(120,210,255,.035);
+
+    letter-spacing:
+        -25px;
+
+    user-select: none;
+
+    pointer-events: none;
+
+}
+
+
+/* =========================================================
+   TOP INFORMATION
+   ========================================================= */
+
+.entry-top {
+
+    position: absolute;
+
+    top: 52px;
+
+    left: 52px;
+
+    right: 52px;
+
+    z-index: 9;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    letter-spacing: 4px;
+
+    text-transform: uppercase;
+
+    color:
+        rgba(255,255,255,.55);
+
+}
+
+
+.entry-top-right {
+
+    color:
+        rgba(0,217,255,.75);
+
+}
+
+
+/* =========================================================
+   SIDE INFORMATION
+   ========================================================= */
+
+.entry-side-left {
+
+    position: absolute;
+
+    z-index: 9;
+
+    left: 55px;
+
+    top: 50%;
+
+    transform:
+        translateY(-50%);
+
+    writing-mode:
+        vertical-rl;
+
+    transform:
+        translateY(-50%)
+        rotate(180deg);
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing: 4px;
+
+    color:
+        rgba(255,255,255,.34);
+
+    text-transform: uppercase;
+
+}
+
+
+.entry-side-right {
+
+    position: absolute;
+
+    z-index: 9;
+
+    right: 55px;
+
+    top: 50%;
+
+    transform:
+        translateY(-50%);
+
+    writing-mode:
+        vertical-rl;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 9px;
+
+    letter-spacing: 4px;
+
+    color:
+        rgba(255,255,255,.34);
+
+    text-transform: uppercase;
+
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+   ========================================================= */
+
+.entry-content {
+
+    position: absolute;
+
+    z-index: 10;
+
+    left: 50%;
+
+    top: 50%;
+
+    transform:
+        translate(-50%, -50%);
+
+    width: min(1000px, 85%);
+
+    text-align: center;
+
+}
+
+
+/* =========================================================
+   SMALL LABEL
+   ========================================================= */
+
+.entry-kicker {
+
+    margin-bottom: 22px;
+
+    font-family:
+        Rajdhani,
+        sans-serif;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    letter-spacing: 7px;
+
+    text-transform: uppercase;
+
+    color:
+        rgba(0,217,255,.75);
+
+    opacity: 0;
+
+    transform:
+        translateY(15px);
+
+    animation:
+
+        contentReveal .9s
+        .2s var(--ease)
+        forwards;
+
+}
+
+
+/* =========================================================
+   SWIMTICS LOGO
+   ========================================================= */
+
+.entry-logo {
+
+    margin: 0;
+
+    font-family:
+        Michroma,
+        sans-serif;
+
+    font-size:
+        clamp(4rem, 10vw, 9rem);
+
+    font-weight: 800;
+
+    letter-spacing:
+        clamp(5px, 1vw, 13px);
+
+    line-height: .9;
+
+    color:
+        #f4f8fb;
+
+    text-shadow:
+
+        0 0 12px
+        rgba(255,255,255,.28),
+
+        0 0 35px
+        rgba(0,180,255,.28),
+
+        0 0 75px
+        rgba(0,100,255,.16);
+
+    opacity: 0;
+
+    transform:
+        translateY(25px)
+        scale(.96);
+
+    animation:
+
+        logoReveal 1.2s
+        .35s var(--ease)
+        forwards;
+
+}
+
+
+@keyframes logoReveal {
+
+    from {
+
+        opacity: 0;
+
+        transform:
+            translateY(25px)
+            scale(.96);
+
+        filter:
+            blur(8px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform:
+            translateY(0)
+            scale(1);
+
+        filter:
+            blur(0);
+
+    }
+
+}
+
+
+/* =========================================================
+   DIVIDER
+   ========================================================= */
+
+.entry-divider {
+
+    width:
+        min(430px, 55%);
+
+    height: 1px;
+
+    margin:
+        32px auto 28px;
+
+    background:
+
+        linear-gradient(
+            90deg,
+
+            transparent,
+
+            rgba(0,217,255,.7),
+
+            transparent
+        );
+
+    position: relative;
+
+    opacity: 0;
+
+    animation:
+
+        lineReveal 1s
+        .7s var(--ease)
+        forwards;
+
+}
+
+
+.entry-divider::after {
+
+    content: "";
+
+    position: absolute;
+
+    left: 50%;
+
+    top: 50%;
+
+    width: 5px;
+
+    height: 5px;
+
+    transform:
+        translate(-50%, -50%)
+        rotate(45deg);
+
+    background:
+        var(--cyan);
+
+    box-shadow:
+        0 0 14px
+        rgba(0,217,255,.75);
+
+}
+
+
+@keyframes lineReveal {
+
+    from {
+
+        opacity: 0;
+
+        transform:
+            scaleX(.2);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform:
+            scaleX(1);
+
+    }
+
+}
+
+
+/* =========================================================
+   SUBTITLE
+   ========================================================= */
+
+.entry-subtitle {
+
+    font-family:
+        Orbitron,
+        sans-serif;
+
+    font-size:
+        clamp(.75rem, 1.5vw, 1rem);
+
+    letter-spacing:
+        clamp(3px, .6vw, 7px);
+
+    color:
+        rgba(238,245,250,.75);
+
+    text-transform:
+        uppercase;
+
+    opacity: 0;
+
+    transform:
+        translateY(15px);
+
+    animation:
+
+        contentReveal .9s
+        .85s var(--ease)
+        forwards;
+
+}
+
+
+@keyframes contentReveal {
+
+    from {
+
+        opacity: 0;
+
+        transform:
+            translateY(15px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform:
+            translateY(0);
+
+    }
+
+}
+
+
+/* =========================================================
+   ENTRY CONTROL
+   ========================================================= */
+
+.enter-wrapper {
+
+    margin-top: 48px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    opacity: 0;
+
+    transform:
+        translateY(20px);
+
+    animation:
+
+        contentReveal 1s
+        1.05s var(--ease)
+        forwards;
+
+}
+
+
