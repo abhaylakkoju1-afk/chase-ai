@@ -1,0 +1,913 @@
+
+        /* =========================================
+   LIGHT MODE HOME PAGE OUTER BACKGROUND FIX
+========================================= */
+
+        body.light-mode,
+        body.light-mode html {
+            background:
+                linear-gradient(135deg,
+                    #f8f4e8 0%,
+                    #fcfaf5 45%,
+                    #f1ebdf 100%) !important;
+        }
+
+
+        /* THEME TOGGLE */
+        body.light-mode #themeToggle {
+            background:
+                linear-gradient(145deg,
+                    rgba(255, 255, 255, 0.92),
+                    rgba(248, 244, 232, 0.88));
+
+            color: #111;
+
+            border:
+                1px solid rgba(0, 0, 0, 0.06);
+
+            box-shadow:
+                0 8px 22px rgba(0, 0, 0, 0.08);
+        }
+
+.coach-header {
+
+    margin-top: 25px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 15px;
+
+    padding: 30px 24px 20px 24px;
+
+    min-height: 90px;
+
+    flex-shrink: 0;
+
+    border-bottom:
+        1px solid rgba(0,200,255,0.12);
+
+    color: white;
+
+    z-index: 10;
+}
+
+
+.coach-icon {
+
+    font-size: 2rem;
+}
+
+.coach-header h3 {
+
+    margin: 0;
+
+    color: white;
+
+    font-size: 2rem;
+
+    font-family: Orbitron;
+}
+
+.coach-header p {
+
+    margin: 4px 0 0;
+
+    color: rgba(255,255,255,0.55);
+
+    font-size: 0.9rem;
+}
+
+.coach-send-btn {
+
+    width: 80px;
+    height: 80px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border: none;
+
+    border-radius: 22px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.35),
+            rgba(0,80,255,0.25)
+        );
+
+    color: white;
+
+    font-size: 1.8rem;
+
+    cursor: pointer;
+
+    transition: .3s ease;
+}
+
+.coach-send-btn:hover {
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 0 20px rgba(0,180,255,0.35);
+}
+
+        /* ===== PREMIUM SWIMTICS AUTH MODAL ===== */
+
+        .auth-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+
+            background: rgba(0, 0, 0, 0.72);
+            backdrop-filter: blur(18px);
+
+            justify-content: center;
+            align-items: center;
+
+            z-index: 999999;
+        }
+
+        .auth-box {
+            position: relative;
+            width: 95%;
+            max-width: 500px;
+
+            padding: 50px 40px;
+
+            border-radius: 28px;
+
+            background: linear-gradient(145deg,
+                    rgba(10, 25, 45, 0.96),
+                    rgba(20, 40, 70, 0.92));
+
+            border: 1px solid rgba(0, 191, 255, 0.25);
+
+            box-shadow:
+                0 0 25px rgba(0, 191, 255, 0.15),
+                0 20px 60px rgba(0, 0, 0, 0.5);
+
+            text-align: center;
+        }
+
+        .auth-box h2 {
+            font-family: 'Michroma', sans-serif;
+            font-size: 1.7rem;
+            margin-bottom: 30px;
+
+            color: white;
+
+            text-shadow:
+                0 0 8px rgba(0, 191, 255, 0.35);
+        }
+
+        .auth-box input,
+        .auth-box select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 16px 20px;
+            border-radius: 14px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            font-size: 1rem;
+            outline: none;
+            text-align: left;
+            display: block;
+            margin: 0 auto 12px auto;
+            color: black
+        }
+
+        .auth-box input::placeholder {
+            color: rgba(0, 0, 0, 0.65);
+        }
+
+        .auth-box button {
+            width: 100%;
+
+            padding: 15px;
+
+            margin-top: 10px;
+
+            border: none;
+            border-radius: 18px;
+
+            background: linear-gradient(135deg,
+                    #00bfff,
+                    #007bff);
+
+            color: white;
+
+            font-size: 1rem;
+            font-weight: 700;
+
+            cursor: pointer;
+
+            transition: all 0.3s ease;
+        }
+
+        .auth-box button:hover {
+            transform: translateY(-2px);
+
+            box-shadow:
+                0 0 18px rgba(0, 191, 255, 0.4);
+        }
+
+        .auth-switch {
+            margin-top: 22px;
+
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .auth-switch span {
+            color: #00bfff;
+            font-weight: 700;
+
+            cursor: pointer;
+        }
+
+        .auth-switch span:hover {
+            text-decoration: underline;
+        }
+
+        .close-auth {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    font-size: 28px;
+    cursor: pointer;
+    color: white;
+    transition: 0.2s ease;
+}
+
+.close-auth:hover {
+    transform: scale(1.15);
+    opacity: 0.8;
+}
+
+        #authMessage {
+            margin-top: 18px;
+
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        /* ===== LIGHT MODE ===== */
+
+        body.light-mode .auth-box {
+            background: linear-gradient(145deg,
+                    rgba(255, 255, 255, 0.98),
+                    rgba(245, 248, 252, 0.98));
+
+            color: #111;
+
+            border: 1px solid rgba(0, 0, 0, 0.08);
+
+            box-shadow:
+                0 15px 50px rgba(0, 0, 0, 0.12);
+        }
+
+        body.light-mode .auth-box h2 {
+            color: #111;
+            text-shadow: none;
+        }
+
+        body.light-mode .auth-box input {
+            background: rgba(0, 0, 0, 0.05);
+            color: #111;
+        }
+
+        body.light-mode .auth-box input::placeholder {
+            color: rgba(0, 0, 0, 0.45);
+        }
+
+        body.light-mode .auth-switch {
+            color: #333;
+        }
+
+        /* =========================================
+   PROFILE ACCOUNT DETAILS
+========================================= */
+
+        .account-details-section {
+            margin-top: 28px;
+        }
+
+        .account-card {
+            padding: 28px;
+
+            border-radius: 22px;
+
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.08),
+                    rgba(255, 255, 255, 0.03));
+
+            border:
+                1px solid rgba(255, 255, 255, 0.08);
+
+            backdrop-filter: blur(14px);
+
+            box-shadow:
+                0 20px 40px rgba(0, 0, 0, 0.18);
+
+            color: white;
+        }
+
+        .account-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 18px;
+
+            color: #00f7ff;
+        }
+
+        .account-card p {
+            margin: 10px 0;
+            color: rgba(255, 255, 255, 0.88);
+
+            word-break: break-word;
+        }
+
+        .login-btn {
+
+    width: 100%;
+
+    padding: 14px 18px;
+
+    margin-top: 15px;
+
+    border: none;
+    border-radius: 14px;
+
+    background: linear-gradient(135deg, #2196f3, #1565c0);
+
+    color: white;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: 0.25s ease;
+
+    box-shadow: 0 4px 14px rgba(33, 150, 243, 0.35);
+
+}
+
+.login-btn:hover {
+
+    transform: translateY(-2px);
+
+    box-shadow: 0 8px 22px rgba(33, 150, 243, 0.5);
+
+}
+
+.login-btn:active {
+
+    transform: scale(0.98);
+
+}
+
+        .logout-btn {
+            width: 100%;
+
+            margin-top: 22px;
+
+            padding: 16px;
+
+            border: none;
+
+            border-radius: 16px;
+
+            font-size: 1rem;
+            font-weight: 700;
+
+            cursor: pointer;
+
+            color: white;
+
+            background:
+                linear-gradient(135deg,
+                    #ff2d55,
+                    #d6003d);
+
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-3px);
+
+            box-shadow:
+                0 14px 28px rgba(255, 45, 85, 0.35);
+        }
+
+        /* LIGHT MODE */
+        body.light-mode .account-card {
+            background:
+                linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.96),
+                    rgba(245, 240, 230, 0.96));
+
+            border:
+                1px solid rgba(0, 0, 0, 0.06);
+
+            color: #111;
+        }
+
+        body.light-mode .account-card h3 {
+            color: #111;
+        }
+
+        body.light-mode .account-card p {
+            color: #222;
+        }
+
+/* ==========================
+   HOME FEATURES
+========================== */
+
+.features-section {
+
+    position: relative;
+
+    background: #050505;
+
+    padding: 120px 8%;
+
+    z-index: 20;
+
+    margin-top: -50px;
+
+    border-radius: 40px 40px 0 0;
+}
+
+.features-title {
+
+    text-align: center;
+
+    font-size: 3rem;
+
+    margin-bottom: 15px;
+
+    color: white;
+}
+
+.features-subtitle {
+
+    text-align: center;
+
+    color: rgba(255,255,255,0.7);
+
+    max-width: 800px;
+
+    margin: auto auto 80px;
+}
+
+.features-grid {
+
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 30px;
+
+    max-width: 1200px;
+
+    margin: auto;
+}
+
+.feature-card {
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255,255,255,0.08),
+            rgba(255,255,255,0.03)
+        );
+
+    backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255,255,255,0.08);
+
+    border-radius: 25px;
+
+    padding: 35px;
+
+    transition: all .35s ease;
+
+    cursor: pointer;
+}
+
+.feature-card:hover {
+
+    transform:
+        translateY(-8px)
+        scale(1.02);
+
+    border-color: #ff0033;
+
+    box-shadow:
+        0 20px 50px rgba(255,0,51,0.25);
+}
+
+.feature-icon {
+
+    font-size: 3rem;
+
+    margin-bottom: 15px;
+}
+
+.feature-card h3 {
+
+    color: white;
+
+    margin-bottom: 15px;
+}
+
+.feature-card p {
+
+    color: rgba(255,255,255,0.8);
+
+    line-height: 1.7;
+}
+
+.feature-card span {
+
+    display: block;
+
+    margin-top: 15px;
+
+    color: #ff0033;
+
+    font-weight: 600;
+}
+
+.warroom-wrapper {
+
+    display: flex;
+
+    justify-content: center;
+
+    margin-top: 35px;
+}
+
+.warroom-card {
+
+    width: 50%;
+}
+
+@media(max-width:900px){
+
+    .features-grid {
+
+        grid-template-columns: 1fr;
+    }
+
+    .warroom-card {
+
+        width: 100%;
+    }
+}
+
+.premium-upload,
+.raceVideo {
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 16px 32px;
+
+    border-radius: 20px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.35),
+            rgba(0,80,255,0.25)
+        );
+
+    border: 1px solid rgba(0,200,255,0.25);
+
+    backdrop-filter: blur(12px);
+
+    color: white;
+
+    font-family: Orbitron;
+    font-size: 1rem;
+
+    cursor: pointer;
+
+    transition: all .3s ease;
+
+    width: 270px;
+
+    height: 70px;
+
+    box-sizing: border-box;
+}
+
+.premium-upload:hover {
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 0 25px rgba(0,180,255,0.35);
+
+}
+
+#stroke {
+
+    color: #ffffff;
+
+    font-family: Orbitron;
+
+    font-size: 1rem;
+
+    appearance: none;
+
+background-image:
+url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='white'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");
+
+background-repeat: no-repeat;
+
+background-position: right 20px center;
+
+background-size: 20px;
+
+    padding: 16px 50px 16px 20px;
+
+    border-radius: 20px;
+
+    border: 1px solid rgba(0,200,255,0.25);
+
+    background-color: transparent;
+
+    backdrop-filter: blur(12px);
+
+    cursor: pointer;
+
+    outline: none;
+
+    transition: all .3s ease;
+
+    width: 270px;
+
+    height: 70px;
+
+    box-sizing: border-box;
+}
+
+#stroke:hover {
+
+    box-shadow:
+        0 0 20px rgba(0,180,255,0.3);
+
+}
+
+#stroke option {
+    background: #081f4d;
+    color: white;
+    font-family: Orbitron, sans-serif;
+}
+
+#event,
+#course,
+#time {
+
+    height: 72px;
+
+    padding: 0 25px;
+
+    border-radius: 20px;
+
+    border: 1px solid rgba(0,200,255,0.25);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.18),
+            rgba(0,80,255,0.12)
+        );
+
+    backdrop-filter: blur(12px);
+
+    color: white;
+
+    font-family: Orbitron, sans-serif;
+
+    font-size: 1rem;
+
+    outline: none;
+
+    transition: all .3s ease;
+
+    box-sizing: border-box;
+}
+
+#event:hover,
+#course:hover,
+#time:hover {
+
+    box-shadow:
+        0 0 20px rgba(0,180,255,0.25);
+
+    transform: translateY(-2px);
+}
+
+.pb-action-btn {
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.20),
+            rgba(0,80,255,0.12)
+        );
+
+    border: 1px solid rgba(0,200,255,0.25);
+
+    color: white;
+
+    border-radius: 12px;
+
+    padding: 10px 18px;
+
+    font-family: Orbitron, sans-serif;
+
+    font-size: 0.9rem;
+
+    cursor: pointer;
+
+    transition: all .25s ease;
+
+    backdrop-filter: blur(10px);
+
+    min-width: 85px;
+}
+
+.pb-action-btn:hover {
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 0 15px rgba(0,180,255,0.35);
+}
+
+.delete-btn {
+
+    border-color:
+        rgba(255,80,80,0.35);
+}
+
+.delete-btn:hover {
+
+    box-shadow:
+        0 0 15px rgba(255,80,80,0.35);
+}
+
+.chart-btn {
+
+    min-width: 55px;
+
+    padding: 10px 12px;
+}
+
+.pb-time {
+
+    color: #00d9ff;
+
+    text-shadow:
+        0 0 10px rgba(0,217,255,0.4);
+}
+
+#aiCoachBtn {
+
+    position: fixed;
+    display: block;
+
+    right: 30px;
+    bottom: 30px;
+
+    width: 90px;
+    height: 90px;
+
+    border-radius: 50%;
+
+    border: 1px solid rgba(0,200,255,0.18);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(0,180,255,0.25),
+            rgba(0,80,255,0.18)
+        );
+
+    backdrop-filter: blur(20px);
+
+    font-size: 2rem;
+
+    box-shadow:
+        0 0 30px rgba(0,180,255,0.20);
+
+    z-index: 10000;
+    cursor: pointer;
+    visibility:visible
+}
+
+.coach-input-row {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 14px;
+
+    padding: 20px;
+
+    flex-shrink: 0;
+}
+
+.coach-close {
+
+    margin-left: auto;
+
+    background: transparent;
+
+    border: none;
+
+    color: white;
+
+    font-size: 1.5rem;
+
+    cursor: pointer;
+
+    opacity: 0.7;
+}
+
+.coach-close:hover {
+
+    opacity: 1;
+}
+
+/* =========================================================
+   CHASE AI — VIDEO VIEWER
+========================================================= */
+
+.chase-video-container {
+
+    position: relative;
+
+    width: min(100%, 1000px);
+
+    margin: 30px auto;
+
+    background: #000;
+
+    overflow: hidden;
+
+    border-radius: 14px;
+
+    line-height: 0;
+}
+
+.chase-video-container video {
+
+    display: block;
+
+    width: 100%;
+
+    height: auto;
+
+    max-height: 70vh;
+
+    object-fit: contain;
+
+    background: #000;
+}
+
+.chase-video-container canvas {
+
+    position: absolute;
+
+    inset: 0;
+
+    width: 100%;
+
+    height: 100%;
+
+    pointer-events: none;
+
+    z-index: 2;
+}
+
+.chase-video-container video {
+
+    position: relative;
+
+    z-index: 1;
+}
