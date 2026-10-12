@@ -2,6 +2,8 @@
 <html>
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
@@ -154,7 +156,14 @@ gtag('config', 'G-VSLDBW2PYM');
         body.light-mode .glass,
         body.light-mode .pb-item,
         body.light-mode .metric-box,
-        body.light-mode .chart-container {
+        body.light-mode .chart-container,
+        body.light-mode .howto-card,
+        body.light-mode .tip-card,
+        body.light-mode .req-card,
+        body.light-mode .angle-card,
+        body.light-mode .topic-card,
+        body.light-mode .footage-chip,
+        body.light-mode .avoid-card {
             background:
                 linear-gradient(145deg,
                     rgba(255, 255, 255, 0.88),
@@ -6117,6 +6126,335 @@ body {
     }
 
 }
+
+/* =========================================================
+   ONBOARDING / "GETTING STARTED" COMPONENTS
+   (used across Analyzer, Race, PB and Profile/War Room pages)
+   ========================================================= */
+
+.st-eyebrow {
+    display: inline-block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cyan, #00d9ff);
+    margin-bottom: 10px;
+}
+
+.st-intro {
+    max-width: 760px;
+    margin: 0 0 36px;
+}
+
+.st-intro h2 {
+    margin: 0 0 12px;
+    font-size: 2rem;
+}
+
+/* keep the intro title consistent even on pages with a bold custom h2 (e.g. War Room) */
+#dashboard .st-intro h2 {
+    font-family: 'Inter', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: normal;
+    text-transform: none;
+    color: white;
+    text-shadow: none;
+}
+
+.st-intro p {
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0;
+}
+
+.st-section {
+    margin-top: 50px;
+}
+
+.st-section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.25rem;
+    letter-spacing: 1px;
+    margin-bottom: 22px;
+    color: white;
+}
+
+.st-section-sub {
+    margin: -14px 0 22px;
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.6);
+    max-width: 640px;
+}
+
+/* numbered how-to cards */
+.howto-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.howto-grid.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.howto-card {
+    background: linear-gradient(145deg, rgba(0, 217, 255, 0.07), rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(0, 217, 255, 0.18);
+    border-radius: 20px;
+    padding: 24px 22px;
+    transition: all .3s ease;
+}
+
+.howto-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 217, 255, 0.4);
+    box-shadow: 0 12px 30px rgba(0, 217, 255, 0.12);
+}
+
+.howto-num {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--cyan, #00d9ff);
+    opacity: 0.85;
+    margin-bottom: 10px;
+}
+
+.howto-card h4 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+    color: white;
+}
+
+.howto-card p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.howto-card .howto-example {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(0, 217, 255, 0.08);
+    font-size: 0.82rem;
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* tip / callout strip */
+.tip-card {
+    margin-top: 22px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: rgba(0, 217, 255, 0.06);
+    border: 1px solid rgba(0, 217, 255, 0.2);
+    border-radius: 16px;
+    padding: 18px 22px;
+}
+
+.tip-card .tip-icon {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.tip-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* topic chips */
+.topic-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+}
+
+.topic-card {
+    text-align: center;
+    padding: 20px 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: white;
+    font-size: 0.92rem;
+    transition: all .3s ease;
+}
+
+.topic-card:hover {
+    border-color: rgba(0, 217, 255, 0.4);
+    transform: translateY(-3px);
+}
+
+/* video requirements grid */
+.req-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.req-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    border-radius: 16px;
+    padding: 18px 20px;
+}
+
+.req-card .req-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 2px;
+    color: var(--cyan, #00d9ff);
+    margin-bottom: 8px;
+}
+
+.req-card p {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+/* camera angle cards */
+.angle-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.angle-card {
+    background: linear-gradient(145deg, rgba(0, 217, 255, 0.06), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(0, 217, 255, 0.18);
+    border-radius: 18px;
+    padding: 22px;
+}
+
+.angle-card .angle-label {
+    display: inline-block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    color: var(--cyan, #00d9ff);
+    background: rgba(0, 217, 255, 0.1);
+    border-radius: 999px;
+    padding: 5px 12px;
+    margin-bottom: 12px;
+}
+
+.angle-card h4 {
+    margin: 0 0 8px;
+    font-size: 1.02rem;
+    color: white;
+}
+
+.angle-card p {
+    margin: 0 0 12px;
+    font-size: 0.86rem;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.6;
+}
+
+.angle-card ul {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 0.83rem;
+    color: rgba(255, 255, 255, 0.62);
+    line-height: 1.8;
+}
+
+/* race footage strip */
+.footage-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+}
+
+.footage-chip {
+    text-align: center;
+    padding: 12px 8px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    font-size: 0.76rem;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* avoid / warning card - reuses the site's existing red accent */
+.avoid-card {
+    margin-top: 20px;
+    background: rgba(255, 0, 51, 0.05);
+    border: 1px solid rgba(255, 0, 51, 0.25);
+    border-radius: 18px;
+    padding: 22px 26px;
+}
+
+.avoid-card h4 {
+    margin: 0 0 12px;
+    color: #ff5c7a;
+    font-size: 0.95rem;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+}
+
+.avoid-card ul {
+    margin: 0 0 14px;
+    padding-left: 20px;
+    columns: 2;
+}
+
+.avoid-card li {
+    font-size: 0.86rem;
+    line-height: 1.85;
+    color: rgba(255, 255, 255, 0.78);
+    break-inside: avoid;
+}
+
+.avoid-card .avoid-note {
+    margin: 0;
+    font-size: 0.84rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+.st-disclaimer {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.78rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+@media(max-width:900px) {
+    .howto-grid, .howto-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
+    .req-grid { grid-template-columns: repeat(2, 1fr); }
+    .angle-grid { grid-template-columns: 1fr; }
+    .topic-grid { grid-template-columns: repeat(3, 1fr); }
+    .footage-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media(max-width:600px) {
+    .howto-grid, .howto-grid.cols-3 { grid-template-columns: 1fr; }
+    .req-grid { grid-template-columns: 1fr; }
+    .topic-grid { grid-template-columns: repeat(2, 1fr); }
+    .footage-grid { grid-template-columns: repeat(2, 1fr); }
+    .avoid-card ul { columns: 1; }
+    .st-intro h2 { font-size: 1.6rem; }
+    .st-section-title { font-size: 1.1rem; }
+}
     </style>
 
 </head>
@@ -6432,6 +6770,12 @@ body {
     <div id="analyzer" class="page">
         <div class="glass">
 
+            <div class="st-intro">
+                <span class="st-eyebrow">Getting Started</span>
+                <h2>Analyze Your Technique</h2>
+                <p>Upload a swimming video to study your stroke and identify areas that may be affecting your performance.</p>
+            </div>
+
             <h2>Chase AI : Your Personal Swim Analyzer</h2>
 
             <input type="file" id="videoUpload" hidden>
@@ -6487,12 +6831,209 @@ body {
 
             <div id="savedReports"></div>
 
+            <!-- HOW TO USE THE ANALYZER -->
+            <div class="st-section">
+                <div class="st-section-title">How to Use the Analyzer</div>
+
+                <div class="howto-grid">
+
+                    <div class="howto-card">
+                        <div class="howto-num">01</div>
+                        <h4>Select Your Stroke</h4>
+                        <p>Choose the stroke you want to analyze.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">02</div>
+                        <h4>Upload Your Video</h4>
+                        <p>Upload a clear and stable swimming video with the swimmer fully visible.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">03</div>
+                        <h4>Review the Footage</h4>
+                        <p>Use the video player to review your movement and stroke mechanics.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">04</div>
+                        <h4>Apply the Insights</h4>
+                        <p>Use the observations to identify areas to work on during training, then retest your technique over time.</p>
+                    </div>
+
+                </div>
+
+                <div class="tip-card">
+                    <span class="tip-icon">💡</span>
+                    <p><strong>Video Tip:</strong> Stable, well-lit footage with the swimmer clearly visible will produce more useful analysis than shaky or obstructed footage.</p>
+                </div>
+            </div>
+
+            <!-- CHASE GUIDANCE -->
+            <div class="st-section">
+                <span class="st-eyebrow">Meet Chase</span>
+                <div class="st-section-title">How to Get Better Answers from Chase</div>
+                <p class="st-section-sub">Chase is SWIMTICS' AI performance assistant, designed to help swimmers think more deeply about training, racing, technique, and performance. You can reach Chase any time from the swim icon in the corner of the screen.</p>
+
+                <div class="howto-grid">
+
+                    <div class="howto-card">
+                        <div class="howto-num">01</div>
+                        <h4>Ask a Specific Question</h4>
+                        <p>Instead of broad questions, give Chase a specific problem or goal.</p>
+                        <div class="howto-example">"What should I focus on to improve my freestyle efficiency?"</div>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">02</div>
+                        <h4>Give Chase Context</h4>
+                        <p>When relevant, include your stroke, event, current performance, training goal, or the specific issue you are working on.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">03</div>
+                        <h4>Add Video When Relevant</h4>
+                        <p>For technique-related questions, clear swimming footage can provide additional context for analysis.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">04</div>
+                        <h4>Use the Feedback</h4>
+                        <p>Review the response, consider the recommendations, and discuss meaningful training or technique changes with your coach.</p>
+                    </div>
+
+                </div>
+
+                <div class="st-section-title" style="margin-top:32px;">💡 What You Can Ask Chase About</div>
+
+                <div class="topic-grid">
+                    <div class="topic-card">Training</div>
+                    <div class="topic-card">Racing</div>
+                    <div class="topic-card">Technique</div>
+                    <div class="topic-card">Performance</div>
+                    <div class="topic-card">Recovery</div>
+                </div>
+            </div>
+
+            <!-- VIDEO REQUIREMENTS -->
+            <div class="st-section">
+                <span class="st-eyebrow">Video Requirements</span>
+                <div class="st-section-title">Get the Most Out of Your Footage</div>
+                <p class="st-section-sub">For the most useful technique feedback, use clear, stable footage where the swimmer remains visible throughout the movement.</p>
+
+                <div class="req-grid">
+                    <div class="req-card">
+                        <div class="req-label">FORMAT</div>
+                        <p>MP4 or MOV recommended.</p>
+                    </div>
+                    <div class="req-card">
+                        <div class="req-label">RESOLUTION</div>
+                        <p>720p minimum. 1080p recommended.</p>
+                    </div>
+                    <div class="req-card">
+                        <div class="req-label">FRAME RATE</div>
+                        <p>30 fps minimum. 60 fps recommended when available.</p>
+                    </div>
+                    <div class="req-card">
+                        <div class="req-label">ORIENTATION</div>
+                        <p>Landscape is recommended.</p>
+                    </div>
+                    <div class="req-card">
+                        <div class="req-label">CAMERA</div>
+                        <p>A stable camera or tripod-mounted setup is preferred.</p>
+                    </div>
+                    <div class="req-card">
+                        <div class="req-label">LIGHTING</div>
+                        <p>Use bright, clear footage with minimal glare.</p>
+                    </div>
+                    <div class="req-card">
+                        <div class="req-label">SUBJECT</div>
+                        <p>Keep one swimmer clearly visible throughout the clip.</p>
+                    </div>
+                    <div class="req-card">
+                        <div class="req-label">LENGTH</div>
+                        <p>Use focused clips that contain enough movement to evaluate the technique.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CAMERA ANGLES -->
+            <div class="st-section">
+                <div class="st-section-title">Recommended Camera Angles</div>
+
+                <div class="angle-grid">
+
+                    <div class="angle-card">
+                        <span class="angle-label">Best general-purpose angle</span>
+                        <h4>Side View</h4>
+                        <p>Position the camera approximately perpendicular to the swimmer's direction.</p>
+                        <ul>
+                            <li>Body alignment</li>
+                            <li>Head position</li>
+                            <li>Arm movement</li>
+                            <li>Hand entry</li>
+                            <li>Pull pattern</li>
+                            <li>Hip position</li>
+                            <li>Kick</li>
+                            <li>Body rotation</li>
+                            <li>Overall stroke mechanics</li>
+                        </ul>
+                    </div>
+
+                    <div class="angle-card">
+                        <span class="angle-label">Best for underwater mechanics</span>
+                        <h4>Underwater Side View</h4>
+                        <p>Position the camera underwater and approximately perpendicular to the swimmer.</p>
+                        <ul>
+                            <li>Underwater pull</li>
+                            <li>Kick</li>
+                            <li>Body position</li>
+                            <li>Hand path</li>
+                            <li>Streamline</li>
+                            <li>Underwater movement</li>
+                        </ul>
+                    </div>
+
+                    <div class="angle-card">
+                        <span class="angle-label">Useful for overall stroke and race footage</span>
+                        <h4>Above-Water / Elevated View</h4>
+                        <p>Keep the entire swimmer visible and avoid filming from extremely far away.</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- WHAT TO AVOID -->
+            <div class="avoid-card">
+                <h4>⚠️ Avoid</h4>
+                <ul>
+                    <li>Shaky handheld footage</li>
+                    <li>Extremely dark footage</li>
+                    <li>Heavy glare on the water</li>
+                    <li>The swimmer being partially out of frame</li>
+                    <li>Extremely distant camera positions</li>
+                    <li>Excessive zoom</li>
+                    <li>Multiple swimmers blocking the subject</li>
+                    <li>Footage where the swimmer repeatedly disappears from view</li>
+                    <li>Clips that are too short to contain enough movement</li>
+                </ul>
+                <p class="avoid-note">For technique analysis, one clearly visible swimmer is much more useful than a crowded pool scene.</p>
+            </div>
+
+            <p class="st-disclaimer">Chase provides AI-generated performance insights for informational purposes. It is designed to complement, not replace, qualified coaching and professional guidance.</p>
+
         </div>
     </div>
 
     <!-- PB PAGE -->
     <div id="pb" class="page">
         <div class="glass">
+
+            <div class="st-intro">
+                <span class="st-eyebrow">Getting Started</span>
+                <h2>Track Your Progress</h2>
+                <p>Keep your personal bests organized and see how your performances change over time.</p>
+            </div>
 
             <h2>Log Your Personal Best</h2>
 
@@ -6530,6 +7071,43 @@ body {
             <h3>Your PBs</h3>
             <div id="pbList"></div>
 
+            <div class="st-section">
+                <div class="st-section-title">How to Use Your PB Tracker</div>
+
+                <div class="howto-grid">
+
+                    <div class="howto-card">
+                        <div class="howto-num">01</div>
+                        <h4>Add a PB</h4>
+                        <p>Enter your event, time, date, and the relevant performance information.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">02</div>
+                        <h4>Keep Your Records Updated</h4>
+                        <p>When you achieve a faster performance, update your PB record.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">03</div>
+                        <h4>View Your Progression</h4>
+                        <p>Use the performance history and charts to see how your times have changed.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">04</div>
+                        <h4>Look for Trends</h4>
+                        <p>Compare performances over time to understand your progression across different events.</p>
+                    </div>
+
+                </div>
+
+                <div class="tip-card">
+                    <span class="tip-icon">💡</span>
+                    <p><strong>Tip:</strong> Keep your PB records accurate and consistently formatted so your performance history remains useful.</p>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -6537,9 +7115,44 @@ body {
     <div id="race" class="page">
         <div class="glass">
 
+            <div class="st-intro">
+                <span class="st-eyebrow">Getting Started</span>
+                <h2>Break Down Your Race</h2>
+                <p>A final time tells you the result. Race analysis helps you understand the performance behind it.</p>
+            </div>
+
             <h2>Race Analysis</h2>
 
-            <input
+            <div class="st-section">
+                <div class="st-section-title">1. Configure This Race</div>
+
+                <label for="raceEventSelect">Event</label><br>
+                <select id="raceEventSelect">
+                    <option value="" selected disabled>Select Event</option>
+                </select>
+                <br><br>
+
+                <span>Stroke: <span id="raceStrokeDisplay">—</span></span>
+                &nbsp;&nbsp;&nbsp;
+                <span>Distance: <span id="raceDistanceDisplay">—</span></span>
+                <br><br>
+
+                <label for="raceCourseSelect">Course</label><br>
+                <select id="raceCourseSelect">
+                    <option value="" selected disabled>Select Course</option>
+                </select>
+                <br><br>
+
+                <label for="racePoolLengthSelect">Pool Length</label><br>
+                <select id="racePoolLengthSelect">
+                    <option value="" selected disabled>Select Pool Length</option>
+                </select>
+            </div>
+
+            <div class="st-section">
+                <div class="st-section-title">2. Upload Race Video</div>
+
+                <input
     type="file"
     id="raceVideo"
     hidden>
@@ -6555,11 +7168,11 @@ body {
 <span id="raceFileName">
     No file selected
 </span>
-            <br><br>
+                <br><br>
 
-            <div style="position: relative; width: 70%; margin:auto;">
-                <video id="racePlayer" width="100%" controls></video>
-                <canvas id="raceCanvas" style="
+                <div style="position: relative; width: 70%; margin:auto;">
+                    <video id="racePlayer" width="100%" controls></video>
+                    <canvas id="raceCanvas" style="
         position:absolute;
         top:0;
         left:0;
@@ -6567,8 +7180,33 @@ body {
         height:100%;
         pointer-events: none;
     "></canvas>
+                </div>
             </div>
-            <button class="btn" onclick="startMetrics()">Calculate Metrics</button>
+
+            <div class="st-section">
+                <div class="st-section-title">3. Calibrate Lane Reference</div>
+                <p class="st-section-sub">Pause the video on a clear frame, then mark the swimmer's lane reference position — click the button below, then click on the swimmer's lane in the video.</p>
+
+                <button class="btn" id="raceCalibrateBtn">🎯 Mark Lane Reference Position</button>
+                <div id="raceCalibrationStatus" class="metric-box">Calibration: not set</div>
+            </div>
+
+            <button class="btn" id="raceAutoStartBtn" onclick="racePipelineHandleStartClick()">▶ Start Automatic Analysis</button>
+            <button class="btn" id="raceAutoStopBtn" onclick="racePipelineHandleStopClick()">⏹ Stop / Reset Analysis</button>
+
+            <div id="racePipelineStatus" class="metric-box">Ready to configure</div>
+
+            <div id="racePipelineReport"></div>
+
+            <div class="st-section">
+                <div class="st-section-title">PB Comparison</div>
+                <div id="racePipelinePbComparison"></div>
+            </div>
+
+            <div class="st-section">
+                <div class="st-section-title">Developer Diagnostics</div>
+                <div id="racePipelineDiagnostics"></div>
+            </div>
 
             <div id="raceMetrics"></div>
 
@@ -6584,12 +7222,69 @@ body {
             <h3>Splits</h3>
             <div id="splits"></div>
 
+            <div class="st-section">
+                <div class="st-section-title">How to Use Race Analysis</div>
+
+                <div class="howto-grid">
+
+                    <div class="howto-card">
+                        <div class="howto-num">01</div>
+                        <h4>Add Your Race</h4>
+                        <p>Enter the relevant event and performance information.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">02</div>
+                        <h4>Add Your Split Data</h4>
+                        <p>Enter your available splits to build a clearer picture of how your race progressed.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">03</div>
+                        <h4>Review the Race</h4>
+                        <p>Examine different phases of your performance and look for meaningful patterns.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">04</div>
+                        <h4>Find Areas to Improve</h4>
+                        <p>Use the information to identify sections of your race that deserve attention in training.</p>
+                    </div>
+
+                </div>
+
+                <div class="tip-card">
+                    <span class="tip-icon">💡</span>
+                    <p><strong>Tip:</strong> Accurate split data makes race comparisons much more useful. Keep your entries consistent when tracking performances over time.</p>
+                </div>
+            </div>
+
+            <div class="st-section">
+                <div class="st-section-title">Race Footage</div>
+                <p class="st-section-sub">For race analysis, full-race footage is ideal when available. If that is not possible, focused clips can still be useful.</p>
+
+                <div class="footage-grid">
+                    <div class="footage-chip">Start + First 15m</div>
+                    <div class="footage-chip">Mid-Pool</div>
+                    <div class="footage-chip">Turn</div>
+                    <div class="footage-chip">Underwater Phase</div>
+                    <div class="footage-chip">Final 15m</div>
+                    <div class="footage-chip">Finish</div>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <!-- PROFILE -->
     <div id="profile" class="page">
         <div class="glass">
+
+            <div class="st-intro">
+                <span class="st-eyebrow">Getting Started</span>
+                <h2>Build Your Athlete Profile</h2>
+                <p>Keep your details up to date so insights and recommendations across SWIMTICS are personalized to you.</p>
+            </div>
 
             <h2>Your Profile</h2>
             
@@ -6703,7 +7398,31 @@ body {
                 Log Out
             </button>
 
+            <div class="st-section">
+                <div class="st-section-title">How to Use Your Profile</div>
 
+                <div class="howto-grid cols-3">
+
+                    <div class="howto-card">
+                        <div class="howto-num">01</div>
+                        <h4>Complete Your Details</h4>
+                        <p>Fill in your basic info, swimming profile, physical data, training and goals.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">02</div>
+                        <h4>Save Your Profile</h4>
+                        <p>Save your updates so they carry across the rest of SWIMTICS.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">03</div>
+                        <h4>Keep It Current</h4>
+                        <p>Update your profile as your goals, training, or performance change.</p>
+                    </div>
+
+                </div>
+            </div>
 
         </div>
     </div>
@@ -6714,6 +7433,11 @@ body {
     <div id="dashboard" class="page">
         <div class="glass">
 
+            <div class="st-intro">
+                <span class="st-eyebrow">Getting Started</span>
+                <h2>Prepare for Race Day</h2>
+                <p>Answer a few quick questions about fatigue, sleep, and readiness to generate a personalized meet-prep plan.</p>
+            </div>
 
             <h2>WAR ROOM</h2>
 
@@ -7144,6 +7868,32 @@ body {
 
             <div id="dashboardOutput"></div>
 
+            <div class="st-section">
+                <div class="st-section-title">How the War Room Works</div>
+
+                <div class="howto-grid cols-3">
+
+                    <div class="howto-card">
+                        <div class="howto-num">01</div>
+                        <h4>Answer the Readiness Questions</h4>
+                        <p>Enter days until your meet, fatigue, sleep, soreness and mental readiness.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">02</div>
+                        <h4>Mark Your Soreness</h4>
+                        <p>Use the body map to flag any areas that need attention.</p>
+                    </div>
+
+                    <div class="howto-card">
+                        <div class="howto-num">03</div>
+                        <h4>Generate Your Plan</h4>
+                        <p>Review your personalized plan and adjust training and recovery accordingly.</p>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -7260,28 +8010,22 @@ window.showPage = showPage;
         window.currentUser = null;
 
 
-        let raceStarted = false;
-        let splitCount = 0;
-        let startX = null;
-        let laneCenterY = null;
-        let racePose = null;
-        let lastTurnTime = 0;
-
-        let wallContactActive = false;
-        let measuring = false;
-
-        let strokeTimes = [];
-        let lastStrokeTime = null;
-
-        let lastWristY = null;
-        let strokePhase = "down";
-
-        let lastHipX = null;
-        let speedSamples = [];
-
-        const POOL_LENGTH_METERS = 25;
+        /* The legacy automatic Race Analysis state (raceStarted,
+           splitCount, startX, laneCenterY, racePose, lastTurnTime,
+           wallContactActive, measuring, strokeTimes, lastStrokeTime,
+           lastWristY, strokePhase, lastHipX, speedSamples,
+           POOL_LENGTH_METERS, WALL_THRESHOLD) has been removed — Stage
+           4D.6 replaces the dead onRaceResults()/autoStartRace()/
+           startMetrics() automatic path (racePose was declared but never
+           assigned; onRaceResults() was never wired to any Pose instance
+           — confirmed dead, docs/CHRONOS_ARCHITECTURE.md §23) with the
+           tested Race Pipeline — see the separate ES module script block
+           further down this file (after this file's main script ends),
+           implementing src/race-pipeline/controller.js. startTime/running
+           remain: they still back the separate, pre-existing manual timer
+           controls (pauseTimer/split/reset), which this stage leaves
+           otherwise unchanged (Stage 4D.6 §16). */
         let startTime = 0, running = false;
-        const WALL_THRESHOLD = 0.25; // near screen edge
 
         let pbs = JSON.parse(localStorage.getItem("pbs")) || [];
         let strokeData = JSON.parse(localStorage.getItem("strokeData")) || {};
@@ -9106,284 +9850,22 @@ window.addEventListener(
         let pendingWorldRecordEvent = null;
         let pendingWorldRecordCategory = null;
 
-        function startMetrics() {
+        /* startMetrics()/autoStartRace()/onRaceResults() and the
+           dead-data "ended" listener that used to summarize them have
+           been removed here — Stage 4D.6 replaces this entire automatic
+           path with the tested Race Pipeline (see the separate ES module
+           script block further down this file, after this file's main
+           script ends). This was confirmed dead code before removal: racePose was
+           declared but never assigned to a MediaPipe Pose instance
+           anywhere, onRaceResults() was consequently never invoked
+           (docs/CHRONOS_ARCHITECTURE.md §23), and startTimer() (bound to
+           the manual "▶ Start" button below) was never defined at all.
+           The new pipeline is the sole automatic race-timing path;
+           #splits/#timer/#raceMetrics are no longer written by any
+           automatic code — #splits/#timer remain owned solely by the
+           manual controls below (Stage 4D.6 §16), and #raceMetrics is
+           left unused in the DOM rather than removed. */
 
-            const video = document.getElementById("racePlayer");
-
-            if (!video.src) {
-                alert("Upload video first");
-                return;
-            }
-
-            raceStarted = false;
-            splitCount = 0;
-
-            startX = null;
-            laneCenterY = null;
-            lastTurnTime = 0;
-
-            wallContactActive = false;
-
-            document.getElementById("splits").innerHTML = "";
-            document.getElementById("timer").innerText = "0.00 s";
-
-            // RESET DATA
-            measuring = true;
-
-            strokeTimes = [];
-            speedSamples = [];
-
-            lastStrokeTime = null;
-            lastWristY = null;
-            lastHipX = null;
-
-            strokePhase = "down";
-            window.lastFrameTime = null;
-
-            document.getElementById("raceMetrics").innerHTML = `
-        <div class="metric-box">Analyzing race metrics...</div>
-    `;
-
-            video.play();
-
-            initRaceAI();
-            processRaceFrame();
-        }
-
-        function autoStartRace(currentTime) {
-
-            startTime = currentTime;
-            running = true;
-            raceStarted = true;
-
-            updateTimer();
-        }
-
-
-        function onRaceResults(results) {
-
-            if (!results.poseLandmarks) return;
-
-            const lm = results.poseLandmarks;
-            const video = document.getElementById("racePlayer");
-            const currentTime = video.currentTime;
-
-            // ===== LANDMARKS =====
-            const wrist = lm[16];
-            const hip = lm[24];
-            const nose = lm[0];
-
-            // ===== AUTO START DETECTION =====
-            if (!raceStarted) {
-
-                if (startX === null) {
-                    startX = nose.x;
-                    laneCenterY = nose.y;
-                }
-
-                if (Math.abs(nose.x - startX) > 0.08) {
-                    autoStartRace(currentTime);
-                }
-            }
-
-            // ===== SPLIT DETECTION =====
-            if (raceStarted && lastHipX !== null) {
-
-                const laneDeviation =
-                    Math.abs(nose.y - laneCenterY);
-
-                if (laneDeviation < 0.20) {
-
-                    const deltaX = hip.x - lastHipX;
-                    const currentVelocity = Math.abs(deltaX);
-
-                    const nearWall =
-                        hip.x < WALL_THRESHOLD ||
-                        hip.x > (1 - WALL_THRESHOLD);
-
-                    if (
-                        nearWall &&
-                        currentVelocity < 0.015 &&
-                        !wallContactActive &&
-                        currentTime - lastTurnTime > 2.5
-                    ) {
-
-                        splitCount++;
-                        lastTurnTime = currentTime;
-                        wallContactActive = true;
-
-                        const distance =
-                            splitCount * POOL_LENGTH_METERS;
-
-                        const splitTime =
-                            currentTime - startTime;
-
-                        const div =
-                            document.createElement("div");
-
-                        div.innerText =
-                            `${distance}m Split: ${splitTime.toFixed(2)} s`;
-
-                        document.getElementById("splits")
-                            .appendChild(div);
-                    }
-
-                    if (!nearWall) {
-                        wallContactActive = false;
-                    }
-                }
-            }
-
-            // ===== STROKE RATE =====
-            if (lastWristY !== null) {
-
-                const wristDelta =
-                    wrist.y - lastWristY;
-
-                if (
-                    strokePhase === "down" &&
-                    wristDelta < -0.008
-                ) {
-                    strokePhase = "up";
-                }
-
-                if (
-                    strokePhase === "up" &&
-                    wristDelta > 0.008
-                ) {
-                    if (
-                        !lastStrokeTime ||
-                        currentTime - lastStrokeTime > 0.35
-                    ) {
-                        strokeTimes.push(currentTime);
-                        lastStrokeTime = currentTime;
-                    }
-
-                    strokePhase = "down";
-                }
-            }
-
-            lastWristY = wrist.y;
-
-            let spm = 0;
-
-            if (strokeTimes.length >= 2) {
-
-                const recentStrokes =
-                    strokeTimes.slice(-6);
-
-                const duration =
-                    recentStrokes[recentStrokes.length - 1] -
-                    recentStrokes[0];
-
-                if (duration > 0) {
-                    spm =
-                        ((recentStrokes.length - 1) /
-                            duration) *
-                        60;
-                }
-            }
-
-            // ===== SPEED =====
-            if (lastHipX !== null) {
-
-                const deltaX =
-                    Math.abs(hip.x - lastHipX);
-
-                const metersMoved =
-                    deltaX * POOL_LENGTH_METERS;
-
-                const deltaTime =
-                    video.currentTime -
-                    (window.lastFrameTime ||
-                        video.currentTime);
-
-                window.lastFrameTime =
-                    video.currentTime;
-
-                if (deltaTime > 0) {
-
-                    const speedMS =
-                        metersMoved / deltaTime;
-
-                    speedSamples.push(speedMS);
-                }
-            }
-
-            lastHipX = hip.x;
-
-            let currentSpeed = 0;
-
-            if (speedSamples.length > 0) {
-
-                const recentSpeeds =
-                    speedSamples.slice(-10);
-
-                currentSpeed =
-                    recentSpeeds.reduce(
-                        (a, b) => a + b, 0
-                    ) / recentSpeeds.length;
-            }
-
-            // ===== DISPLAY =====
-            document.getElementById("raceMetrics").innerHTML = `
-        <div class="metric-box">Stroke Rate: ${spm.toFixed(1)} spm</div>
-        <div class="metric-box">Speed: ${currentSpeed.toFixed(2)} m/s</div>
-    `;
-        }
-
-        document.getElementById("racePlayer").addEventListener("ended", () => {
-
-            const video = document.getElementById("racePlayer");
-
-            measuring = false;
-
-            let avgSPM = 0;
-
-            if (strokeTimes.length >= 2) {
-
-                const totalDuration =
-                    strokeTimes[strokeTimes.length - 1] -
-                    strokeTimes[0];
-
-                if (totalDuration > 0) {
-                    avgSPM =
-                        ((strokeTimes.length - 1) /
-                            totalDuration) *
-                        60;
-                }
-            }
-
-            if (raceStarted) {
-
-                const finalTime =
-                    video.currentTime - startTime;
-
-                const finalDiv =
-                    document.createElement("div");
-
-                finalDiv.innerHTML =
-                    `<b>Final Time: ${finalTime.toFixed(2)} s</b>`;
-
-                document.getElementById("splits")
-                    .appendChild(finalDiv);
-            }
-
-            let avgSpeed = 0;
-
-            if (speedSamples.length > 0) {
-                avgSpeed =
-                    speedSamples.reduce((a, b) => a + b, 0) /
-                    speedSamples.length;
-            }
-
-            document.getElementById("raceMetrics").innerHTML = `
-        <div class="metric-box"><b>🏁 Avg Stroke Rate:</b> ${avgSPM.toFixed(1)} spm</div>
-        <div class="metric-box"><b>🏁 Avg Speed: ${avgSpeed.toFixed(2)} m/s</div>
-    `;
-        });
-
-        
         function pauseTimer() { document.getElementById("racePlayer").pause(); running = false; }
 
         function updateTimer() {
@@ -10821,6 +11303,856 @@ window.addEventListener("scroll", () => {
         `scale(${1 + scrollY * 0.0002})`;
 
 });
+    </script>
+
+    <!-- =========================================================
+         RACE PIPELINE — Stage 4D.6/4D.7 integration.
+
+         This is the FIRST stage wiring src/race-pipeline/*,
+         src/chronos-engine/*, and src/swimmer-tracking/* into the live
+         page. A native ES module, deliberately separate from the classic
+         <script> above (which holds Chase AI and the rest of the page's
+         logic) and from Chase's own MediaPipe Pose instance — this file
+         creates and owns its OWN Pose instance for the Race page, never
+         reusing or importing Chase's (Stage 4D.6 §6). It does not import
+         anything from src/chase-engine/* and does not modify any Chase
+         code or state.
+
+         Stage 4D.7 adds: a real configuration UI (event/course/pool
+         length, deriving strokeKey/distanceMeters from the SAME
+         canonical vocabulary the PB system already uses), an explicit
+         lane-calibration click interaction (reusing SwimmerTracking's
+         own TargetSelection.point concept, decision #7), and a fuller
+         report/status UI — replacing the Stage 4D.6
+         window.racePipelineConfig devtools-only hook, which no longer
+         exists.
+
+         Target flow (docs/RACE_PIPELINE_ARCHITECTURE.md §2):
+           race video -> race frame driver -> MediaPipe Pose ->
+           pose-sample-adapter -> SwimmerTracking -> detector-adapter ->
+           event-adapter -> ChronosEngine -> RaceAnalysisReport
+         ========================================================= -->
+    <script type="module">
+        import { racePipelineBuildPoseSample } from "./src/race-pipeline/pose-sample-adapter.js";
+        import {
+            racePipelineSupportsVideoFrameCallback,
+            racePipelineIsSampleDue,
+            racePipelineBuildPendingFrameTiming,
+            racePipelineIsPendingTimingCurrent
+        } from "./src/race-pipeline/frame-timing.js";
+        import {
+            racePipelineCreateController,
+            racePipelineStartAnalysis,
+            racePipelineProcessPoseSample,
+            racePipelineStopAnalysis,
+            racePipelineBuildReport,
+            racePipelineControllerStatus
+        } from "./src/race-pipeline/controller.js";
+        import {
+            RACE_EVENT_OPTIONS,
+            RACE_COURSE_OPTIONS,
+            RACE_POOL_LENGTH_OPTIONS_METERS,
+            racePipelineFindEventOption,
+            racePipelineDefaultPoolLengthMetersForCourse,
+            racePipelineBuildRaceConfig,
+            racePipelineDescribeMissingConfigFields,
+            racePipelineMapClickToNormalizedPoint
+        } from "./src/race-pipeline/race-config.js";
+        import { racePipelineFindExistingPb } from "./src/race-pipeline/pb-adapter.js";
+        import { ChronosEngine } from "./src/chronos-engine/index.js";
+
+        let raceController = racePipelineCreateController();
+
+        /* Stage 4D.7 configuration/calibration state — lives entirely in
+           page state for this stage (Stage 4D.7 §10: no Firebase
+           persistence, no global persistence of referenceLaneY beyond
+           the current analysis configuration). */
+        let raceCalibrationPoint = null;
+        let raceCalibrationArmed = false;
+        let racePoolLengthTouchedByUser = false;
+        let raceStoppedByUser = false;
+
+        let raceMediaPipePose = null;
+        let raceAnalyzing = false;
+        let raceAnalysisBusy = false;
+        let raceLastAnalyzedMediaTimeMs = null;
+        let racePendingFrameTiming = null;
+        let raceVideoFrameCallbackHandle = null;
+        let raceAnalysisFallbackTimer = null;
+
+        /* Same proven ~120ms cadence as Chase's own CHASE_SAMPLE_INTERVAL_MS
+           (Stage 4D.6 §5: "Do not use an unnecessarily high processing
+           frequency... follow the proven Chase cadence"). An independent
+           constant — not imported from Chase. */
+        const RACE_SAMPLE_INTERVAL_MS = 120;
+
+        const raceAnalysisCanvas = document.createElement("canvas");
+        const raceAnalysisCtx = raceAnalysisCanvas.getContext("2d", { alpha: false });
+
+        /* ---------------------------------------------------
+           RACE CONFIGURATION UI (Stage 4D.7 §1/§2/§3) — populates the
+           Event/Course/Pool Length <select> elements from
+           src/race-pipeline/race-config.js's own canonical vocabulary
+           (the single source of truth also used for validation), so the
+           HTML markup can never drift out of sync with it.
+        --------------------------------------------------- */
+        function populateRaceConfigSelects() {
+            const eventSelect = document.getElementById("raceEventSelect");
+            const courseSelect = document.getElementById("raceCourseSelect");
+            const poolLengthSelect = document.getElementById("racePoolLengthSelect");
+
+            if (!eventSelect || !courseSelect || !poolLengthSelect) return;
+
+            for (const option of RACE_EVENT_OPTIONS) {
+                const el = document.createElement("option");
+                el.value = option.event;
+                el.textContent = option.event;
+                eventSelect.appendChild(el);
+            }
+
+            for (const course of RACE_COURSE_OPTIONS) {
+                const el = document.createElement("option");
+                el.value = course;
+                el.textContent = course;
+                courseSelect.appendChild(el);
+            }
+
+            for (const meters of RACE_POOL_LENGTH_OPTIONS_METERS) {
+                const el = document.createElement("option");
+                el.value = String(meters);
+                el.textContent = `${meters}m`;
+                poolLengthSelect.appendChild(el);
+            }
+        }
+
+        function updateRaceEventDerivedDisplay() {
+            const eventSelect = document.getElementById("raceEventSelect");
+            const strokeDisplay = document.getElementById("raceStrokeDisplay");
+            const distanceDisplay = document.getElementById("raceDistanceDisplay");
+            if (!eventSelect || !strokeDisplay || !distanceDisplay) return;
+
+            const option = racePipelineFindEventOption(eventSelect.value);
+            strokeDisplay.textContent = option ? option.strokeKey : "—";
+            distanceDisplay.textContent = option ? `${option.distanceMeters}m` : "—";
+        }
+
+        function applyRacePoolLengthDefaultForCourse() {
+            const courseSelect = document.getElementById("raceCourseSelect");
+            const poolLengthSelect = document.getElementById("racePoolLengthSelect");
+            if (!courseSelect || !poolLengthSelect || racePoolLengthTouchedByUser) return;
+
+            const defaultMeters = racePipelineDefaultPoolLengthMetersForCourse(courseSelect.value);
+            if (defaultMeters !== null) {
+                poolLengthSelect.value = String(defaultMeters);
+            }
+        }
+
+        function getCurrentRaceConfig() {
+            const eventSelect = document.getElementById("raceEventSelect");
+            const courseSelect = document.getElementById("raceCourseSelect");
+            const poolLengthSelect = document.getElementById("racePoolLengthSelect");
+
+            return racePipelineBuildRaceConfig({
+                eventValue: eventSelect ? eventSelect.value : null,
+                courseValue: courseSelect ? courseSelect.value : null,
+                poolLengthMetersValue: poolLengthSelect && poolLengthSelect.value ? Number(poolLengthSelect.value) : null,
+                calibrationPoint: raceCalibrationPoint
+            });
+        }
+
+        function initRaceConfigUI() {
+            populateRaceConfigSelects();
+
+            const eventSelect = document.getElementById("raceEventSelect");
+            const courseSelect = document.getElementById("raceCourseSelect");
+            const poolLengthSelect = document.getElementById("racePoolLengthSelect");
+
+            if (eventSelect) {
+                eventSelect.addEventListener("change", () => {
+                    updateRaceEventDerivedDisplay();
+                    renderRaceStatus();
+                });
+            }
+            if (courseSelect) {
+                courseSelect.addEventListener("change", () => {
+                    applyRacePoolLengthDefaultForCourse();
+                    renderRaceStatus();
+                });
+            }
+            if (poolLengthSelect) {
+                poolLengthSelect.addEventListener("change", () => {
+                    racePoolLengthTouchedByUser = true;
+                    renderRaceStatus();
+                });
+            }
+        }
+
+        /* ---------------------------------------------------
+           LANE CALIBRATION (Stage 4D.7 §4/§5) — an explicit click
+           interaction, never an automatic first-frame guess. Reuses
+           SwimmerTracking's own TargetSelection.point shape (decision
+           #7) — see controller.js's own CALIBRATION POINT note for how
+           this value later reaches SwimmerTracking.selectTarget().
+        --------------------------------------------------- */
+        function racePipelineHandleCalibrateClick() {
+            const video = document.getElementById("racePlayer");
+            const canvas = document.getElementById("raceCanvas");
+            const statusEl = document.getElementById("raceCalibrationStatus");
+
+            if (!video || !video.src) {
+                if (statusEl) statusEl.textContent = "Calibration: upload a race video first.";
+                return;
+            }
+            if (!video.videoWidth || !video.videoHeight) {
+                if (statusEl) statusEl.textContent = "Calibration: waiting for the video to finish loading — try again in a moment.";
+                return;
+            }
+
+            video.pause();
+            raceCalibrationArmed = true;
+
+            if (canvas) {
+                canvas.style.pointerEvents = "auto";
+                canvas.style.cursor = "crosshair";
+            }
+            if (statusEl) {
+                statusEl.textContent = "Calibration: click on the swimmer's lane reference position in the video.";
+            }
+        }
+
+        function drawCalibrationMarker(canvas, clickX, clickY) {
+            if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+            }
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            ctx.arc(clickX, clickY, 7, 0, Math.PI * 2);
+            ctx.strokeStyle = "#ffcc00";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        function initRaceCalibrationUI() {
+            const calibrateBtn = document.getElementById("raceCalibrateBtn");
+            const canvas = document.getElementById("raceCanvas");
+            const video = document.getElementById("racePlayer");
+
+            if (calibrateBtn) {
+                calibrateBtn.addEventListener("click", racePipelineHandleCalibrateClick);
+            }
+
+            if (!canvas || !video) return;
+
+            canvas.addEventListener("click", (event) => {
+                if (!raceCalibrationArmed) return;
+
+                const rect = canvas.getBoundingClientRect();
+                const point = racePipelineMapClickToNormalizedPoint({
+                    clickX: event.clientX - rect.left,
+                    clickY: event.clientY - rect.top,
+                    containerWidth: rect.width,
+                    containerHeight: rect.height,
+                    videoNativeWidth: video.videoWidth,
+                    videoNativeHeight: video.videoHeight
+                });
+
+                raceCalibrationArmed = false;
+                canvas.style.pointerEvents = "none";
+                canvas.style.cursor = "";
+
+                const statusEl = document.getElementById("raceCalibrationStatus");
+
+                if (!point) {
+                    raceCalibrationPoint = null;
+                    if (statusEl) {
+                        statusEl.textContent = "Calibration: that click landed outside the video frame — lane reference not set. Try again.";
+                    }
+                    renderRaceStatus();
+                    return;
+                }
+
+                raceCalibrationPoint = point;
+                drawCalibrationMarker(canvas, event.clientX - rect.left, event.clientY - rect.top);
+
+                if (statusEl) {
+                    statusEl.textContent = "Calibration: ✅ lane reference position marked.";
+                }
+                renderRaceStatus();
+            });
+        }
+
+        /* ---------------------------------------------------
+           VIDEO UPLOAD (Stage 4D.6 §1) — the same proven object-URL
+           approach already used by Chase (index.html's own videoUpload
+           handler), independently re-implemented here rather than
+           imported or shared, per the explicit "do not modify/import
+           Chase" constraint.
+        --------------------------------------------------- */
+        function initRaceVideoUpload() {
+            const raceVideoInput = document.getElementById("raceVideo");
+            const racePlayer = document.getElementById("racePlayer");
+            const raceFileName = document.getElementById("raceFileName");
+
+            if (!raceVideoInput || !racePlayer) return;
+
+            raceVideoInput.addEventListener("change", (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                /* Revoke the previous blob URL before creating a new one
+                   — stale object URLs must not leak indefinitely (Stage
+                   4D.6 §1). */
+                if (racePlayer.src && racePlayer.src.startsWith("blob:")) {
+                    URL.revokeObjectURL(racePlayer.src);
+                }
+
+                racePlayer.src = URL.createObjectURL(file);
+                racePlayer.load();
+
+                if (raceFileName) {
+                    raceFileName.textContent = file.name;
+                }
+
+                /* A newly selected video invalidates any in-progress
+                   automatic analysis — mirrors Chase's own "selecting a
+                   video clears the old analysis" rule, and is what
+                   protects against a stale in-flight pose result from the
+                   PREVIOUS video ever affecting the new one (Stage 4D.6
+                   §1's "stale asynchronous processing must not update the
+                   current race"). A calibration is tied to the specific
+                   video's framing (Stage 4D.7 §10: "a calibration belongs
+                   to the current analysis configuration") — a new video
+                   invalidates it too, since the old pixel position almost
+                   certainly no longer corresponds to the same lane.
+                   Event/Course/Pool Length selections are NOT cleared —
+                   those describe the race, not the footage. */
+                racePipelineHandleStopClick();
+                raceCalibrationPoint = null;
+                raceCalibrationArmed = false;
+                const calibrationStatusEl = document.getElementById("raceCalibrationStatus");
+                if (calibrationStatusEl) {
+                    calibrationStatusEl.textContent = "Calibration: not set (a new video requires recalibration).";
+                }
+                const canvasEl = document.getElementById("raceCanvas");
+                if (canvasEl) {
+                    canvasEl.style.pointerEvents = "none";
+                    const ctx = canvasEl.getContext("2d");
+                    ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+                }
+                renderRaceStatus();
+            });
+        }
+
+        function initRaceVideoEndedListener() {
+            const video = document.getElementById("racePlayer");
+            if (!video) return;
+
+            video.addEventListener("ended", () => {
+                stopRaceFrameProcessing();
+
+                /* Stage 4D.6/4D.7 §13: no automatic finish event is
+                   fabricated here. If the session never received a valid
+                   finish event, ChronosEngine.buildReport()'s own,
+                   already-tested behavior already produces
+                   finalTimeMs: null — this handler does not special-case
+                   that, it just stops frame processing
+                   (docs/RACE_PIPELINE_ARCHITECTURE.md §16: "the natural
+                   point to stop the frame driver"). Whether video-end
+                   should ever auto-trigger a real finish event remains
+                   explicitly deferred, alongside manual timing (§13 of
+                   that document), not decided here. */
+                const el = document.getElementById("racePipelineStatus");
+                if (el) el.textContent = "Analysis incomplete — video ended without a finish event.";
+                renderRacePipelineReportFromController();
+                renderRacePipelineDiagnostics();
+            });
+        }
+
+        /* ---------------------------------------------------
+           MEDIAPIPE POSE (Stage 4D.6 §6) — a dedicated instance for the
+           Race page, using the same already-loaded @mediapipe/pose
+           package Chase uses, but never Chase's own Pose object.
+        --------------------------------------------------- */
+        function initialiseRacePose() {
+            if (raceMediaPipePose) return true;
+
+            if (typeof Pose === "undefined") {
+                setRacePipelineStatusText("Pose engine unavailable.");
+                return false;
+            }
+
+            raceMediaPipePose = new Pose({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+            });
+
+            /* Same tuning Chase already uses (initialiseChasePose()) —
+               mirrored, not imported, and not a new unvalidated
+               threshold. */
+            raceMediaPipePose.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                smoothSegmentation: false,
+                minDetectionConfidence: 0.35,
+                minTrackingConfidence: 0.35
+            });
+
+            raceMediaPipePose.onResults(onRacePoseResults);
+
+            return true;
+        }
+
+        function prepareRaceAnalysisCanvas(video) {
+            const sourceWidth = video.videoWidth || 640;
+            const sourceHeight = video.videoHeight || 360;
+            const maxWidth = 640;
+            const scale = Math.min(1, maxWidth / sourceWidth);
+
+            raceAnalysisCanvas.width = Math.max(1, Math.round(sourceWidth * scale));
+            raceAnalysisCanvas.height = Math.max(1, Math.round(sourceHeight * scale));
+        }
+
+        /* ---------------------------------------------------
+           FRAME DRIVER (Stage 4D.6 §4/§5) — requestVideoFrameCallback
+           preferred, a setInterval fallback otherwise. Independently
+           implemented, mirroring Chase's own proven
+           chaseDispatchPoseInference()/chaseStartVideoFrameTicker()
+           structure (never imported, never modified).
+        --------------------------------------------------- */
+        async function raceDispatchPoseInference(video, pendingTiming) {
+            raceAnalysisBusy = true;
+
+            try {
+                if (!raceAnalysisCanvas.width || !raceAnalysisCanvas.height) {
+                    prepareRaceAnalysisCanvas(video);
+                }
+
+                raceAnalysisCtx.drawImage(video, 0, 0, raceAnalysisCanvas.width, raceAnalysisCanvas.height);
+                racePendingFrameTiming = pendingTiming;
+
+                await raceMediaPipePose.send({ image: raceAnalysisCanvas });
+            } catch (error) {
+                console.error("Race pipeline frame error:", error);
+                setRacePipelineStatusText("Frame error — check console.");
+            } finally {
+                raceAnalysisBusy = false;
+            }
+        }
+
+        function raceStartVideoFrameTicker(video, generation) {
+            if (!racePipelineSupportsVideoFrameCallback(video)) return;
+
+            const onVideoFrame = (_now, metadata) => {
+                if (!raceAnalyzing || generation !== raceController.generation) {
+                    raceVideoFrameCallbackHandle = null;
+                    return;
+                }
+
+                const candidateMediaTimeMs = metadata.mediaTime * 1000;
+
+                const due = racePipelineIsSampleDue({
+                    lastAnalyzedMediaTimeMs: raceLastAnalyzedMediaTimeMs,
+                    currentMediaTimeMs: candidateMediaTimeMs,
+                    sampleIntervalMs: RACE_SAMPLE_INTERVAL_MS
+                });
+
+                if (due && !raceAnalysisBusy && !video.ended && video.readyState >= 2) {
+                    raceLastAnalyzedMediaTimeMs = candidateMediaTimeMs;
+
+                    const pendingTiming = racePipelineBuildPendingFrameTiming({
+                        candidateMediaTimeMs,
+                        supportsVideoFrameCallback: true,
+                        generation,
+                        fallbackVideoTimeMs: video.currentTime * 1000
+                    });
+
+                    raceDispatchPoseInference(video, pendingTiming);
+                }
+
+                raceVideoFrameCallbackHandle = video.requestVideoFrameCallback(onVideoFrame);
+            };
+
+            raceVideoFrameCallbackHandle = video.requestVideoFrameCallback(onVideoFrame);
+        }
+
+        function raceStopVideoFrameTicker(video) {
+            if (
+                video &&
+                raceVideoFrameCallbackHandle !== null &&
+                typeof video.cancelVideoFrameCallback === "function"
+            ) {
+                video.cancelVideoFrameCallback(raceVideoFrameCallbackHandle);
+            }
+            raceVideoFrameCallbackHandle = null;
+        }
+
+        async function runRaceAnalysisFallback(video) {
+            if (!raceAnalyzing || raceAnalysisBusy || video.ended || video.readyState < 2) return;
+
+            const pendingTiming = racePipelineBuildPendingFrameTiming({
+                candidateMediaTimeMs: null,
+                supportsVideoFrameCallback: false,
+                generation: raceController.generation,
+                fallbackVideoTimeMs: video.currentTime * 1000
+            });
+
+            await raceDispatchPoseInference(video, pendingTiming);
+        }
+
+        function stopRaceFrameProcessing() {
+            raceAnalyzing = false;
+
+            if (raceAnalysisFallbackTimer) {
+                clearInterval(raceAnalysisFallbackTimer);
+                raceAnalysisFallbackTimer = null;
+            }
+
+            raceStopVideoFrameTicker(document.getElementById("racePlayer"));
+            raceAnalysisBusy = false;
+        }
+
+        /* ---------------------------------------------------
+           POSE RESULTS -> PoseSample -> controller (Stage 4D.6 §7/§8/§10/§11/§12)
+        --------------------------------------------------- */
+        function onRacePoseResults(results) {
+            /* Strict discard gate (src/race-pipeline/frame-timing.js) —
+               a stale async result (from a superseded generation) is
+               thrown away entirely here, never processed with a
+               fallback timestamp (Stage 4D.6 §4's generation-token
+               requirement). */
+            if (!racePipelineIsPendingTimingCurrent({
+                pendingTiming: racePendingFrameTiming,
+                currentGeneration: raceController.generation
+            })) {
+                return;
+            }
+
+            const atMs = racePendingFrameTiming.mediaTimeMs;
+            const generationAtDispatch = racePendingFrameTiming.generation;
+
+            /* pose-sample-adapter.js is authoritative for hasPose/nose/hip
+               mapping — never duplicated here (Stage 4D.6 §7). */
+            const poseSample = racePipelineBuildPoseSample(results, atMs);
+
+            const previousLastEvent = raceController.diagnostics.lastEvent;
+
+            const processResult = racePipelineProcessPoseSample(raceController, poseSample, generationAtDispatch);
+            raceController = processResult.controller;
+
+            const newLastEvent = raceController.diagnostics.lastEvent;
+            const justDetectedKind =
+                (newLastEvent && newLastEvent.ok && newLastEvent !== previousLastEvent) ? newLastEvent.kind : null;
+
+            renderRacePipelineReportFromController();
+            renderRacePipelineDiagnostics();
+            renderRaceStatus(justDetectedKind);
+        }
+
+        /* ---------------------------------------------------
+           START / STOP (Stage 4D.7 §6/§7/§17)
+        --------------------------------------------------- */
+        function racePipelineHandleStartClick() {
+            const video = document.getElementById("racePlayer");
+
+            if (!video || !video.src) {
+                const el = document.getElementById("racePipelineStatus");
+                if (el) el.textContent = "Please upload a race video first.";
+                return;
+            }
+
+            /* UI-layer presence check (Stage 4D.7 §6) — distinct from,
+               and not a duplicate of, controller.js's own validateConfig()
+               type/range validation (Stage 4D.7 §7): this only checks
+               that the user has touched every control the UI is
+               responsible for collecting, so a specific, friendly
+               "what's missing" message can be shown before even
+               attempting to start a session. */
+            const config = getCurrentRaceConfig();
+            const missingFields = racePipelineDescribeMissingConfigFields(config);
+
+            if (missingFields.length > 0) {
+                const el = document.getElementById("racePipelineStatus");
+                if (el) el.textContent = `Please complete configuration before starting: ${missingFields.join(", ")}.`;
+                return;
+            }
+
+            const startResult = racePipelineStartAnalysis(raceController, config);
+            raceController = startResult.controller;
+
+            if (!startResult.ok) {
+                const el = document.getElementById("racePipelineStatus");
+                if (el) el.textContent = `Automatic analysis could not start (${startResult.reason}).`;
+                renderRacePipelineDiagnostics();
+                return;
+            }
+
+            if (!initialiseRacePose()) {
+                const el = document.getElementById("racePipelineStatus");
+                if (el) el.textContent = "Could not initialise the pose engine.";
+                return;
+            }
+
+            raceLastAnalyzedMediaTimeMs = null;
+            racePendingFrameTiming = null;
+            raceAnalysisBusy = false;
+            raceStoppedByUser = false;
+
+            prepareRaceAnalysisCanvas(video);
+            video.currentTime = 0;
+
+            video.play().then(() => {
+                raceAnalyzing = true;
+                const generation = raceController.generation;
+
+                if (racePipelineSupportsVideoFrameCallback(video)) {
+                    raceStartVideoFrameTicker(video, generation);
+                } else {
+                    raceAnalysisFallbackTimer = setInterval(() => runRaceAnalysisFallback(video), RACE_SAMPLE_INTERVAL_MS);
+                }
+
+                renderRaceStatus();
+                renderRacePipelineDiagnostics();
+                renderRacePipelineReportFromController();
+            }).catch((error) => {
+                console.error("Race pipeline video playback failed:", error);
+                const el = document.getElementById("racePipelineStatus");
+                if (el) el.textContent = "The video could not be played.";
+                /* raceController itself already advanced (session
+                   created/armed) by this point even though playback
+                   failed — the diagnostics panel must reflect that real
+                   state, not the stale pre-start render from before this
+                   click. */
+                renderRacePipelineDiagnostics();
+            });
+        }
+
+        function racePipelineHandleStopClick() {
+            stopRaceFrameProcessing();
+            raceStoppedByUser = true;
+
+            const stopResult = racePipelineStopAnalysis(raceController);
+            raceController = stopResult.controller;
+
+            raceLastAnalyzedMediaTimeMs = null;
+            racePendingFrameTiming = null;
+
+            renderRacePipelineReport(null);
+            renderPbComparison(null);
+            renderRacePipelineDiagnostics();
+
+            const el = document.getElementById("racePipelineStatus");
+            if (el) el.textContent = "Analysis stopped.";
+        }
+
+        /* ---------------------------------------------------
+           STATUS TEXT (Stage 4D.7 §9) — USER-FACING states only. Every
+           phrase here comes from the enumerated list in the task; raw
+           Chronos/tracking rejection codes are never shown here (they
+           live in the Developer Diagnostics panel below instead).
+        --------------------------------------------------- */
+        function renderRaceStatus(justDetectedKind) {
+            const el = document.getElementById("racePipelineStatus");
+            if (!el) return;
+            el.textContent = computeUserFacingStatusText(justDetectedKind);
+        }
+
+        function computeUserFacingStatusText(justDetectedKind) {
+            if (raceController.blockedReason) {
+                return `Blocked: ${raceController.blockedReason}.`;
+            }
+
+            if (!raceController.chronosSession) {
+                const video = document.getElementById("racePlayer");
+                const hasVideo = !!(video && video.src);
+                if (!hasVideo) return "Ready to configure";
+
+                const config = getCurrentRaceConfig();
+                const missing = racePipelineDescribeMissingConfigFields(config);
+                if (missing.length === 0) return "Ready to analyze";
+                if (missing.length === 1 && missing[0] === "lane calibration") return "Calibration required";
+                return "Ready to configure";
+            }
+
+            if (raceController.chronosSession.status === "finished") {
+                return "Analysis finished";
+            }
+
+            if (!raceAnalyzing) {
+                return raceStoppedByUser ? "Analysis stopped" : "Analysis incomplete";
+            }
+
+            if (justDetectedKind === "start") return "Start detected";
+            if (justDetectedKind === "turn") return "Turn detected";
+
+            if (raceController.trackingSession && raceController.trackingSession.status === "TARGET_LOCKED") {
+                return "Tracking target";
+            }
+
+            return "Analysis running";
+        }
+
+        /* ---------------------------------------------------
+           DEVELOPER DIAGNOSTICS (Stage 4D.7 §9) — more detailed/raw than
+           the user-facing status line; every value rendered here already
+           exists on raceController — no timing math happens in this
+           file.
+        --------------------------------------------------- */
+        function renderRacePipelineDiagnostics() {
+            const el = document.getElementById("racePipelineDiagnostics");
+            if (!el) return;
+
+            const d = raceController.diagnostics;
+            const lines = [];
+
+            lines.push(`Lifecycle: ${racePipelineControllerStatus(raceController)}`);
+            lines.push(`Tracking: ${d.lastTrackingStatus ?? "—"} (${d.lastObservationOutcome ?? "—"})`);
+            lines.push(d.turnDetectionAvailable ? "Turn detection: available" : (d.turnDetectionUnavailableReason || "Turn detection: unavailable"));
+
+            if (d.lastEvent) {
+                lines.push(`Last event: ${d.lastEvent.kind} @ ${d.lastEvent.atMs}ms — ${d.lastEvent.ok ? "accepted" : `rejected (${d.lastEvent.reason})`}`);
+            }
+
+            if (raceController.eventAdapterState) {
+                lines.push(`Distance confirmed: ${raceController.eventAdapterState.confirmedDistanceMeters}m`);
+            }
+
+            el.innerHTML = lines.map((line) => `<div class="metric-box">${line}</div>`).join("");
+        }
+
+        /* ---------------------------------------------------
+           REPORT UI (Stage 4D.7 §8) — every value below comes directly
+           from ChronosEngine.buildReport() via racePipelineBuildReport();
+           no timing math is performed in this file.
+        --------------------------------------------------- */
+        function renderRacePipelineReportFromController() {
+            const result = racePipelineBuildReport(raceController);
+            const report = result.ok ? result.report : null;
+            renderRacePipelineReport(report);
+            renderPbComparison(report);
+        }
+
+        function renderRacePipelineReport(report) {
+            const el = document.getElementById("racePipelineReport");
+            if (!el) return;
+
+            if (!report) {
+                el.innerHTML = "";
+                return;
+            }
+
+            const rows = [];
+
+            rows.push(`<div class="metric-box"><b>Status:</b> ${report.status ?? "—"}</div>`);
+            rows.push(
+                `<div class="metric-box"><b>Event:</b> ${report.event ?? "—"} &nbsp; ` +
+                `<b>Course:</b> ${report.course ?? "—"} &nbsp; ` +
+                `<b>Distance:</b> ${report.distanceMeters !== null ? report.distanceMeters + "m" : "—"}</div>`
+            );
+
+            rows.push(
+                report.start
+                    ? `<div class="metric-box"><b>Start:</b> detected at ${(report.start.atMs / 1000).toFixed(2)}s` +
+                      (report.start.confidence !== null ? ` (confidence ${report.start.confidence.toFixed(2)})` : "") + `</div>`
+                    : `<div class="metric-box"><b>Start:</b> not yet detected</div>`
+            );
+
+            const turnSplits = report.splits.filter((split) => split.kind === "turn");
+            rows.push(`<div class="metric-box"><b>Turns:</b> ${turnSplits.length}</div>`);
+            for (const split of turnSplits) {
+                rows.push(
+                    `<div>Turn @ ${split.distanceMeters}m — split ${(split.splitTimeMs / 1000).toFixed(2)}s, ` +
+                    `cumulative ${(split.cumulativeTimeMs / 1000).toFixed(2)}s</div>`
+                );
+            }
+
+            const confirmedDistance = raceController.eventAdapterState ? raceController.eventAdapterState.confirmedDistanceMeters : 0;
+            rows.push(`<div class="metric-box"><b>Cumulative distance confirmed:</b> ${confirmedDistance}m</div>`);
+
+            /* Stage 4D.7 §8/§13: never a fake final time, and never
+               implied "finished" merely because the video ended —
+               report.finalTimeMs is null unless Chronos actually
+               accepted a finish event (which nothing in this pipeline
+               can produce automatically yet). */
+            rows.push(
+                report.finalTimeMs !== null
+                    ? `<div class="metric-box"><b>🏁 Final Time:</b> ${(report.finalTimeMs / 1000).toFixed(2)}s</div>`
+                    : `<div class="metric-box"><b>Final Time:</b> Not available — this automatic race analysis is incomplete ` +
+                      `(no finish event recorded). Automatic finish detection is not implemented; manual finish timing ` +
+                      `remains a separate, future stage.</div>`
+            );
+
+            el.innerHTML = rows.join("");
+        }
+
+        /* ---------------------------------------------------
+           PB COMPARISON (Stage 4D.8) — strictly read-only. Reads the
+           existing, PROTECTED PB store via
+           src/race-pipeline/pb-adapter.js (never getPB()/savePB()/
+           editPB()/deletePB(), never writes localStorage), and delegates
+           all comparison math to the already-built, already-tested
+           ChronosEngine.comparePB() — this file only ever reads that
+           result and formats it for display; it never computes
+           faster/slower/delta/new-PB itself (Stage 4D.8 §3).
+        --------------------------------------------------- */
+        function renderPbComparison(report) {
+            const el = document.getElementById("racePipelinePbComparison");
+            if (!el) return;
+
+            if (!report) {
+                el.innerHTML = "";
+                return;
+            }
+
+            const pb = racePipelineFindExistingPb(report.event, report.course);
+            const comparison = ChronosEngine.comparePB(report, pb);
+
+            const rows = [];
+
+            if (report.finalTimeMs !== null) {
+                rows.push(`<div class="metric-box"><b>Race Time:</b> ${(report.finalTimeMs / 1000).toFixed(2)}s</div>`);
+            }
+
+            if (!comparison.comparable) {
+                if (comparison.reason === "race-not-finished") {
+                    rows.push(`<div class="metric-box">PB comparison unavailable until the race is finished.</div>`);
+                } else if (comparison.reason === "no-existing-pb") {
+                    rows.push(`<div class="metric-box">No PB recorded for this event.</div>`);
+                } else if (comparison.reason === "incompatible-event" || comparison.reason === "incompatible-course") {
+                    rows.push(`<div class="metric-box">PB comparison unavailable for this event/course.</div>`);
+                } else {
+                    rows.push(`<div class="metric-box">${comparison.formatted}</div>`);
+                }
+            } else {
+                rows.push(`<div class="metric-box"><b>Personal Best:</b> ${(comparison.existingPbTimeMs / 1000).toFixed(2)}s</div>`);
+                rows.push(`<div class="metric-box"><b>${comparison.formatted}</b></div>`);
+                if (comparison.isNewPb) {
+                    rows.push(`<div class="metric-box">🏆 NEW BEST</div>`);
+                }
+            }
+
+            el.innerHTML = rows.join("");
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            initRaceConfigUI();
+            initRaceCalibrationUI();
+            initRaceVideoUpload();
+            initRaceVideoEndedListener();
+            renderRaceStatus();
+            renderRacePipelineDiagnostics();
+        });
+
+        /* Exposed for the onclick="" attributes on the Race page's
+           Start/Stop buttons — the same "module exposes selected
+           globals" pattern already used by this file's Firebase
+           bootstrap module (window.auth/window.db/window.firebaseFns).
+           The calibration button uses addEventListener instead (wired in
+           initRaceCalibrationUI()), so racePipelineHandleCalibrateClick
+           does not need to be exposed here. */
+        window.racePipelineHandleStartClick = racePipelineHandleStartClick;
+        window.racePipelineHandleStopClick = racePipelineHandleStopClick;
     </script>
 
     <!-- FLOATING AI COACH -->
