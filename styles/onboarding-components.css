@@ -675,16 +675,6 @@
     color: rgba(255, 255, 255, 0.72);
 }
 
-.howto-card .howto-example {
-    margin-top: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: rgba(0, 217, 255, 0.08);
-    font-size: 0.82rem;
-    font-style: italic;
-    color: rgba(255, 255, 255, 0.8);
-}
-
 /* tip / callout strip */
 .tip-card {
     margin-top: 22px;
@@ -707,32 +697,6 @@
     font-size: 0.9rem;
     line-height: 1.6;
     color: rgba(255, 255, 255, 0.8);
-}
-
-/* topic chips */
-.topic-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 14px;
-}
-
-.topic-card {
-    text-align: center;
-    padding: 20px 12px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(0, 217, 255, 0.15);
-    font-family: 'Exo 2', sans-serif;
-    font-weight: 600;
-    letter-spacing: 0.4px;
-    color: white;
-    font-size: 0.92rem;
-    transition: all .3s ease;
-}
-
-.topic-card:hover {
-    border-color: rgba(0, 217, 255, 0.4);
-    transform: translateY(-3px);
 }
 
 /* video requirements grid */
@@ -881,14 +845,12 @@
     .howto-grid, .howto-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
     .req-grid { grid-template-columns: repeat(2, 1fr); }
     .angle-grid { grid-template-columns: 1fr; }
-    .topic-grid { grid-template-columns: repeat(3, 1fr); }
     .footage-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media(max-width:600px) {
     .howto-grid, .howto-grid.cols-3 { grid-template-columns: 1fr; }
     .req-grid { grid-template-columns: 1fr; }
-    .topic-grid { grid-template-columns: repeat(2, 1fr); }
     .footage-grid { grid-template-columns: repeat(2, 1fr); }
     .avoid-card ul { columns: 1; }
     .st-intro h2 { font-size: 1.6rem; }
