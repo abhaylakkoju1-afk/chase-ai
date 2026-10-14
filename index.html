@@ -402,7 +402,6 @@ gtag('config', 'G-VSLDBW2PYM');
         <canvas id="canvas"></canvas>
 
 </div>
-            </div>
 
             <div id="chaseStatus" style="margin-top:10px;font-family:'Orbitron',sans-serif;font-size:0.85rem;letter-spacing:1px;color:#00d9ff;"></div>
 
@@ -674,27 +673,31 @@ gtag('config', 'G-VSLDBW2PYM');
             <div class="st-section">
                 <div class="st-section-title">1. Configure This Race</div>
 
-                <label for="raceEventSelect">Event</label><br>
-                <select id="raceEventSelect">
-                    <option value="" selected disabled>Select Event</option>
-                </select>
-                <br><br>
+                <div class="race-field">
+                    <label for="raceEventSelect">Event</label>
+                    <select id="raceEventSelect">
+                        <option value="" selected disabled>Select Event</option>
+                    </select>
+                </div>
 
-                <span>Stroke: <span id="raceStrokeDisplay">—</span></span>
-                &nbsp;&nbsp;&nbsp;
-                <span>Distance: <span id="raceDistanceDisplay">—</span></span>
-                <br><br>
+                <div class="race-event-readout">
+                    <span>Stroke: <span id="raceStrokeDisplay">—</span></span>
+                    <span>Distance: <span id="raceDistanceDisplay">—</span></span>
+                </div>
 
-                <label for="raceCourseSelect">Course</label><br>
-                <select id="raceCourseSelect">
-                    <option value="" selected disabled>Select Course</option>
-                </select>
-                <br><br>
+                <div class="race-field">
+                    <label for="raceCourseSelect">Course</label>
+                    <select id="raceCourseSelect">
+                        <option value="" selected disabled>Select Course</option>
+                    </select>
+                </div>
 
-                <label for="racePoolLengthSelect">Pool Length</label><br>
-                <select id="racePoolLengthSelect">
-                    <option value="" selected disabled>Select Pool Length</option>
-                </select>
+                <div class="race-field">
+                    <label for="racePoolLengthSelect">Pool Length</label>
+                    <select id="racePoolLengthSelect">
+                        <option value="" selected disabled>Select Pool Length</option>
+                    </select>
+                </div>
             </div>
 
             <div class="st-section">
@@ -718,7 +721,7 @@ gtag('config', 'G-VSLDBW2PYM');
 </span>
                 <br><br>
 
-                <div style="position: relative; width: 70%; margin:auto;">
+                <div class="race-video-frame" style="position: relative; width: 70%; margin:auto;">
                     <video id="racePlayer" width="100%" controls></video>
                     <canvas id="raceCanvas" style="
         position:absolute;
@@ -739,8 +742,10 @@ gtag('config', 'G-VSLDBW2PYM');
                 <div id="raceCalibrationStatus" class="metric-box">Calibration: not set</div>
             </div>
 
-            <button class="btn" id="raceAutoStartBtn" onclick="racePipelineHandleStartClick()">▶ Start Automatic Analysis</button>
-            <button class="btn" id="raceAutoStopBtn" onclick="racePipelineHandleStopClick()">⏹ Stop / Reset Analysis</button>
+            <div class="race-actions">
+                <button class="btn" id="raceAutoStartBtn" onclick="racePipelineHandleStartClick()">▶ Start Automatic Analysis</button>
+                <button class="btn" id="raceAutoStopBtn" onclick="racePipelineHandleStopClick()">⏹ Stop / Reset Analysis</button>
+            </div>
 
             <div id="racePipelineStatus" class="metric-box">Ready to configure</div>
 
@@ -758,17 +763,19 @@ gtag('config', 'G-VSLDBW2PYM');
 
             <div id="raceMetrics"></div>
 
-            <br><br>
+            <div class="race-manual-timer">
+                <div class="race-actions">
+                    <button class="btn" onclick="startTimer()">▶ Start</button>
+                    <button class="btn" onclick="pauseTimer()">⏸ Pause</button>
+                    <button class="btn" onclick="split()">📍 Split</button>
+                    <button class="btn" onclick="reset()">🔁 Reset</button>
+                </div>
 
-            <button class="btn" onclick="startTimer()">▶ Start</button>
-            <button class="btn" onclick="pauseTimer()">⏸ Pause</button>
-            <button class="btn" onclick="split()">📍 Split</button>
-            <button class="btn" onclick="reset()">🔁 Reset</button>
+                <h2 id="timer">0.00 s</h2>
 
-            <h2 id="timer">0.00 s</h2>
-
-            <h3>Splits</h3>
-            <div id="splits"></div>
+                <h3>Splits</h3>
+                <div id="splits"></div>
+            </div>
 
             <div class="st-section">
                 <div class="st-section-title">How to Use Race Analysis</div>

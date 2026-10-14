@@ -841,6 +841,207 @@
     color: rgba(255, 255, 255, 0.45);
 }
 
+/* =========================================================
+   CHRONOS ENGINE (#race) — brings the race page in line with the
+   form/field, status-panel and button conventions already used on
+   the Profile, War Room and PB pages. Values are reused from those
+   pages (profile-pb-cards.css, home-hero.css); no new palette.
+   ========================================================= */
+
+/* file name next to the upload buttons (Analyzer + Race) */
+#fileName,
+#raceFileName {
+    margin-left: 14px;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#race .race-field {
+    margin-bottom: 4px;
+}
+
+/* same label treatment as #profile / #dashboard */
+#race .race-field label {
+    display: block;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: rgba(0, 255, 255, 0.9);
+    margin: 16px 0 8px;
+}
+
+/* same field treatment as #profile / #dashboard selects */
+#race select {
+    width: 320px;
+    max-width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#race select:focus {
+    border-color: cyan;
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* option list matches the Analyzer's #stroke dropdown */
+#race select option {
+    background: #081f4d;
+    color: white;
+}
+
+/* Stroke / Distance read-outs as quiet chips (footage-chip values) */
+#race .race-event-readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 16px 0 4px;
+}
+
+#race .race-event-readout > span {
+    padding: 8px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#race .race-event-readout > span > span {
+    color: white;
+    font-weight: 600;
+}
+
+/* video framed like the Analyzer's .chase-video-container.
+   Calibration maps clicks using #raceCanvas's on-screen bounds, so nothing
+   here may change layout: no border, margin, display, line-height or
+   wrapper clipping (which would also swallow clicks in rounded corners).
+   Radius and a box-shadow ring are paint-only and sit on the <video>. */
+#race .race-video-frame video {
+    border-radius: 14px;
+    box-shadow: 0 0 0 1px rgba(0, 217, 255, 0.15);
+}
+
+/* long instruction copy needs room to breathe */
+.st-section-sub {
+    line-height: 1.6;
+}
+
+#race .st-section-sub + .btn {
+    margin-top: 0;
+}
+
+/* grouped buttons: consistent gap instead of inline whitespace + <br> */
+#race .race-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 50px;
+}
+
+#race .race-actions .btn {
+    margin-top: 0;
+}
+
+/* status panels: same metric-box surface, tighter for single-line status */
+#race .metric-box {
+    margin-top: 14px;
+    padding: 16px 22px;
+    border-radius: 16px;
+    line-height: 1.6;
+}
+
+#racePipelineReport,
+#racePipelinePbComparison,
+#racePipelineDiagnostics {
+    display: grid;
+    gap: 10px;
+}
+
+#racePipelineReport:not(:empty) {
+    margin-top: 14px;
+}
+
+#racePipelineReport .metric-box,
+#racePipelinePbComparison .metric-box,
+#racePipelineDiagnostics .metric-box {
+    margin-top: 0;
+}
+
+/* developer diagnostics: secondary information, quieter surface */
+#racePipelineDiagnostics .metric-box {
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.75);
+    font-variant-numeric: tabular-nums;
+}
+
+/* dark surface only: in light mode the existing
+   body.light-mode .metric-box glass (base-global.css) applies */
+body:not(.light-mode) #racePipelineDiagnostics .metric-box {
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: none;
+}
+
+/* manual timer */
+#race .race-manual-timer #timer {
+    margin: 26px 0 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 2px;
+    font-variant-numeric: tabular-nums;
+    color: white;
+}
+
+#race .race-manual-timer h3 {
+    margin: 18px 0 12px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: white;
+}
+
+#race #splits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#race #splits > div {
+    padding: 8px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* light-mode parity only (no light-mode redesign): keep the new
+   Chronos text readable on the existing light surfaces */
+body.light-mode #fileName,
+body.light-mode #raceFileName,
+body.light-mode #race .race-event-readout > span,
+body.light-mode #racePipelineDiagnostics .metric-box {
+    color: rgba(0, 0, 0, 0.72);
+}
+
+body.light-mode #race .race-event-readout > span > span,
+body.light-mode #race #splits > div {
+    color: #111;
+}
+
 @media(max-width:900px) {
     .howto-grid, .howto-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
     .req-grid { grid-template-columns: repeat(2, 1fr); }
