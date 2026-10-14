@@ -536,7 +536,8 @@
         body.light-mode #profile textarea,
         body.light-mode #dashboard input,
         body.light-mode #dashboard select,
-        body.light-mode #dashboard textarea {
+        body.light-mode #dashboard textarea,
+        body.light-mode #race select {
             background: rgba(255, 255, 255, 0.98) !important;
             color: #111 !important;
             -webkit-text-fill-color: #111 !important;
