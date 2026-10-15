@@ -20,8 +20,9 @@
         // LOAD SAVED THEME
         // ===============================
         window.addEventListener("DOMContentLoaded", () => {
-            loadProfile();
-            renderStrokeCards();
+            // Restore the saved theme first: loadProfile() currently throws
+            // (updateProfileAccountSection is undefined), which used to stop
+            // this handler before the theme was applied.
             const savedTheme = localStorage.getItem("theme");
             const toggleBtn = document.getElementById("themeToggle");
 
@@ -36,5 +37,8 @@
                     toggleBtn.innerHTML = "☀️ Light Mode";
                 }
             }
+
+            loadProfile();
+            renderStrokeCards();
         });
 

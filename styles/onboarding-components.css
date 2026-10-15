@@ -1042,6 +1042,48 @@ body.light-mode #race #splits > div {
     color: #111;
 }
 
+/* =========================================================
+   LIGHT MODE — onboarding components (all pages)
+   These components hard-code white text for the dark theme. The
+   site-wide light rules (base-global.css) only reach p, label and
+   h1–h3, so div titles, h4s and list items stayed white on the
+   light glass. Values reuse the existing light palette:
+   #111 headings, rgba(0,0,0,.72) body copy, and a deeper shade of
+   the existing light accent #0077ff for small cyan labels, which
+   are unreadable on cream at #00d9ff.
+   ========================================================= */
+body.light-mode .st-section-title,
+body.light-mode .howto-card h4,
+body.light-mode .angle-card h4 {
+    color: #111;
+}
+
+body.light-mode .angle-card ul,
+body.light-mode .avoid-card li {
+    color: rgba(0, 0, 0, 0.72);
+}
+
+body.light-mode .avoid-card .avoid-note {
+    color: rgba(0, 0, 0, 0.6);
+}
+
+body.light-mode .st-eyebrow,
+body.light-mode .howto-num,
+body.light-mode .req-card .req-label,
+body.light-mode .angle-card .angle-label {
+    color: #0062d6;
+}
+
+/* Analyzer status line colour is set inline (#00d9ff) */
+body.light-mode #chaseStatus {
+    color: #0062d6 !important;
+}
+
+/* existing light-mode red (see .chart-title) */
+body.light-mode .avoid-card h4 {
+    color: #e63946;
+}
+
 @media(max-width:900px) {
     .howto-grid, .howto-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
     .req-grid { grid-template-columns: repeat(2, 1fr); }

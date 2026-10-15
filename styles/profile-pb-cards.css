@@ -550,6 +550,16 @@
             caret-color: #111 !important;
         }
 
+        /* PROFILE IMAGE PLACEHOLDER — "Upload Image" was white on the
+           light card; keep the gold dashed frame, darken the text */
+        body.light-mode .profile-upload-box {
+            color: rgba(0, 0, 0, 0.55);
+        }
+
+        body.light-mode .profile-upload-box:hover {
+            color: #a07800;
+        }
+
         /* PLACEHOLDER TEXT */
         body.light-mode #profile input::placeholder,
         body.light-mode #profile textarea::placeholder,
@@ -760,7 +770,11 @@ body.light-mode #bgVideo {
         /* ===== LIGHT MODE HERO STYLING ===== */
         body.light-mode .hero-title {
             font-family: 'Michroma', sans-serif;
-            color: #111111;
+            /* the hero sits on the dark video in both themes: keep the title
+               white like .hero-subtitle/.hero-tagline/.hero-quote below, and
+               restore the 6px tracking the generic light h1 rule overrides */
+            color: #ffffff;
+            letter-spacing: 6px;
 
             text-shadow:
                 0 0 8px rgba(0, 191, 255, 0.55),
