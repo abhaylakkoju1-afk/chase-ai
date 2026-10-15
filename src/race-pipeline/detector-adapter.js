@@ -10,8 +10,10 @@
 // (docs/RACE_PIPELINE_ARCHITECTURE.md §7).
 //
 // This file never reimplements start/turn heuristics — chronosAssessStart
-// (built on the chronosDetectStart primitive) and chronosDetectTurn remain
-// the sole source of detection logic. Its
+// (built on the chronosDetectStart primitive) and chronosAssessTurn remain
+// the sole source of detection logic. (chronosDetectTurn, the original
+// single-sample wall-proximity primitive, is no longer called from here: see
+// turn-detector.js, "TURN ASSESSMENT".) Its
 // only two jobs are (1) reshape {atMs, hasPose, landmarks:{hip,nose}} into
 // each detector's own flat {atMs, nose}/{atMs, hip, nose} sample shape,
 // and (2) hold the rolling history (baselineWindow / recentSamples /
@@ -25,7 +27,7 @@
 // invariant 3). It does not import src/chronos-engine/index.js,
 // session.js, or events.js at all.
 //
-// CANDIDATE CONTRACT NOTE: chronosAssessStart()/chronosDetectTurn()
+// CANDIDATE CONTRACT NOTE: chronosAssessStart()/chronosAssessTurn()
 // themselves return a bare {atMs, confidence, evidence} — they have no
 // notion of their own name (docs/RACE_PIPELINE_ARCHITECTURE.md §7). The
 // Stage 4D.5 candidate contract explicitly requires the candidate this
@@ -60,7 +62,7 @@
 // file needs to patch.
 
 import { chronosAssessStart, START_ASSESSMENT_DEFAULTS } from "../chronos-engine/detectors/start-detector.js";
-import { chronosDetectTurn } from "../chronos-engine/detectors/turn-detector.js";
+import { chronosAssessTurn, TURN_ASSESSMENT_DEFAULTS } from "../chronos-engine/detectors/turn-detector.js";
 
 export const START_DETECTOR_NAME = "start-detector-v1";
 export const TURN_DETECTOR_NAME = "turn-detector-v1";
@@ -178,39 +180,73 @@ export function racePipelineDetectStartCandidate(targetPoseSample, detectorState
     return { candidate, detectorState: nextDetectorState, assessment: result };
 }
 
-// Runs the turn detector for one targetPoseSample against the caller-held
-// detectorState. Same evaluate-then-append ordering as the start detector
-// above; additionally threads previousCandidateAtMs through for the turn
-// detector's own local re-fire suppression
-// (src/chronos-engine/detectors/turn-detector.js's detectorSuppressionMs),
-// updating it only when this call actually produces a candidate.
+// Runs the turn assessment for one targetPoseSample against the caller-held
+// detectorState, and returns the (possibly null) candidate, the next
+// detectorState, and the full assessment (state + reason) for diagnostics.
+// Same evaluate-then-append ordering as the start detector above.
+//
+// CHRONOS RELIABILITY PHASE 2. Three things changed from the original
+// single-sample wiring (which called chronosDetectTurn on every frame):
+//
+//   1. The decision is chronosAssessTurn(): a wall REVERSAL (approach, apex in
+//      the wall zone, sustained recovery), not "in the wall zone and slow".
+//   2. HISTORY IS A BOUNDED ROLLING WINDOW (TURN_ASSESSMENT_DEFAULTS.windowMs,
+//      overridable via config.windowMs). It used to be appended to on every
+//      call and never pruned.
+//   3. DUPLICATE / OUT-OF-ORDER SAMPLES are refused before the detector: a
+//      sample whose timestamp is not strictly later than the newest one held
+//      carries no new information and is never admitted. The very same
+//      detectorState object is returned (nothing was appended) and the
+//      assessment reports "non-monotonic-timestamp". Reprocessing the same
+//      observations therefore cannot change the history or emit a candidate.
+//
+// turnPreviousCandidateAtMs is the APEX time of the last emitted candidate.
+// The detector examines only samples strictly after it, so the same wall
+// interaction cannot be reported twice; it is updated only when this call
+// actually produces a candidate (whether or not Chronos later accepts it — a
+// rejected candidate is never retried).
 export function racePipelineDetectTurnCandidate(targetPoseSample, detectorState, config) {
     const sample = racePipelineBuildTurnDetectorSample(targetPoseSample);
     if (!sample) {
-        return { candidate: null, detectorState };
+        return { candidate: null, detectorState, assessment: null };
     }
 
-    const rawCandidate = chronosDetectTurn({
+    const history = detectorState.turnRecentSamples;
+    const newestAtMs = history.length > 0 ? history[history.length - 1].atMs : null;
+    if (isFiniteNumber(newestAtMs) && sample.atMs <= newestAtMs) {
+        return {
+            candidate: null,
+            detectorState,
+            assessment: { state: "rejected", reason: "non-monotonic-timestamp", candidate: null, evidence: null }
+        };
+    }
+
+    const result = chronosAssessTurn({
         sample,
-        recentSamples: detectorState.turnRecentSamples,
+        recentSamples: history,
         previousCandidateAtMs: detectorState.turnPreviousCandidateAtMs,
         config
     });
 
-    const candidate = rawCandidate
+    const candidate = result.candidate
         ? {
-              atMs: rawCandidate.atMs,
-              confidence: rawCandidate.confidence,
-              evidence: rawCandidate.evidence,
+              atMs: result.candidate.atMs,
+              confidence: result.candidate.confidence,
+              evidence: result.candidate.evidence,
               detector: TURN_DETECTOR_NAME
           }
         : null;
 
+    const windowMs = config && isFiniteNumber(config.windowMs) && config.windowMs > 0
+        ? config.windowMs
+        : TURN_ASSESSMENT_DEFAULTS.windowMs;
+    const oldestKeptAtMs = sample.atMs - windowMs;
+
     const nextDetectorState = {
         ...detectorState,
-        turnRecentSamples: [...detectorState.turnRecentSamples, sample],
+        turnRecentSamples: [...history.filter((entry) => entry.atMs >= oldestKeptAtMs), sample],
         turnPreviousCandidateAtMs: candidate ? candidate.atMs : detectorState.turnPreviousCandidateAtMs
     };
 
-    return { candidate, detectorState: nextDetectorState };
+    return { candidate, detectorState: nextDetectorState, assessment: result };
 }

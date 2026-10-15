@@ -40,6 +40,21 @@
 // (src/chronos-engine/events.js), which is a race-timing-domain rule
 // applied across manual+detector events combined, after candidates
 // reach Chronos. This file never reads or reasons about that constant.
+//
+// TWO ENTRY POINTS (Chronos reliability, phase 2):
+//
+//   chronosDetectTurn()  — the original SINGLE-SAMPLE primitive described
+//     above: "the swimmer is inside the wall zone AND slow AND in lane". It
+//     is kept unchanged and is NOT sufficient evidence of a turn: any
+//     swimmer who rests at, starts from, or glides near a wall satisfies it,
+//     on every frame, and its velocity gate (0.12 frame-widths/s) is above
+//     ordinary swimming speed (~0.06), so it is not even selective about
+//     speed. Nothing in the live pipeline calls it any more.
+//
+//   chronosAssessTurn()  — the decision the live pipeline uses (see the
+//     "TURN ASSESSMENT" section at the bottom of this file). It requires a
+//     directional reversal at a wall: travel toward a frame edge, a
+//     turning point inside the wall zone, and sustained travel back away.
 
 const DEFAULT_CONFIG = Object.freeze({
     // How close to a horizontal frame edge (normalized hip.x) counts as
@@ -241,4 +256,434 @@ export function chronosDetectTurn({ sample, recentSamples, previousCandidateAtMs
             laneAgreementScore
         }
     };
+}
+
+// ---------------------------------------------------------------------
+// TURN ASSESSMENT (Chronos reliability, phase 2)
+// ---------------------------------------------------------------------
+//
+// WHY THE SINGLE-SAMPLE PRIMITIVE IS NOT ENOUGH. chronosDetectTurn() answers
+// "is the swimmer in the wall zone, slow, and in lane right now?". That is
+// true of a swimmer standing at the start wall, of a swimmer who has just
+// pushed off, of one who touches the finish wall and stops, and — because
+// its velocity gate (0.12 frame-widths/s) is about twice ordinary swimming
+// speed — of any swimmer simply swimming through the outer quarter of the
+// frame. Fed every frame it proposed a "turn" ~0.1 s after the start, then
+// every ~0.5 s for as long as the swimmer stayed in a wall zone, so a single
+// physical wall approach produced several accepted turns (Chronos's 2.5 s
+// gap only thinned them out).
+//
+// WHAT A TURN IS HERE (docs/CHRONOS_ARCHITECTURE.md §12: "wall proximity +
+// direction reversal"). All three, in one contiguous observation run:
+//
+//   1. APPROACH   — the swimmer travelled at least `reversalDisplacement`
+//                   (frame-widths, horizontal) TOWARD a frame edge, ending at
+//   2. APEX       — a turning point (a local extreme of hip x) that lies
+//                   inside that edge's wall zone (`wallThreshold`), followed by
+//   3. RECOVERY   — travel back AWAY from the edge of at least
+//                   `reversalDisplacement`, held by the last
+//                   `confirmationSamples` samples (not one sample).
+//
+// Being near a wall, being slow, pausing, or one noisy observation are none
+// of them sufficient. The wall zone is only the LOCATION gate for the apex.
+//
+// WHICH SIGNALS ARE AVAILABLE. The input is a stream of {atMs, hip, nose}
+// for the already-tracked target: hip.x (horizontal position), nose.x/y,
+// per-landmark visibility, and time. That supports approach / apex /
+// recovery from hip.x history, lane agreement from nose.y, and visibility.
+// It does NOT contain: wall position (the frame edge is only a proxy for it
+// and assumes a static side-on camera framing the whole pool width, §22),
+// body rotation or a flip (a tumble turn is visible only as hip.x history
+// when the pose survives it, and underwater pose is often lost), foot or
+// hand contact, or any 3D information. `nose.x - hip.x` (facing direction)
+// IS available but is not used as evidence: it is unreliable through a
+// flip/tumble and a turn must not depend on it.
+//
+// CANDIDATE TIME. `candidate.atMs` is the APEX: the first sample of the
+// plateau at the turning point (an estimate of the wall-contact onset). Its
+// error against the true arrival is bounded, in the synthetic runs, by: EARLY
+// by up to `apexPlateauTolerance / speed` plus one sampling interval (the
+// approach samples that are still within the plateau tolerance of the
+// turning point — about 0.12 s at 0.04 frame-widths/s, 0.25 s at 0.02) and LATE
+// by up to the dwell at the wall plus one sampling interval (when jitter hides
+// the plateau); around a pose dropout the surrounding gap also counts — see
+// `maxSampleGapMs`. These are properties of synthetic paths, not measured
+// accuracy. It is NOT the time the evidence was
+// confirmed: `evidence.confirmedAtMs` is the later sample at which the
+// recovery had been held for `confirmationSamples` samples. The event the
+// pipeline hands Chronos carries the apex time. Both are inferred, not
+// measured, and the apex is not an official wall touch.
+//
+// OBSERVATION CONTINUITY. Approach, apex and recovery must lie in ONE run of
+// consecutive usable samples no more than `maxSampleGapMs` apart. A longer
+// gap (the pose was lost, or tracking dropped and reacquired — possibly a
+// different swimmer) ends the run: evidence before it cannot be joined to
+// evidence after it, and an apex whose timing straddles such a gap would be
+// a guess. The result is no candidate (an indeterminate turn), never a
+// fabricated one. Low-visibility and malformed samples are not usable.
+//
+// SINGLE-SAMPLE OUTLIERS. A sample that departs from BOTH neighbours, on the
+// same side, by more than `spikeThreshold` is ignored. Two consecutive
+// outlier samples are not recognised (documented limitation).
+//
+// ONE WALL INTERACTION = ONE CANDIDATE. `previousCandidateAtMs` (the apex
+// time of this detector's last candidate) and the optional
+// `config.earliestApexMs` (the accepted start time, so no apex before the
+// race began) form a FLOOR: only samples strictly later than it are
+// examined. A reported apex therefore cannot be reported again, and the next
+// turn needs its own fresh approach after the previous one.
+//
+// STATES — same vocabulary as chronosAssessStart():
+//   none       nothing wall-related to report (including "reversal away from
+//              a wall that was never approached", e.g. the start, and
+//              reversals in mid-pool)
+//   plausible  an approach to a wall zone is under way (or a recovery has
+//              begun) but has not been confirmed — it may or may not become
+//              a turn. Never a candidate.
+//   confirmed  approach + apex + sustained recovery. The only state with a
+//              candidate.
+//   rejected   a hard gate failed: invalid-sample, low-visibility-sample,
+//              missing-reference-lane-y, invalid-earliest-apex,
+//              lane-deviation. (`non-monotonic-timestamp` is reported by the
+//              detector adapter, which refuses duplicate/out-of-order
+//              samples before they reach this function.)
+//
+// Every threshold is provisional, in frame-widths (horizontal) or ms, and
+// NONE has been validated against annotated real footage. This function is
+// pure: no clock, DOM, session or module state.
+
+export const TURN_ASSESSMENT_DEFAULTS = Object.freeze({
+    // Same location gate the primitive uses: apex within this distance of a
+    // frame edge (hip.x < wallThreshold or hip.x > 1 - wallThreshold).
+    wallThreshold: 0.25,
+
+    // Maximum |apex nose.y - referenceLaneY|. Same value as the primitive.
+    laneDeviationThreshold: 0.20,
+
+    // Minimum landmark visibility (hip AND nose) for a sample to count.
+    minVisibility: 0.5,
+
+    // Horizontal travel, in frame-widths, required both toward the wall
+    // (approach) and back away from it (recovery). 0.08 matches the start
+    // detector's displacement threshold and the legacy heuristic's figure;
+    // it is well above stroke-cycle hip oscillation and the start noise band
+    // (0.02). Unvalidated.
+    reversalDisplacement: 0.08,
+
+    // Consecutive latest samples that must all be beyond the recovery
+    // displacement.
+    confirmationSamples: 3,
+
+    // Largest time between consecutive usable samples inside one run. Bounds
+    // the apex-time uncertainty and ends a run at a pose dropout. About five
+    // times the 120 ms minimum sampling interval; below tracking's 1500 ms
+    // loss grace.
+    maxSampleGapMs: 600,
+
+    // A sample deviating from both neighbours (same side) by more than this
+    // is an outlier and is ignored.
+    spikeThreshold: 0.04,
+
+    // Samples within this of the turning-point position, contiguous before
+    // it, belong to the apex plateau; the apex time is the plateau's first.
+    apexPlateauTolerance: 0.005,
+
+    // History the caller should keep (the adapter prunes to it). Not used by
+    // this function itself — it examines whatever it is handed. The approach,
+    // the dwell at the wall and the sustained recovery must all fit inside it:
+    // 12 s covers a wall dwell of roughly 8 s at ordinary swimming speed
+    // (approach ~1.4 s + recovery ~1.7 s at 0.058 frame-widths/s). A pause at
+    // the wall longer than that is not a racing turn, and yields no candidate.
+    windowMs: 12000,
+
+    // Confidence weights. Provisional, not calibrated; the score is a
+    // summary of evidence quality, never a probability of correctness.
+    wallProximityWeight: 0.3,
+    reversalWeight: 0.3,
+    visibilityWeight: 0.2,
+    laneAgreementWeight: 0.2
+});
+
+function turnAssessment(state, reason, candidate, evidence) {
+    return { state, reason, candidate, evidence };
+}
+
+// Ignores single-sample outliers: an interior sample on one side of BOTH
+// neighbours by more than `threshold`. The first and last samples are never
+// removed (a lone newest sample cannot be judged yet; it simply cannot be
+// "held" for several samples).
+function removeTurnOutliers(series, threshold) {
+    return series.filter((entry, index) => {
+        if (index === 0 || index === series.length - 1) {
+            return true;
+        }
+        const before = series[index - 1].x;
+        const after = series[index + 1].x;
+        const aboveBoth = entry.x - before > threshold && entry.x - after > threshold;
+        const belowBoth = before - entry.x > threshold && after - entry.x > threshold;
+        return !(aboveBoth || belowBoth);
+    });
+}
+
+// Hysteresis ("zigzag") extremum finder over x. A pivot is a turning point
+// confirmed only once x has moved at least `delta` away from it. Returns
+// {pivots, direction, pendingLow, pendingHigh}:
+//   pivots     [{index, type: "min"|"max", approach}] — `approach` is how far
+//              x travelled INTO the pivot from the previous opposite pivot
+//              (or, for the first pivot, from the opposite extreme seen so
+//              far in the run);
+//   direction  -1 falling / +1 rising / 0 undecided since the last pivot;
+//   pendingLow / pendingHigh  the running (unconfirmed) extremes since the
+//              last pivot, with their `approach` so far.
+function findReversalPivots(xs, delta) {
+    const pivots = [];
+    let direction = 0;
+    let high = 0;
+    let low = 0;
+    let anchorIndex = null; // the previous pivot, once there is one
+
+    const runningMaxUpTo = (index) => {
+        let max = xs[0];
+        for (let i = 1; i <= index; i += 1) if (xs[i] > max) max = xs[i];
+        return max;
+    };
+    const runningMinUpTo = (index) => {
+        let min = xs[0];
+        for (let i = 1; i <= index; i += 1) if (xs[i] < min) min = xs[i];
+        return min;
+    };
+    const approachInto = (index, type) => {
+        if (anchorIndex !== null) {
+            return Math.abs(xs[index] - xs[anchorIndex]);
+        }
+        return type === "min" ? runningMaxUpTo(index) - xs[index] : xs[index] - runningMinUpTo(index);
+    };
+
+    for (let i = 1; i < xs.length; i += 1) {
+        if (xs[i] > xs[high]) high = i;
+        if (xs[i] < xs[low]) low = i;
+
+        if (direction === 0) {
+            const droppedFromHigh = xs[high] - xs[i] >= delta;
+            const roseFromLow = xs[i] - xs[low] >= delta;
+            if (droppedFromHigh && (!roseFromLow || high < low)) {
+                pivots.push({ index: high, type: "max", approach: approachInto(high, "max") });
+                anchorIndex = high;
+                direction = -1;
+                low = i;
+            } else if (roseFromLow) {
+                pivots.push({ index: low, type: "min", approach: approachInto(low, "min") });
+                anchorIndex = low;
+                direction = 1;
+                high = i;
+            }
+        } else if (direction === -1) {
+            if (xs[i] - xs[low] >= delta) {
+                pivots.push({ index: low, type: "min", approach: approachInto(low, "min") });
+                anchorIndex = low;
+                direction = 1;
+                high = i;
+            }
+        } else if (xs[high] - xs[i] >= delta) {
+            pivots.push({ index: high, type: "max", approach: approachInto(high, "max") });
+            anchorIndex = high;
+            direction = -1;
+            low = i;
+        }
+    }
+
+    return {
+        pivots,
+        direction,
+        pendingLow: { index: low, approach: approachInto(low, "min") },
+        pendingHigh: { index: high, approach: approachInto(high, "max") }
+    };
+}
+
+/**
+ * Assesses whether the newest sample completes a wall turn.
+ *
+ * @param {object} args
+ * @param {{atMs:number, hip:object, nose:object}} args.sample The newest sample
+ *   (already-tracked target only).
+ * @param {Array<{atMs:number, hip:object, nose:object}>} args.recentSamples
+ *   Prior samples of the SAME target, caller-managed, oldest first. Entries
+ *   at or after `sample.atMs`, unusable entries and duplicate timestamps are
+ *   ignored, never repaired.
+ * @param {number|null} [args.previousCandidateAtMs] Apex time of this
+ *   detector's last candidate; only samples strictly later are examined.
+ * @param {object} args.config Overrides for TURN_ASSESSMENT_DEFAULTS.
+ *   `referenceLaneY` is REQUIRED (finite). `earliestApexMs` is optional;
+ *   when present it must be finite and non-negative, and only samples
+ *   strictly later are examined.
+ * @returns {{state:string, reason:string, candidate:object|null, evidence:object|null}}
+ */
+export function chronosAssessTurn({ sample, recentSamples, previousCandidateAtMs, config } = {}) {
+    const cfg = { ...TURN_ASSESSMENT_DEFAULTS, ...(config || {}) };
+
+    if (!isFiniteNumber(cfg.referenceLaneY)) {
+        return turnAssessment("rejected", "missing-reference-lane-y", null, null);
+    }
+
+    const earliestApexPresent = config && config.earliestApexMs !== undefined && config.earliestApexMs !== null;
+    if (earliestApexPresent && (!isFiniteNumber(config.earliestApexMs) || config.earliestApexMs < 0)) {
+        return turnAssessment("rejected", "invalid-earliest-apex", null, null);
+    }
+
+    if (!sample || !isFiniteNumber(sample.atMs)) {
+        return turnAssessment("rejected", "invalid-sample", null, null);
+    }
+    const hip = extractLandmark(sample.hip);
+    const nose = extractLandmark(sample.nose);
+    if (!hip || !nose) {
+        return turnAssessment("rejected", "invalid-sample", null, null);
+    }
+    const currentVisibility = Math.min(hip.visibility, nose.visibility);
+    if (currentVisibility < cfg.minVisibility) {
+        return turnAssessment("rejected", "low-visibility-sample", null, { visibility: currentVisibility });
+    }
+
+    // Usable history, oldest first, strictly increasing in time, then the
+    // current sample.
+    const history = [];
+    if (Array.isArray(recentSamples)) {
+        for (const entry of recentSamples) {
+            if (!entry || !isFiniteNumber(entry.atMs) || entry.atMs >= sample.atMs) {
+                continue;
+            }
+            const entryHip = extractLandmark(entry.hip);
+            const entryNose = extractLandmark(entry.nose);
+            if (!entryHip || !entryNose) {
+                continue;
+            }
+            const visibility = Math.min(entryHip.visibility, entryNose.visibility);
+            if (visibility < cfg.minVisibility) {
+                continue;
+            }
+            history.push({ atMs: entry.atMs, x: entryHip.x, noseY: entryNose.y, visibility });
+        }
+    }
+    history.sort((a, b) => a.atMs - b.atMs);
+    const ordered = history.filter((entry, index) => index === 0 || entry.atMs > history[index - 1].atMs);
+    ordered.push({ atMs: sample.atMs, x: hip.x, noseY: nose.y, visibility: currentVisibility });
+
+    // Only samples strictly after the floor are examined.
+    let floorMs = -Infinity;
+    if (isFiniteNumber(previousCandidateAtMs)) floorMs = Math.max(floorMs, previousCandidateAtMs);
+    if (earliestApexPresent) floorMs = Math.max(floorMs, config.earliestApexMs);
+    const afterFloor = ordered.filter((entry) => entry.atMs > floorMs);
+
+    // The newest run of consecutive usable samples (no gap above the limit).
+    let runStart = afterFloor.length - 1;
+    while (runStart > 0 && afterFloor[runStart].atMs - afterFloor[runStart - 1].atMs <= cfg.maxSampleGapMs) {
+        runStart -= 1;
+    }
+    const run = removeTurnOutliers(afterFloor.slice(Math.max(runStart, 0)), cfg.spikeThreshold);
+
+    const baseEvidence = { runSampleCount: run.length, runStartAtMs: run.length > 0 ? run[0].atMs : null };
+
+    if (run.length < cfg.confirmationSamples + 1) {
+        return turnAssessment("none", "insufficient-history", null, baseEvidence);
+    }
+
+    const xs = run.map((entry) => entry.x);
+    const found = findReversalPivots(xs, cfg.reversalDisplacement);
+    const nearZeroZone = (x) => x < cfg.wallThreshold;
+    const nearOneZone = (x) => x > 1 - cfg.wallThreshold;
+    const delta = cfg.reversalDisplacement;
+    const last = run.length - 1;
+
+    // A confirmed turn can only be the MOST RECENT reversal.
+    const latestPivot = found.pivots.length > 0 ? found.pivots[found.pivots.length - 1] : null;
+    if (latestPivot) {
+        const atWall = latestPivot.type === "min" ? nearZeroZone(xs[latestPivot.index]) : nearOneZone(xs[latestPivot.index]);
+        if (atWall && latestPivot.approach >= delta) {
+            const apexX = xs[latestPivot.index];
+            const wallSide = latestPivot.type === "min" ? "near-zero" : "near-one";
+            const away = (x) => (latestPivot.type === "min" ? x - apexX : apexX - x);
+
+            const trailing = xs.slice(last - cfg.confirmationSamples + 1);
+            const trailingStartsAfterApex = last - cfg.confirmationSamples + 1 > latestPivot.index;
+            const recoverySwing = Math.min(...trailing.map(away));
+
+            if (trailingStartsAfterApex && recoverySwing >= delta) {
+                // The apex plateau: contiguous samples before the pivot that
+                // are still within the plateau tolerance of its position.
+                let apexIndex = latestPivot.index;
+                while (apexIndex > 0 && Math.abs(xs[apexIndex - 1] - apexX) <= cfg.apexPlateauTolerance) {
+                    apexIndex -= 1;
+                }
+                const apex = run[apexIndex];
+
+                const laneDeviation = Math.abs(apex.noseY - cfg.referenceLaneY);
+                if (laneDeviation > cfg.laneDeviationThreshold) {
+                    return turnAssessment("rejected", "lane-deviation", null, {
+                        ...baseEvidence, wallSide, apexAtMs: apex.atMs, laneDeviation
+                    });
+                }
+
+                const depthIntoZone = wallSide === "near-zero" ? cfg.wallThreshold - apexX : apexX - (1 - cfg.wallThreshold);
+                const wallProximityScore = clamp01(depthIntoZone / cfg.wallThreshold);
+                const reversalScore = clamp01(Math.min(latestPivot.approach, recoverySwing) / (2 * delta));
+                const visibilityScore = Math.min(...run.slice(apexIndex).map((entry) => entry.visibility));
+                const laneAgreementScore = clamp01(1 - laneDeviation / cfg.laneDeviationThreshold);
+                const confidence = clamp01(
+                    cfg.wallProximityWeight * wallProximityScore +
+                    cfg.reversalWeight * reversalScore +
+                    cfg.visibilityWeight * visibilityScore +
+                    cfg.laneAgreementWeight * laneAgreementScore
+                );
+
+                return turnAssessment("confirmed", "wall-reversal", {
+                    atMs: apex.atMs,
+                    confidence,
+                    evidence: {
+                        apexAtMs: apex.atMs,
+                        confirmedAtMs: sample.atMs,
+                        wallSide,
+                        apexHipX: apexX,
+                        approachSwing: latestPivot.approach,
+                        recoverySwing,
+                        laneDeviation,
+                        visibility: visibilityScore,
+                        wallProximityScore,
+                        reversalScore,
+                        laneAgreementScore,
+                        runSampleCount: run.length
+                    }
+                }, null);
+            }
+
+            return turnAssessment("plausible", "recovery-not-sustained", null, {
+                ...baseEvidence, wallSide, apexAtMs: run[latestPivot.index].atMs, approachSwing: latestPivot.approach
+            });
+        }
+    }
+
+    // No confirmed reversal. Is a wall approach under way (an unconfirmed
+    // extreme in a wall zone that the swimmer travelled into)?
+    const pending = [];
+    if (found.direction <= 0) {
+        const lowX = xs[found.pendingLow.index];
+        if (nearZeroZone(lowX) && found.pendingLow.approach >= delta) {
+            pending.push({ wallSide: "near-zero", index: found.pendingLow.index, approach: found.pendingLow.approach });
+        }
+    }
+    if (found.direction >= 0) {
+        const highX = xs[found.pendingHigh.index];
+        if (nearOneZone(highX) && found.pendingHigh.approach >= delta) {
+            pending.push({ wallSide: "near-one", index: found.pendingHigh.index, approach: found.pendingHigh.approach });
+        }
+    }
+    if (pending.length > 0) {
+        const nearest = pending[0];
+        return turnAssessment("plausible", "awaiting-recovery", null, {
+            ...baseEvidence,
+            wallSide: nearest.wallSide,
+            apexAtMs: run[nearest.index].atMs,
+            approachSwing: nearest.approach
+        });
+    }
+
+    return turnAssessment("none", "no-wall-reversal", null, baseEvidence);
 }

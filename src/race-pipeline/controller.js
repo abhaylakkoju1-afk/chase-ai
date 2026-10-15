@@ -119,6 +119,11 @@ function freshDiagnostics() {
         // assessment. Informational only: nothing reads it to decide what
         // Chronos accepts.
         lastStartAssessment: null,
+        // The most recent turn assessment (state/reason from the turn
+        // detector and the media time of the sample that was evaluated).
+        // Written only while the session is "running" and turn detection is
+        // available. Informational only, like lastStartAssessment.
+        lastTurnAssessment: null,
         turnDetectionAvailable: false,
         turnDetectionUnavailableReason: TURN_DETECTION_UNAVAILABLE_REASON
     };
@@ -286,6 +291,7 @@ export function racePipelineStartAnalysis(controller, config) {
             lastObservationOutcome: null,
             lastEvent: null,
             lastStartAssessment: null,
+            lastTurnAssessment: null,
             turnDetectionAvailable: referenceLaneY !== null,
             turnDetectionUnavailableReason: referenceLaneY !== null ? null : TURN_DETECTION_UNAVAILABLE_REASON
         }
@@ -369,18 +375,51 @@ function runStartDetection(controller, targetPoseSample) {
 // (session.status === "running") AND referenceLaneY is configured
 // (Stage 4D.6 §9/§11's prerequisites) — never with a fabricated
 // referenceLaneY, and never before a race has actually started.
+//
+// CHRONOS RELIABILITY PHASE 2: the accepted start's time is handed to the
+// detector as `earliestApexMs`, so a turning point at or before the race
+// start can never be proposed (a swimmer walking in to the blocks, resting at
+// the wall and diving away is not a turn). The candidate that comes back is
+// stamped with the APEX time (the estimated wall-contact onset), not the
+// later sample at which the reversal was confirmed.
 function runTurnDetection(controller, targetPoseSample) {
     if (controller.chronosSession.status !== "running" || controller.config.referenceLaneY === null) {
         return controller;
     }
 
-    const { candidate, detectorState } = racePipelineDetectTurnCandidate(
+    const startEvent = controller.chronosSession.events.find((event) => event.type === "start") || null;
+
+    const { candidate, detectorState, assessment } = racePipelineDetectTurnCandidate(
         targetPoseSample,
         controller.detectorState,
-        { referenceLaneY: controller.config.referenceLaneY }
+        {
+            referenceLaneY: controller.config.referenceLaneY,
+            earliestApexMs: startEvent ? startEvent.atMs : null
+        }
     );
 
     let nextController = { ...controller, detectorState };
+
+    if (assessment) {
+        nextController = {
+            ...nextController,
+            diagnostics: {
+                ...nextController.diagnostics,
+                lastTurnAssessment: {
+                    state: assessment.state,
+                    reason: assessment.reason,
+                    // The media time of the sample that was evaluated (for a
+                    // confirmed turn, the CONFIRMING sample — later than the apex).
+                    atMs: targetPoseSample.atMs,
+                    // The estimated wall-contact (apex) time this assessment
+                    // concerns, when it concerns one; otherwise null.
+                    apexAtMs: assessment.candidate
+                        ? assessment.candidate.evidence.apexAtMs
+                        : (assessment.evidence && isFiniteNumber(assessment.evidence.apexAtMs) ? assessment.evidence.apexAtMs : null)
+                }
+            }
+        };
+    }
 
     if (candidate) {
         const submitResult = racePipelineSubmitTurnCandidate(
