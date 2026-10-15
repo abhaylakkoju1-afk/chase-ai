@@ -362,7 +362,7 @@ adapter, nothing more.
 ## 7. Detector Contract
 
 ```
-targetPoseSample.landmarks.nose  → chronosDetectStart({ sample: {atMs, nose}, baselineWindow, config })
+targetPoseSample.landmarks.nose  → chronosAssessStart({ sample: {atMs, nose}, baselineWindow, config })   (§7.2; built on the chronosDetectStart displacement primitive)
 targetPoseSample.landmarks.hip,
 targetPoseSample.landmarks.nose  → chronosDetectTurn({ sample: {atMs, hip, nose}, recentSamples, previousCandidateAtMs, config })
 ```
@@ -383,9 +383,11 @@ targetPoseSample.landmarks.nose}` (turn). No data is transformed, only
 regrouped.
 
 **Adapter-owned rolling state** (neither detector keeps its own):
-- Start: `baselineWindow` — an array of recent samples, appended to on
-  every call, per `docs/CHRONOS_ARCHITECTURE.md`'s detector design
-  (Stage 4A/4B).
+- Start: `baselineWindow` — a **bounded rolling window** of recent
+  samples (`START_ASSESSMENT_DEFAULTS.baselineWindowMs`, 4000 ms by
+  default; see §7.2). It was previously appended to on every call and
+  never pruned. Duplicate and out-of-order samples are refused before
+  they reach the detector and are never admitted to the window.
 - Turn: `recentSamples` (a short window for time-normalized velocity)
   and `previousCandidateAtMs` (this detector's own last emitted
   candidate, for its local suppression window — confirmed independent
@@ -393,12 +395,306 @@ regrouped.
   this explicitly).
 
 **Detector candidates are not authoritative race events.** A non-null
-return from `chronosDetectStart`/`chronosDetectTurn` is a **candidate**
+return from `chronosAssessStart`/`chronosDetectTurn` is a **candidate**
 — `{atMs, confidence, evidence}` — that must still pass through
 `event-adapter.js` and `ChronosEngine.recordEvent()` before it can ever
 become part of `session.events[]`. The detector adapter's job ends at
 "collect whatever candidate(s) the detectors produced this call" — it
 never decides acceptance itself (§17 invariant 3).
+
+### 7.2 Start assessment (Chronos reliability, phases 1 and 1B)
+
+**Evidence labelling.** Every number in this section comes from
+deterministic **synthetic** trajectories driven through the real
+pipeline, with ground truth known by construction. None of it is a
+measurement on real swimming footage: no real race footage or
+independently annotated start times exist in this repository, so
+**real-world start accuracy is unverified.**
+
+**Why this changed.** The original start path accepted the first single
+sample whose nose position differed from the mean of *all* prior samples
+by at least `displacementThreshold` (0.08):
+
+| Defect | Observed (original code, synthetic) |
+|---|---|
+| S1 — start time was the *detection* instant, not the motion onset | accepted start 1,560 ms after true onset at 1.8 m/s (960 ms at 3.0 m/s; 2,360 ms when the clip began 1 s before the start) |
+| S2 — no stationary reference required | a swimmer already swimming when the footage began (no start in the clip) produced an accepted start at 3.24 s |
+| S3 — baseline was the mean of all history, never pruned | slow drift of 0.2–0.6 % of frame width per second produced a false start at 27–80 s (none at 0.1 %); state grew without bound |
+| S4 — no confirmation stage | a single sample (including a nose-only jump with the hip still) started the race |
+| S5 — duplicate/out-of-order samples admitted to the baseline | duplicated timestamps entered the window |
+| S6 — one stray sample could change the answer (found in review) | a nose spike of 0.03 within 240 ms before the onset suppressed the start entirely (opposite side) or moved the onset 120–240 ms *before* the true onset (same side) |
+
+**Contract.** `chronosAssessStart({sample, baselineWindow, config})`
+(`src/chronos-engine/detectors/start-detector.js`) is built *on top of*
+`chronosDetectStart()`, which remains the unchanged per-sample
+displacement primitive and supplies the displacement/confidence evidence.
+It returns `{state, reason, candidate, evidence}`; only `confirmed`
+carries a candidate:
+
+| state | reasons | meaning |
+|---|---|---|
+| `none` | `stationary`, `below-threshold` | inside the reference run's envelope (including having returned to rest after an excursion), or departing but still below the 0.08 displacement threshold |
+| `plausible` | `awaiting-confirmation` | past the threshold on one side but not yet confirmed |
+| `ambiguous` | `direction-reversal`, `departure-not-sustained`, `confirmation-span-exceeded` | conflicting evidence |
+| `confirmed` | `sustained-departure` | eligible to become a candidate |
+| `rejected` | `invalid-sample`, `low-visibility-sample`, `non-monotonic-timestamp`, `no-stationary-baseline`, `onset-before-reference-frame`, `invalid-reference-frame` | a hard gate failed. `no-stationary-baseline` covers **both** "fewer than 5 usable samples in the window yet" and "no 5-sample run within the noise band" (e.g. a swimmer already moving). `onset-before-reference-frame` and `invalid-reference-frame` are the start-context gates (§7.3) |
+
+- **Reference run:** the most recent run of ≥ `minBaselineSamples` (5)
+  consecutive usable samples whose total spread stays within a noise band
+  of `baselineNoiseBandFraction × displacementThreshold` (0.25 × 0.08 =
+  0.02), i.e. the resting position may not itself wobble by more than a
+  quarter of the movement being detected.
+- **"At rest" is judged against the run's envelope, not its mean:** a
+  later sample is rest-consistent if adding it would not widen the run's
+  spread beyond the band. (A short run can contain the first, still-tiny
+  steps of the departure, which shifts its mean, so judging against the mean
+  would make the true first departing sample look like rest.) The mean is
+  used only for displacement magnitudes.
+- **Departure:** the contiguous run of samples, ending at the current one,
+  beyond the envelope on the current sample's side. A stray sample that is
+  separated from it by at least one rest-consistent sample is not part of
+  it. A **single** glitch sample (back inside the envelope, or on the
+  opposite side) with two or more same-side samples to its left is bridged
+  as a dropout. A departure that begins immediately after beyond-envelope
+  samples on the *opposite* side (no rest-consistent sample between) is
+  `direction-reversal` and is never confirmed.
+- **Confirmation:** the last `confirmationSamples` (3) departure samples
+  must each be ≥ 0.08 from the reference mean *as observed* and fall within
+  `maxConfirmationSpanMs` (1000 ms). The unchanged primitive re-checks the
+  same threshold for each of them; the two cannot disagree toward
+  acceptance.
+- **Candidate time = estimated motion onset:** `candidate.atMs` is the
+  first sample of the departure, **not** the later instant confirmation
+  completed (`evidence.confirmedAtMs`; both are in the evidence). It is
+  not an official starter's signal. Chronos validates it only as a finite,
+  non-negative video time, and every later event must be strictly after it.
+- **Rolling window:** only samples within `baselineWindowMs` (4000 ms) of
+  the newest are held.
+- **Duplicates / out-of-order:** a sample whose timestamp is not strictly
+  later than the newest held sample is refused by
+  `racePipelineDetectStartCandidate()` before the detector (the same
+  `detectorState` object is returned; assessment `non-monotonic-timestamp`).
+- **Diagnostics:** the controller records the last assessment as
+  `controller.diagnostics.lastStartAssessment = {state, reason, atMs,
+  onsetAtMs}`: `atMs` is the media time of the sample just assessed (for a
+  confirmed start, the **confirming** sample, later than the onset) and
+  `onsetAtMs` is the estimated motion onset the assessment concerns (the
+  candidate's, or the refused one for `onset-before-reference-frame`; `null`
+  otherwise). The existing Developer Diagnostics panel shows them (§7.3). The
+  field is written only while the session is `armed`; once Chronos accepts a
+  start the start detector is no longer run and the field keeps the
+  confirming assessment. It is informational: nothing reads it to decide what
+  Chronos accepts. A missed start therefore shows as e.g.
+  `rejected (no-stationary-baseline)` rather than nothing.
+- **Controller behavior is unchanged:** the start detector is called only
+  while the Chronos session is `armed`; once Chronos accepts a start it is
+  never called again, and a second start is rejected with
+  `start-already-recorded`.
+
+**Demonstrated behavior (synthetic).** Nose `x` in frame-widths; samples
+every 120 ms; "w/s" = frame-widths per second. For a 25 m pool spanning 80 %
+of the frame width, 0.04 w/s ≈ 1.25 m/s and 0.058 w/s ≈ 1.8 m/s; these
+values depend entirely on camera framing.
+
+| Scenario | Result |
+|---|---|
+| clean constant-speed departure, 0.058–0.096 w/s | onset error +240 to +440 ms (equals the first sample > 0.02 beyond rest); never negative; bound 0 … noiseBand/speed + one sample interval held across 0.06–0.14 w/s |
+| isolated nose spike ±0.03, 120 … 960 ms before the onset | no effect on the onset (+360 ms in every case), start still detected (before: suppressed or −120/−240 ms) |
+| isolated dropout inside the departure | delays the onset by 1 sample (dropout at departing sample #3) or 2 samples (#4); no effect from #5 on (the first two departing samples are still inside the envelope) |
+| two **consecutive** dropouts inside the departure, before confirmation | onset moves to after them (+3, +5, +9 samples measured at departing samples #4, #6, #10) |
+| outlier directly adjacent to a fast departure (first departing sample already beyond the envelope; > ≈ 0.17 w/s) | indistinguishable from the departure: onset earlier than the true departure by the number of adjacent samples |
+| accelerating start, 0.05 w/s² | onset +1,080 ms |
+| 2 s tracking gap covering the onset | onset = first sample after the gap (+1,440 ms) |
+| uniform pose jitter ±0.002 / ±0.005 / ±0.01 at 0.058 w/s (20 seeds each) | median lag 360 / 480 / 1,440 ms; max 480 / 2,400 / 4,920 ms; all detected |
+| motion begins this long after the first frame (0.058 w/s departure) | detected from ≈ 0.64 s; at ≤ 0.56 s there is no baseline and no start |
+| constant-speed departure, no noise | not detected ≤ 0.04 w/s; detected ≥ 0.045 w/s |
+| constant-speed departure, ±0.005 jitter (10 seeds) | not detected ≤ 0.045 w/s; 0.05 w/s detected in 5/10 runs (median lag 4,560 ms); ≥ 0.06 w/s 10/10 |
+
+The slow-departure and jitter rows share a cause that phase 1B did **not**
+change: while a swimmer departs slowly, a transient 5-sample run can re-form
+at the new position (jitter can cancel the motion over five samples), the
+reference re-anchors there, and the departure is measured from the wrong
+place. **A measured trade-off, not adopted:** on a scratch variant that
+selected the *longest* run instead of the latest one, departures at
+0.03–0.06 w/s with ±0.005 jitter were detected in 10/10 runs with median
+lags of 240–600 ms (current code: 0/10 at 0.03–0.04, 5/10 at 0.05 with a
+4,560 ms median lag), **but** steady slow drift at 0.025–0.04 w/s, with no
+start in the clip, produced a false start about 1.1–1.3 s into the clip
+(current code: none). Which side to favor is a decision, so the reference
+selection rule was left unchanged.
+
+**Provisional values, not validated on real footage:** `baselineWindowMs`,
+`confirmationSamples`, `maxConfirmationSpanMs`, `baselineNoiseBandFraction`
+(and the pre-existing `displacementThreshold`, `minBaselineSamples`,
+`minVisibility`).
+
+**Known limitations (start) — not resolved.**
+- **False starts and start context.** The detector stays armed for the whole
+  video and treats *any* rest followed by a sustained departure as the
+  estimate. Without context that accepts a pre-race walk, a position
+  adjustment, or a mid-race wall push-off (phase 1B reproduced these). Phase
+  1C adds the user-marked pre-start reference frame (§7.3): with a frame
+  marked after the unwanted movement, they are refused (synthetic results in
+  §7.3). It depends on the user marking a genuine pre-start frame, which
+  software cannot verify; motion after the marked frame but before the real
+  start is still accepted; and a mark that precedes the unwanted movement
+  gives no protection.
+- Detection sensitivity and onset lag degrade with slow departures, pose
+  jitter, tracking gaps, and slowly accelerating starts (table above).
+- Start evidence is `nose.x` only; sustained nose-only movement with a
+  still body can satisfy it.
+- Detectors only receive samples SwimmerTracking has confirmed, so a start
+  needs the target to have locked (≈ 5 samples) and enough stationary
+  footage after that (≈ 0.64 s from the first frame in the synthetic case).
+- Direction-agnostic and camera-framing dependent (all thresholds are in
+  frame-widths).
+- The visual onset of motion is not the official start (starter's signal,
+  reaction time); the footage may not contain that information.
+- The analysis report line reads `Estimated motion onset: X s — visual
+  estimate, not an official start`. X is the **estimated onset**, which
+  precedes the moment the status flips to "Motion onset estimated" by the
+  confirmation delay (about 0.8 s at 0.096 w/s and 1.3–1.4 s at 0.058 w/s in
+  the synthetic runs).
+- The on-page `#timer` and the legacy manual Start/Split/Reset controls are
+  **not** driven by Chronos (the manual `startTimer()` is undefined). The
+  only official start is the Chronos `start` event shown in the analysis
+  report. Wiring a live timer to Chronos is a UI behavior change that
+  `docs/CHRONOS_ARCHITECTURE.md` §24 requires approval for.
+- Pre-existing, outside the start detector: SwimmerTracking can lock from
+  duplicate or descending timestamps; a sustained rewind drives tracking
+  into the terminal `ANALYSIS_DEGRADED` state.
+
+### 7.3 Start context: the pre-start reference frame (Chronos reliability, phase 1C)
+
+**Evidence labelling.** Every number below comes from deterministic
+**synthetic** trajectories driven through the real pipeline (and, for the
+browser rows, a real page with a generated video and a scripted stand-in for
+MediaPipe). None of it is a measurement on real footage: no real race footage
+or independently annotated start times exist in this repository.
+
+**What the detector measures.** The start detector estimates the **visual
+onset of motion** of the tracked swimmer from pose landmarks. Everything the
+UI and diagnostics call "estimated motion onset" is that, and nothing else:
+it is not the starter's signal, not an official start, and not a reaction
+time, and the footage may not contain that information. No code here
+identifies an official start.
+
+**Why context is needed.** The detector stays armed for the whole video and
+treats any rest followed by a sustained departure as the estimate. A swimmer
+walking to the blocks, stepping to adjust, or pushing off a wall in a clip
+that begins mid-race all look like that. No threshold can tell which
+rest-then-motion is the one the user cares about; the user has to say.
+
+**The interaction (the existing calibration pause, extended).** Race page
+step 3, *Mark the Pre-Start Frame and Lane Reference*:
+
+1. The user pauses the video on a frame **before the start**, with the
+   swimmer at rest, then presses *Mark Pre-Start Frame & Lane Position*
+   (this also pauses the video and arms the click).
+2. The user may scrub to the exact frame, then clicks the swimmer.
+3. At the click, `racePipelineStartReferenceMsFromMediaTime(video.currentTime)`
+   converts the paused frame's media time to milliseconds. The lane position
+   and the reference are recorded **together or not at all**.
+
+Refused (the click is ignored, an explanatory message is shown, the lane
+position and reference stay unset): the video is **playing** when clicked
+(the button stays armed), the click lands outside the video content, or the
+media time cannot be read as a finite, non-negative number. Loading another
+video clears both. Changing the mark while an analysis is running does not
+affect that analysis (the configuration is copied at *Start*). The video is
+still analysed from media time 0.
+
+**Contract, and where each part is enforced.**
+
+| Where | What |
+|---|---|
+| `index.html` | requires a paused video at the click; both-or-neither; *Start* is blocked with "lane calibration" until set |
+| `race-config.js` | `racePipelineStartReferenceMsFromMediaTime()` (null for negative, NaN, infinite, non-numeric input — never 0 or clamped); `racePipelineBuildRaceConfig()` carries `startReferenceMs`; missing/invalid is reported as "lane calibration" |
+| `controller.js` `validateConfig()` | `startReferenceMs` is **required**: absent → `missing-start-reference`; non-finite, negative or non-numeric → `invalid-start-reference`; no session is created. It never defaults to 0 or to "no constraint" |
+| `controller.js` `runStartDetection()` | hands it to the detector as `referenceFrameMs` |
+| `start-detector.js` | a departure whose **first sample** is earlier than `referenceFrameMs` is refused (`rejected` / `onset-before-reference-frame`, evidence carries the refused onset and the reference); an unusable reference is `rejected` / `invalid-reference-frame`; absent means the caller gave no context and the search is unconstrained (the controller never does that) |
+
+**Semantics.**
+- The estimated onset is never earlier than the reference; the boundary is
+  inclusive.
+- Samples before the reference are **not discarded**. Stationary samples just
+  before it are a legitimate baseline, so a frame marked right before the
+  motion (with no stationary footage after it) still works. The constraint is
+  on where the *departure begins*.
+- A departure that begins before the reference and continues past it is
+  refused **as a whole**. It is not truncated to the reference, which would
+  invent an onset the swimmer did not have.
+- The reference only has to precede the *estimated* onset, which trails the
+  true onset (≈ 0.24–0.44 s in the clean synthetic case). A frame marked
+  slightly after the motion truly began still works; one marked after the
+  estimated onset yields no start, with `rejected (onset-before-reference-frame)`
+  and the refused onset in diagnostics.
+- **SwimmerTracking is untouched.** It receives every sample from the start of
+  the footage and may lock before the reference. A synthetic test shows the
+  tracking session identical frame by frame with and without a reference.
+  Chronos events, the analysis start position, and the legacy `#timer` are
+  also unchanged; the timer is **not** connected to Chronos.
+
+**Four timestamps, never conflated.** The Developer Diagnostics panel shows,
+only when each exists: *Reference frame (marked pre-start)* (the marked
+frame); *Estimated motion onset … (confirmed at …)* (the onset, and the
+later sample at which detection was confirmed); *Start assessment … evaluated
+at …* (the sample just assessed); and *Chronos start event (estimated motion
+onset, not an official start)* (the accepted event, whose time **is** the
+onset). A refused departure appears as *Refused motion onset … (it begins
+before the reference frame)*. The analysis report shows *Estimated motion
+onset: X s — visual estimate, not an official start* and the reference frame.
+The user-facing status reads "Motion onset estimated".
+
+**Demonstrated behavior (synthetic).** Reference 0 excludes nothing (the
+control); the other reference is placed after the unwanted movement.
+
+| Scenario | Reference 0 | Reference after the movement |
+|---|---|---|
+| walk 1.0–2.0 s, true departure 6.0 s | onset 1,200 ms (confirmed 1,800) | **6,360 ms** (confirmed 7,680); the walk's onset 1,200 ms refused |
+| 0.24 s step at 1.0 s, departure 6.0 s | onset 1,080 ms | **6,360 ms** |
+| step only, no start in the clip | **false start**, onset 2,160 ms | none |
+| clip begins mid-race, wall pause + push-off, no start in the clip | **false start**, onset 7,080 ms | none |
+| same, with a real departure at 14.0 s | onset 7,080 ms | **14,400 ms** (push-off's 7,080 ms refused) |
+| valid departure (estimate 6,360 ms) | 6,360 ms | 6,360 ms for references 2,800 / 5,880 / 6,000 / 6,360; **none** for 6,361 / 6,600 / 60,000 |
+| spikes ±0.03 at 120 / 240 / 480 ms before the onset | — | unchanged, 6,360 ms |
+| no stationary footage / already moving | none | none |
+| slow or noisy departures | unchanged | unchanged (the reference does not affect detection sensitivity) |
+| missing, null, NaN, −1, "3000", Infinity | analysis blocked (`missing-start-reference` / `invalid-start-reference`), no session | — |
+
+**Browser integration (synthetic video, scripted pose).** On the real race
+page, with the frame driver, calibration handler, controller and detector
+running unmodified: pausing and seeking to 4.0 s then clicking records
+"Pre-start reference frame: 4.0x s"; the controller receives it; the scripted
+walk (2.4–3.4 s) is refused and visible in the diagnostics history; the
+estimated onset is the departure at about 6.4 s and is not earlier than the
+reference; confirmation is later than the onset; the page never says "Start
+detected" or claims an official start; the legacy `#timer` stays "0.00 s". A
+reference marked at 0 s produces the walk as the estimate (control). A click
+on a playing video records nothing and *Start* stays blocked; loading another
+video clears the mark.
+
+**Assumptions and limitations of the context.**
+- **Software cannot verify that the marked frame is a genuine pre-start
+  frame.** The contract assumes the user paused before any movement, with the
+  swimmer at rest.
+- Motion **after** the reference but before the real start (a position
+  adjustment after marking) is still accepted as the estimate.
+- A mark that precedes the unwanted movement gives no protection (the
+  reference-0 column).
+- A clip that has no genuine pre-start frame (it begins mid-race) cannot
+  satisfy the instruction. Marking a frame after a push-off prevents that
+  push-off from being taken as the start, but that frame is not a pre-start
+  frame; no start can be estimated from such a clip.
+- Tracking must still lock and hold the target through to the departure. If
+  tracking is lost or degraded first (for example the swimmer is out of
+  frame for several seconds), no start is estimated; the *Tracking:* line
+  shows the status.
+- The paused frame's `currentTime` can exceed that frame's timestamp by up
+  to one frame interval. This does not matter in practice because the
+  reference only has to precede the estimated onset.
+- Slow-departure, jitter, tracking-gap and accelerating-start limitations
+  (§7.2) are unchanged.
 
 ### 7.1 `referenceLaneY` source (decided, Stage 4D.7)
 
@@ -411,9 +707,11 @@ already-defined `SwimmerTracking` `TargetSelection.point` concept
 (`docs/SWIMMER_TRACKING_ARCHITECTURE.md` §7.2) rather than inventing a
 new calibration primitive:
 
-- **Interaction:** the user pauses the loaded race video on a clear
-  frame, activates calibration, and clicks once on the swimmer's lane
-  reference position in the video. `src/race-pipeline/race-config.js`'s
+- **Interaction:** the user pauses the loaded race video on a frame
+  **before the start** (swimmer at rest), activates calibration, and clicks
+  once on the swimmer in the video. The same click also records the paused
+  frame's media time as the pre-start reference frame (§7.3), and the lane
+  position is set together with it or not at all. `src/race-pipeline/race-config.js`'s
   `racePipelineMapClickToNormalizedPoint()` converts that click (a CSS
   pixel position over the rendered, possibly letterboxed video) into a
   normalized `{x, y}` point in the same `[0,1]` coordinate space

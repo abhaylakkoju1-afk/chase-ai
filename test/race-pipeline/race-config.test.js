@@ -13,6 +13,7 @@ import {
     racePipelineReferenceLaneYFromCalibrationPoint,
     racePipelineBuildRaceConfig,
     racePipelineDescribeMissingConfigFields,
+    racePipelineStartReferenceMsFromMediaTime,
     racePipelineMapClickToNormalizedPoint
 } from "../../src/race-pipeline/race-config.js";
 
@@ -93,12 +94,13 @@ describe("racePipelineDefaultPoolLengthMetersForCourse()", () => {
 // ===========================================================================
 
 describe("racePipelineBuildRaceConfig()", () => {
-    test("a fully valid selection produces the exact {event, course, poolLengthMeters, strokeKey, distanceMeters, referenceLaneY} shape", () => {
+    test("a fully valid selection produces the exact {event, course, poolLengthMeters, strokeKey, distanceMeters, referenceLaneY, startReferenceMs} shape", () => {
         const config = racePipelineBuildRaceConfig({
             eventValue: "Backstroke 100m",
             courseValue: "Long Course",
             poolLengthMetersValue: 50,
-            calibrationPoint: { x: 0.5, y: 0.42 }
+            calibrationPoint: { x: 0.5, y: 0.42 },
+            startReferenceMs: 2800
         });
 
         assert.deepEqual(config, {
@@ -107,7 +109,8 @@ describe("racePipelineBuildRaceConfig()", () => {
             distanceMeters: 100,
             course: "Long Course",
             poolLengthMeters: 50,
-            referenceLaneY: 0.42
+            referenceLaneY: 0.42,
+            startReferenceMs: 2800
         });
     });
 
@@ -115,7 +118,8 @@ describe("racePipelineBuildRaceConfig()", () => {
         const config = racePipelineBuildRaceConfig({});
         assert.deepEqual(config, {
             event: null, strokeKey: null, distanceMeters: null,
-            course: null, poolLengthMeters: null, referenceLaneY: null
+            course: null, poolLengthMeters: null, referenceLaneY: null,
+            startReferenceMs: null
         });
     });
 
@@ -135,7 +139,7 @@ describe("racePipelineDescribeMissingConfigFields()", () => {
     test("a complete config reports nothing missing", () => {
         const config = racePipelineBuildRaceConfig({
             eventValue: "Freestyle 100m", courseValue: "Short Course", poolLengthMetersValue: 25,
-            calibrationPoint: { x: 0.5, y: 0.5 }
+            calibrationPoint: { x: 0.5, y: 0.5 }, startReferenceMs: 0
         });
         assert.deepEqual(racePipelineDescribeMissingConfigFields(config), []);
     });
@@ -166,6 +170,25 @@ describe("racePipelineDescribeMissingConfigFields()", () => {
             eventValue: "Freestyle 100m", courseValue: "Short Course", poolLengthMetersValue: 25
         });
         assert.ok(racePipelineDescribeMissingConfigFields(config).includes("lane calibration"));
+    });
+
+    test("a valid lane position WITHOUT a pre-start reference frame is still reported as the one calibration step to redo", () => {
+        const config = racePipelineBuildRaceConfig({
+            eventValue: "Freestyle 100m", courseValue: "Short Course", poolLengthMetersValue: 25,
+            calibrationPoint: { x: 0.5, y: 0.5 }
+        });
+        assert.deepEqual(racePipelineDescribeMissingConfigFields(config), ["lane calibration"]);
+    });
+
+    test("an invalid reference (negative, NaN, a string) is treated as unset by the builder and reported missing", () => {
+        for (const bad of [-1, NaN, Infinity, "2800", null, undefined]) {
+            const config = racePipelineBuildRaceConfig({
+                eventValue: "Freestyle 100m", courseValue: "Short Course", poolLengthMetersValue: 25,
+                calibrationPoint: { x: 0.5, y: 0.5 }, startReferenceMs: bad
+            });
+            assert.equal(config.startReferenceMs, null, String(bad));
+            assert.deepEqual(racePipelineDescribeMissingConfigFields(config), ["lane calibration"]);
+        }
     });
 
     test("multiple missing fields are all reported together", () => {
@@ -255,5 +278,25 @@ describe("racePipelineMapClickToNormalizedPoint() — calibration click geometry
         // container's own horizontal center since there's no horizontal bar.
         assert.notEqual(point, null);
         assert.equal(point.x, 0.5);
+    });
+});
+
+// ===========================================================================
+// PRE-START REFERENCE FRAME — conversion from the paused video's media time
+// (Chronos reliability phase 1C)
+// ===========================================================================
+
+describe("racePipelineStartReferenceMsFromMediaTime()", () => {
+    test("converts seconds to milliseconds, including 0 and fractional positions", () => {
+        assert.equal(racePipelineStartReferenceMsFromMediaTime(0), 0);
+        assert.equal(racePipelineStartReferenceMsFromMediaTime(2.8), 2800);
+        assert.equal(racePipelineStartReferenceMsFromMediaTime(0.0415), 41.5);
+        assert.equal(racePipelineStartReferenceMsFromMediaTime(125.25), 125250);
+    });
+
+    test("a negative, NaN, infinite, or non-numeric time is null — never 0, never clamped, never coerced", () => {
+        for (const bad of [-0.001, -5, NaN, Infinity, -Infinity, "2.8", null, undefined, {}, true]) {
+            assert.equal(racePipelineStartReferenceMsFromMediaTime(bad), null, String(bad));
+        }
     });
 });

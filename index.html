@@ -735,10 +735,10 @@ gtag('config', 'G-VSLDBW2PYM');
             </div>
 
             <div class="st-section">
-                <div class="st-section-title">3. Calibrate Lane Reference</div>
-                <p class="st-section-sub">Pause the video on a clear frame, then mark the swimmer's lane reference position — click the button below, then click on the swimmer's lane in the video.</p>
+                <div class="st-section-title">3. Mark the Pre-Start Frame and Lane Reference</div>
+                <p class="st-section-sub">Pause the video on a frame <b>before the start</b>, while the swimmer is at rest. Then click the button below and click on the swimmer in the video. The paused frame's time becomes the pre-start reference: movement that begins before it is ignored when Chronos estimates the start of motion. Mark a frame before any movement begins &mdash; if the swimmer has already started moving in the frame you mark, no start of motion can be estimated.</p>
 
-                <button class="btn" id="raceCalibrateBtn">🎯 Mark Lane Reference Position</button>
+                <button class="btn" id="raceCalibrateBtn">🎯 Mark Pre-Start Frame &amp; Lane Position</button>
                 <div id="raceCalibrationStatus" class="metric-box">Calibration: not set</div>
             </div>
 
@@ -3177,7 +3177,8 @@ window.addEventListener(
             racePipelineDefaultPoolLengthMetersForCourse,
             racePipelineBuildRaceConfig,
             racePipelineDescribeMissingConfigFields,
-            racePipelineMapClickToNormalizedPoint
+            racePipelineMapClickToNormalizedPoint,
+            racePipelineStartReferenceMsFromMediaTime
         } from "./src/race-pipeline/race-config.js";
         import { racePipelineFindExistingPb } from "./src/race-pipeline/pb-adapter.js";
         import { ChronosEngine } from "./src/chronos-engine/index.js";
@@ -3189,6 +3190,12 @@ window.addEventListener(
            persistence, no global persistence of referenceLaneY beyond
            the current analysis configuration). */
         let raceCalibrationPoint = null;
+        /* Chronos reliability phase 1C: the media time (ms) of the PAUSED frame
+           the user marked as BEFORE the start. Set and cleared together with
+           raceCalibrationPoint (one pause, one click). It is a start-search
+           context only — not the race start and not the estimated motion
+           onset (docs/RACE_PIPELINE_ARCHITECTURE.md §7.3). */
+        let raceStartReferenceMs = null;
         let raceCalibrationArmed = false;
         let racePoolLengthTouchedByUser = false;
         let raceStoppedByUser = false;
@@ -3277,7 +3284,8 @@ window.addEventListener(
                 eventValue: eventSelect ? eventSelect.value : null,
                 courseValue: courseSelect ? courseSelect.value : null,
                 poolLengthMetersValue: poolLengthSelect && poolLengthSelect.value ? Number(poolLengthSelect.value) : null,
-                calibrationPoint: raceCalibrationPoint
+                calibrationPoint: raceCalibrationPoint,
+                startReferenceMs: raceStartReferenceMs
             });
         }
 
@@ -3337,7 +3345,7 @@ window.addEventListener(
                 canvas.style.cursor = "crosshair";
             }
             if (statusEl) {
-                statusEl.textContent = "Calibration: click on the swimmer's lane reference position in the video.";
+                statusEl.textContent = "Calibration: with the video paused on a frame BEFORE the start (swimmer at rest), click on the swimmer.";
             }
         }
 
@@ -3369,6 +3377,18 @@ window.addEventListener(
             canvas.addEventListener("click", (event) => {
                 if (!raceCalibrationArmed) return;
 
+                /* The reference is the time of the PAUSED frame. If the video
+                   was resumed after arming, the displayed frame is moving and
+                   there is no pre-start frame to record: refuse and stay armed. */
+                if (!video.paused) {
+                    const pausedEl = document.getElementById("raceCalibrationStatus");
+                    if (pausedEl) {
+                        pausedEl.textContent = "Calibration: pause the video on the pre-start frame first, then click the swimmer.";
+                    }
+                    return;
+                }
+
+                const referenceMs = racePipelineStartReferenceMsFromMediaTime(video.currentTime);
                 const rect = canvas.getBoundingClientRect();
                 const point = racePipelineMapClickToNormalizedPoint({
                     clickX: event.clientX - rect.left,
@@ -3385,20 +3405,26 @@ window.addEventListener(
 
                 const statusEl = document.getElementById("raceCalibrationStatus");
 
-                if (!point) {
+                /* Both values or neither: a lane position without a readable
+                   pre-start frame (or the reverse) is not a calibration. */
+                if (!point || referenceMs === null) {
                     raceCalibrationPoint = null;
+                    raceStartReferenceMs = null;
                     if (statusEl) {
-                        statusEl.textContent = "Calibration: that click landed outside the video frame — lane reference not set. Try again.";
+                        statusEl.textContent = !point
+                            ? "Calibration: that click landed outside the video frame — lane reference not set. Try again."
+                            : "Calibration: the video position could not be read — lane reference and pre-start frame not set. Try again.";
                     }
                     renderRaceStatus();
                     return;
                 }
 
                 raceCalibrationPoint = point;
+                raceStartReferenceMs = referenceMs;
                 drawCalibrationMarker(canvas, event.clientX - rect.left, event.clientY - rect.top);
 
                 if (statusEl) {
-                    statusEl.textContent = "Calibration: ✅ lane reference position marked.";
+                    statusEl.textContent = `Calibration: ✅ lane reference position marked. Pre-start reference frame: ${(referenceMs / 1000).toFixed(2)} s (video time).`;
                 }
                 renderRaceStatus();
             });
@@ -3451,6 +3477,7 @@ window.addEventListener(
                    those describe the race, not the footage. */
                 racePipelineHandleStopClick();
                 raceCalibrationPoint = null;
+                raceStartReferenceMs = null;
                 raceCalibrationArmed = false;
                 const calibrationStatusEl = document.getElementById("raceCalibrationStatus");
                 if (calibrationStatusEl) {
@@ -3804,7 +3831,7 @@ window.addEventListener(
                 return raceStoppedByUser ? "Analysis stopped" : "Analysis incomplete";
             }
 
-            if (justDetectedKind === "start") return "Start detected";
+            if (justDetectedKind === "start") return "Motion onset estimated";
             if (justDetectedKind === "turn") return "Turn detected";
 
             if (raceController.trackingSession && raceController.trackingSession.status === "TARGET_LOCKED") {
@@ -3829,10 +3856,35 @@ window.addEventListener(
 
             lines.push(`Lifecycle: ${racePipelineControllerStatus(raceController)}`);
             lines.push(`Tracking: ${d.lastTrackingStatus ?? "—"} (${d.lastObservationOutcome ?? "—"})`);
+
+            /* Four distinct timestamps are shown, only when they exist, and are
+               never conflated: the marked pre-start reference frame, the
+               estimated motion onset, the sample at which detection was
+               confirmed (always later than the onset), and the accepted Chronos
+               event (which carries the onset). */
+            const fmtSeconds = (ms) => `${(ms / 1000).toFixed(2)} s`;
+            if (raceController.config && Number.isFinite(raceController.config.startReferenceMs)) {
+                lines.push(`Reference frame (marked pre-start): ${fmtSeconds(raceController.config.startReferenceMs)}`);
+            }
+            const sa = d.lastStartAssessment;
+            if (sa) {
+                lines.push(`Start assessment: ${sa.state} (${sa.reason}), evaluated at ${fmtSeconds(sa.atMs)}`);
+                if (Number.isFinite(sa.onsetAtMs)) {
+                    lines.push(
+                        sa.state === "confirmed"
+                            ? `Estimated motion onset: ${fmtSeconds(sa.onsetAtMs)} (confirmed at ${fmtSeconds(sa.atMs)})`
+                            : `Refused motion onset: ${fmtSeconds(sa.onsetAtMs)} (it begins before the reference frame)`
+                    );
+                }
+            }
             lines.push(d.turnDetectionAvailable ? "Turn detection: available" : (d.turnDetectionUnavailableReason || "Turn detection: unavailable"));
 
             if (d.lastEvent) {
-                lines.push(`Last event: ${d.lastEvent.kind} @ ${d.lastEvent.atMs}ms — ${d.lastEvent.ok ? "accepted" : `rejected (${d.lastEvent.reason})`}`);
+                lines.push(
+                    d.lastEvent.kind === "start"
+                        ? `Chronos start event (estimated motion onset, not an official start): ${d.lastEvent.ok ? "accepted" : `rejected (${d.lastEvent.reason})`} @ ${fmtSeconds(d.lastEvent.atMs)}`
+                        : `Last event: ${d.lastEvent.kind} @ ${d.lastEvent.atMs}ms — ${d.lastEvent.ok ? "accepted" : `rejected (${d.lastEvent.reason})`}`
+                );
             }
 
             if (raceController.eventAdapterState) {
@@ -3872,12 +3924,19 @@ window.addEventListener(
                 `<b>Distance:</b> ${report.distanceMeters !== null ? report.distanceMeters + "m" : "—"}</div>`
             );
 
+            /* What this is: the estimated moment VISIBLE MOTION began, from pose
+               landmarks. It is not the starter's signal and not an official
+               start or reaction time. */
             rows.push(
                 report.start
-                    ? `<div class="metric-box"><b>Start:</b> detected at ${(report.start.atMs / 1000).toFixed(2)}s` +
-                      (report.start.confidence !== null ? ` (confidence ${report.start.confidence.toFixed(2)})` : "") + `</div>`
-                    : `<div class="metric-box"><b>Start:</b> not yet detected</div>`
+                    ? `<div class="metric-box"><b>Estimated motion onset:</b> ${(report.start.atMs / 1000).toFixed(2)}s` +
+                      (report.start.confidence !== null ? ` (confidence ${report.start.confidence.toFixed(2)})` : "") +
+                      ` &mdash; visual estimate, not an official start</div>`
+                    : `<div class="metric-box"><b>Estimated motion onset:</b> not yet detected</div>`
             );
+            if (raceController.config && Number.isFinite(raceController.config.startReferenceMs)) {
+                rows.push(`<div class="metric-box"><b>Pre-start reference frame:</b> ${(raceController.config.startReferenceMs / 1000).toFixed(2)}s</div>`);
+            }
 
             const turnSplits = report.splits.filter((split) => split.kind === "turn");
             rows.push(`<div class="metric-box"><b>Turns:</b> ${turnSplits.length}</div>`);

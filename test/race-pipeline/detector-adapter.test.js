@@ -21,7 +21,7 @@ import {
     TURN_DETECTOR_NAME
 } from "../../src/race-pipeline/detector-adapter.js";
 
-import { chronosDetectStart } from "../../src/chronos-engine/detectors/start-detector.js";
+import { chronosDetectStart, chronosAssessStart } from "../../src/chronos-engine/detectors/start-detector.js";
 import { chronosDetectTurn } from "../../src/chronos-engine/detectors/turn-detector.js";
 
 const REFERENCE_LANE_Y = 0.5;
@@ -204,32 +204,65 @@ function fiveSampleBaselineState(x = 0.5) {
 }
 
 describe("detector adapter — candidate propagation, identity, confidence, evidence, timestamp", () => {
-    test("start: a qualifying sample after a real baseline produces a candidate with atMs/confidence/evidence/detector", () => {
+    test("start: a SUSTAINED departure after a real baseline produces a candidate with atMs/confidence/evidence/detector", () => {
+        // Chronos reliability phase 1: one displaced sample is no longer enough
+        // (it is only a "plausible" departure); the departure must persist
+        // for confirmationSamples (3) samples. The candidate carries the
+        // ONSET (first departing sample), and exposes when it was confirmed.
         const detectorState = fiveSampleBaselineState();
-        const qualifyingSample = targetPoseSample({ atMs: 500, nose: landmark(0.65, 0.5, 0.9) });
+        const departing = [500, 600, 700].map((atMs) => targetPoseSample({ atMs, nose: landmark(0.65, 0.5, 0.9) }));
 
-        const { candidate } = racePipelineDetectStartCandidate(qualifyingSample, detectorState, {});
+        const first = racePipelineDetectStartCandidate(departing[0], detectorState, {});
+        assert.equal(first.candidate, null);
+        assert.equal(first.assessment.state, "plausible");
+        const second = racePipelineDetectStartCandidate(departing[1], first.detectorState, {});
+        assert.equal(second.candidate, null);
+        assert.equal(second.assessment.state, "plausible");
+
+        const { candidate, assessment } = racePipelineDetectStartCandidate(departing[2], second.detectorState, {});
 
         assert.notEqual(candidate, null);
-        assert.equal(candidate.atMs, 500); // timestamp preserved exactly, not recomputed
+        assert.equal(assessment.state, "confirmed");
+        assert.equal(candidate.atMs, 500); // the onset sample's timestamp, preserved exactly, not recomputed
+        assert.equal(candidate.evidence.onsetAtMs, 500);
+        assert.equal(candidate.evidence.confirmedAtMs, 700);
         assert.equal(typeof candidate.confidence, "number");
         assert.equal(typeof candidate.evidence, "object");
         assert.equal(candidate.detector, START_DETECTOR_NAME);
     });
 
-    test("start: confidence and evidence exactly match a direct chronosDetectStart() call with the same inputs", () => {
-        const detectorState = fiveSampleBaselineState();
-        const sample = targetPoseSample({ atMs: 500, nose: landmark(0.65, 0.5, 0.9) });
+    test("start: confidence and evidence exactly match a direct chronosAssessStart() call with the same inputs", () => {
+        let detectorState = fiveSampleBaselineState();
+        for (const atMs of [500, 600]) {
+            ({ detectorState } = racePipelineDetectStartCandidate(targetPoseSample({ atMs, nose: landmark(0.65, 0.5, 0.9) }), detectorState, {}));
+        }
+        const sample = targetPoseSample({ atMs: 700, nose: landmark(0.65, 0.5, 0.9) });
 
         const { candidate } = racePipelineDetectStartCandidate(sample, detectorState, {});
-        const direct = chronosDetectStart({
-            sample: { atMs: 500, nose: { x: 0.65, y: 0.5, visibility: 0.9 } },
+        const direct = chronosAssessStart({
+            sample: { atMs: 700, nose: { x: 0.65, y: 0.5, visibility: 0.9 } },
             baselineWindow: detectorState.startBaselineWindow
         });
 
-        assert.equal(candidate.confidence, direct.confidence);
-        assert.deepEqual(candidate.evidence, direct.evidence);
-        assert.equal(candidate.atMs, direct.atMs);
+        assert.notEqual(direct.candidate, null);
+        assert.equal(candidate.confidence, direct.candidate.confidence);
+        assert.deepEqual(candidate.evidence, direct.candidate.evidence);
+        assert.equal(candidate.atMs, direct.candidate.atMs);
+    });
+
+    test("start: the candidate's displacement evidence is the chronosDetectStart() primitive's, evaluated against the stationary reference", () => {
+        let detectorState = fiveSampleBaselineState();
+        for (const atMs of [500, 600]) {
+            ({ detectorState } = racePipelineDetectStartCandidate(targetPoseSample({ atMs, nose: landmark(0.65, 0.5, 0.9) }), detectorState, {}));
+        }
+        const { candidate } = racePipelineDetectStartCandidate(targetPoseSample({ atMs: 700, nose: landmark(0.65, 0.5, 0.9) }), detectorState, {});
+
+        const stationary = detectorState.startBaselineWindow.slice(0, 5);
+        const primitive = chronosDetectStart({ sample: { atMs: 700, nose: { x: 0.65, y: 0.5, visibility: 0.9 } }, baselineWindow: stationary });
+
+        assert.equal(candidate.evidence.displacement, primitive.evidence.displacement);
+        assert.equal(candidate.evidence.baselinePositionX, primitive.evidence.baselinePositionX);
+        assert.equal(candidate.evidence.baselineSampleCount, primitive.evidence.baselineSampleCount);
     });
 
     test("turn: a qualifying sample produces a candidate with atMs/confidence/evidence/detector", () => {
@@ -297,37 +330,43 @@ describe("detector adapter — no invented candidate", () => {
 // ===========================================================================
 
 describe("detector adapter — no detector-logic duplication", () => {
-    test("a full sequence run through the adapter matches the same sequence run directly against chronosDetectStart(), sample by sample", () => {
+    test("a full sequence run through the adapter matches the same sequence run directly against chronosAssessStart(), sample by sample", () => {
         const samples = [
             targetPoseSample({ atMs: 0, nose: landmark(0.5, 0.5, 0.9) }),
             targetPoseSample({ atMs: 100, nose: landmark(0.5, 0.5, 0.9) }),
             targetPoseSample({ atMs: 200, nose: landmark(0.5, 0.5, 0.9) }),
             targetPoseSample({ atMs: 300, nose: landmark(0.5, 0.5, 0.9) }),
             targetPoseSample({ atMs: 400, nose: landmark(0.5, 0.5, 0.9) }),
-            targetPoseSample({ atMs: 500, nose: landmark(0.65, 0.5, 0.9) }) // qualifying displacement
+            targetPoseSample({ atMs: 500, nose: landmark(0.65, 0.5, 0.9) }), // sustained departure begins
+            targetPoseSample({ atMs: 600, nose: landmark(0.66, 0.5, 0.9) }),
+            targetPoseSample({ atMs: 700, nose: landmark(0.67, 0.5, 0.9) })
         ];
 
         let detectorState = racePipelineCreateDetectorState();
         let manualBaseline = [];
         let lastAdapterCandidate = null;
-        let lastDirectCandidate = null;
+        let lastDirect = null;
 
         for (const sample of samples) {
             const built = racePipelineBuildStartDetectorSample(sample);
-            const direct = chronosDetectStart({ sample: built, baselineWindow: manualBaseline });
-            const { candidate, detectorState: nextState } = racePipelineDetectStartCandidate(sample, detectorState, {});
+            const direct = chronosAssessStart({ sample: built, baselineWindow: manualBaseline });
+            const { candidate, detectorState: nextState, assessment } = racePipelineDetectStartCandidate(sample, detectorState, {});
 
-            lastDirectCandidate = direct;
+            // sample by sample: identical state and reason, not just the final answer
+            assert.equal(assessment.state, direct.state);
+            assert.equal(assessment.reason, direct.reason);
+
+            lastDirect = direct;
             lastAdapterCandidate = candidate;
             detectorState = nextState;
             manualBaseline = [...manualBaseline, built];
         }
 
-        assert.notEqual(lastDirectCandidate, null);
+        assert.notEqual(lastDirect.candidate, null);
         assert.notEqual(lastAdapterCandidate, null);
-        assert.equal(lastAdapterCandidate.atMs, lastDirectCandidate.atMs);
-        assert.equal(lastAdapterCandidate.confidence, lastDirectCandidate.confidence);
-        assert.deepEqual(lastAdapterCandidate.evidence, lastDirectCandidate.evidence);
+        assert.equal(lastAdapterCandidate.atMs, lastDirect.candidate.atMs);
+        assert.equal(lastAdapterCandidate.confidence, lastDirect.candidate.confidence);
+        assert.deepEqual(lastAdapterCandidate.evidence, lastDirect.candidate.evidence);
     });
 
     test("turn: a full sequence run through the adapter matches the same sequence run directly against chronosDetectTurn()", () => {
