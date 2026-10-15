@@ -48,6 +48,17 @@
 // therefore purely additive, backward-compatible metadata, not a
 // behavior change to tracking itself.
 //
+// START REFERENCE (Chronos reliability phase 1C): `config.startReferenceMs`
+// is the media time of the frame the user paused on and marked BEFORE the
+// start. It is REQUIRED, validated here, stored on controller.config, and
+// handed to the start detector as `referenceFrameMs`, which refuses any
+// departure that begins earlier. It is the start-search CONTEXT only: it is
+// not the race start, not the estimated motion onset, and not a Chronos
+// event. It does not touch SwimmerTracking: tracking still receives every
+// sample from the start of the footage and may lock before the reference.
+// Whether the marked frame really is a pre-start frame cannot be verified by
+// software; see docs/RACE_PIPELINE_ARCHITECTURE.md §7.3.
+//
 // referenceLaneY: per docs/CHRONOS_ARCHITECTURE.md's turn detector and
 // the Stage 4D.5.1 investigation, there is no legitimate derivation for
 // this value anywhere in the codebase (the only prior art, index.html's
@@ -100,6 +111,14 @@ function freshDiagnostics() {
         lastTrackingStatus: null,
         lastObservationOutcome: null,
         lastEvent: null,
+        // The most recent start assessment (state/reason from the start
+        // detector and the media time of the sample it evaluated), so a
+        // missed or ambiguous start is visible rather than silent. Written
+        // only while the session is "armed"; once Chronos accepts a start
+        // the start detector is no longer run and this keeps the confirming
+        // assessment. Informational only: nothing reads it to decide what
+        // Chronos accepts.
+        lastStartAssessment: null,
         turnDetectionAvailable: false,
         turnDetectionUnavailableReason: TURN_DETECTION_UNAVAILABLE_REASON
     };
@@ -164,6 +183,15 @@ function validateConfig(config) {
         !isFiniteNumber(config.referenceLaneY)
     ) {
         return "invalid-reference-lane-y";
+    }
+    // The pre-start reference frame (media time, ms) is REQUIRED: it is the
+    // start-search context. A missing or unusable value is refused with a
+    // stable reason; it never defaults to 0 or to "unconstrained".
+    if (config.startReferenceMs === null || config.startReferenceMs === undefined) {
+        return "missing-start-reference";
+    }
+    if (!isFiniteNumber(config.startReferenceMs) || config.startReferenceMs < 0) {
+        return "invalid-start-reference";
     }
     if (
         config.calibrationPoint !== null &&
@@ -248,7 +276,8 @@ export function racePipelineStartAnalysis(controller, config) {
             strokeKey: config.strokeKey ?? null,
             distanceMeters: config.distanceMeters ?? null,
             referenceLaneY,
-            calibrationPoint
+            calibrationPoint,
+            startReferenceMs: config.startReferenceMs
         },
         blockedReason: null,
         report: null,
@@ -256,12 +285,25 @@ export function racePipelineStartAnalysis(controller, config) {
             lastTrackingStatus: trackingSession.session.status,
             lastObservationOutcome: null,
             lastEvent: null,
+            lastStartAssessment: null,
             turnDetectionAvailable: referenceLaneY !== null,
             turnDetectionUnavailableReason: referenceLaneY !== null ? null : TURN_DETECTION_UNAVAILABLE_REASON
         }
     };
 
     return { ok: true, reason: null, controller: nextController };
+}
+
+// The estimated motion onset an assessment concerns, or null when it concerns
+// none (nothing departed, not yet confirmed, a hard gate failed).
+function startAssessmentOnsetMs(assessment) {
+    if (assessment.candidate && assessment.candidate.evidence && isFiniteNumber(assessment.candidate.evidence.onsetAtMs)) {
+        return assessment.candidate.evidence.onsetAtMs;
+    }
+    if (assessment.state === "rejected" && assessment.evidence && isFiniteNumber(assessment.evidence.onsetAtMs)) {
+        return assessment.evidence.onsetAtMs;
+    }
+    return null;
 }
 
 // Runs the start detector ONLY while Chronos has not yet recorded a
@@ -275,13 +317,33 @@ function runStartDetection(controller, targetPoseSample) {
         return controller;
     }
 
-    const { candidate, detectorState } = racePipelineDetectStartCandidate(
+    const { candidate, detectorState, assessment } = racePipelineDetectStartCandidate(
         targetPoseSample,
         controller.detectorState,
-        {}
+        { referenceFrameMs: controller.config.startReferenceMs }
     );
 
     let nextController = { ...controller, detectorState };
+
+    if (assessment) {
+        nextController = {
+            ...nextController,
+            diagnostics: {
+                ...nextController.diagnostics,
+                lastStartAssessment: {
+                    state: assessment.state,
+                    reason: assessment.reason,
+                    // The media time of the sample that was evaluated (for a
+                    // confirmed start, the CONFIRMING sample — later than the onset).
+                    atMs: targetPoseSample.atMs,
+                    // The estimated motion onset this assessment concerns: the
+                    // candidate's for a confirmed start, the refused one for
+                    // "onset-before-reference-frame", otherwise null.
+                    onsetAtMs: startAssessmentOnsetMs(assessment)
+                }
+            }
+        };
+    }
 
     if (candidate) {
         const submitResult = racePipelineSubmitStartCandidate(

@@ -107,15 +107,30 @@ export function racePipelineReferenceLaneYFromCalibrationPoint(point) {
     return point.y;
 }
 
+// Converts the media time of the PAUSED video (seconds, as read from
+// video.currentTime at the moment the swimmer is marked) into the pre-start
+// reference frame, in milliseconds (docs/RACE_PIPELINE_ARCHITECTURE.md §7.3).
+// A non-numeric, non-finite, or negative time produces null, never 0 or a
+// clamped value: an unreadable position must not become a valid start
+// context. The result is a media TIMESTAMP only — it is not the race start
+// and not the estimated motion onset.
+export function racePipelineStartReferenceMsFromMediaTime(currentTimeSeconds) {
+    if (!isFiniteNumber(currentTimeSeconds) || currentTimeSeconds < 0) {
+        return null;
+    }
+    return currentTimeSeconds * 1000;
+}
+
 // Builds the exact {event, course, poolLengthMeters, strokeKey,
-// distanceMeters, referenceLaneY} shape Stage 4D.7 §1 requires, from raw
-// UI selection values plus the current calibration point. strokeKey and
+// distanceMeters, referenceLaneY, startReferenceMs} shape Stage 4D.7 §1
+// requires (plus the phase 1C pre-start reference frame), from raw UI
+// selection values plus the current calibration point. strokeKey and
 // distanceMeters are ALWAYS derived from the same canonical event table
 // used to populate the event <select> — never independently entered or
 // computed a second way (Stage 4D.7 §2). Any field that cannot yet be
 // determined is null; this function never guesses or defaults a missing
 // value.
-export function racePipelineBuildRaceConfig({ eventValue, courseValue, poolLengthMetersValue, calibrationPoint } = {}) {
+export function racePipelineBuildRaceConfig({ eventValue, courseValue, poolLengthMetersValue, calibrationPoint, startReferenceMs } = {}) {
     const eventOption = racePipelineFindEventOption(eventValue);
 
     return {
@@ -124,7 +139,10 @@ export function racePipelineBuildRaceConfig({ eventValue, courseValue, poolLengt
         distanceMeters: eventOption ? eventOption.distanceMeters : null,
         course: RACE_COURSE_OPTIONS.includes(courseValue) ? courseValue : null,
         poolLengthMeters: isPositiveFiniteNumber(poolLengthMetersValue) ? poolLengthMetersValue : null,
-        referenceLaneY: racePipelineReferenceLaneYFromCalibrationPoint(calibrationPoint)
+        referenceLaneY: racePipelineReferenceLaneYFromCalibrationPoint(calibrationPoint),
+        // Validated, never defaulted: anything but a finite, non-negative
+        // number is null (and the controller then refuses to start).
+        startReferenceMs: isFiniteNumber(startReferenceMs) && startReferenceMs >= 0 ? startReferenceMs : null
     };
 }
 
@@ -140,7 +158,17 @@ export function racePipelineDescribeMissingConfigFields(config) {
     if (!config || !config.event) missing.push("event");
     if (!config || !config.course) missing.push("course");
     if (!config || !isPositiveFiniteNumber(config.poolLengthMeters)) missing.push("pool length");
-    if (!config || !isFiniteNumber(config.referenceLaneY)) missing.push("lane calibration");
+    // The lane position and the pre-start reference frame come from the SAME
+    // calibration step (one pause, one click), so either one missing is
+    // reported as the one thing the user has to do again.
+    if (
+        !config ||
+        !isFiniteNumber(config.referenceLaneY) ||
+        !isFiniteNumber(config.startReferenceMs) ||
+        config.startReferenceMs < 0
+    ) {
+        missing.push("lane calibration");
+    }
     return missing;
 }
 

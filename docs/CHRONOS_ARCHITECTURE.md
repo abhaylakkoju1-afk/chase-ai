@@ -504,6 +504,25 @@ explicitly rather than silently inherited:
   must be pure (explicit rolling-window/state argument in, candidate
   event argument out).
 
+**Update (Chronos reliability, phase 1).** The start detector's
+single-sample, all-history-baseline behavior described above has been
+superseded for the live pipeline by `chronosAssessStart()`: a bounded
+rolling stationary reference, sustained same-direction confirmation, an
+explicit `none`/`plausible`/`ambiguous`/`confirmed`/`rejected` state, and a
+candidate time equal to the estimated motion onset. `chronosDetectStart()`
+remains as the per-sample displacement primitive. See
+`docs/RACE_PIPELINE_ARCHITECTURE.md` §7.2 for the contract, its
+provisional values, and its limitations.
+
+**Update (Chronos reliability, phases 1B and 1C).** Isolated single-sample
+outliers no longer move or veto the onset estimate, the last start assessment
+is surfaced in controller diagnostics, and the race page now asks the user to
+mark a frame **before the start**; the start detector refuses any departure
+that begins before that frame. The detector estimates the **visual onset of
+motion**; the UI and docs call it an "estimated motion onset" and never an
+official start. See `docs/RACE_PIPELINE_ARCHITECTURE.md` §7.2 and §7.3. The
+turn detector's limitations above were unchanged by *that* update.
+
 ## 23. Prior art, not the engine
 
 **The existing `onRaceResults()` implementation in `index.html` is

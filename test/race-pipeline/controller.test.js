@@ -32,7 +32,11 @@ const VALID_CONFIG = {
     course: "Short Course",
     event: "Freestyle 100m",
     strokeKey: "freestyle",
-    distanceMeters: 100
+    distanceMeters: 100,
+    // Required pre-start reference frame (media time, ms). 0 is a neutral
+    // value that excludes nothing; the tests that exercise the reference
+    // itself are in start-context.test.js.
+    startReferenceMs: 0
 };
 
 function poseSample(atMs, { hipX = 0.5, hipY = 0.5, noseX = 0.5, noseY = 0.5, hipVisibility = 0.9, noseVisibility = 0.9 } = {}) {
@@ -149,7 +153,7 @@ describe("racePipelineStartAnalysis() / racePipelineProcessPoseSample() — cali
 // ===========================================================================
 
 describe("racePipelineProcessPoseSample() — start lifecycle", () => {
-    test("a real start-triggering sequence (lock, stable baseline, then displacement) produces an accepted Chronos start event", () => {
+    test("a real start-triggering sequence (lock, stable baseline, then a SUSTAINED displacement) produces an accepted Chronos start event", () => {
         let started = racePipelineStartAnalysis(racePipelineCreateController(), VALID_CONFIG);
         assert.equal(started.ok, true);
         let controller = started.controller;
@@ -165,12 +169,22 @@ describe("racePipelineProcessPoseSample() — start lifecycle", () => {
         assert.equal(controller.detectorState.startBaselineWindow.length, 5);
         assert.equal(controller.chronosSession.status, "armed");
 
-        // Displacement sample: nose.x 0.5 -> 0.62 (0.12 >= 0.08 threshold),
+        // Displacement samples: nose.x 0.5 -> 0.62 (0.12 >= 0.08 threshold),
         // hip held still, so the tracking midpoint only shifts by 0.06 —
         // comfortably within maxSteadyStatePositionError (0.08), keeping
-        // the target confirmed for this exact frame.
-        const displaced = racePipelineProcessPoseSample(controller, poseSample(900, { noseX: 0.62 }), controller.generation);
-        controller = displaced.controller;
+        // the target confirmed for these frames.
+        //
+        // Chronos reliability phase 1: ONE such sample is only a "plausible"
+        // departure and must NOT start the race (it used to — that was the
+        // single-frame false-start defect). The departure must be sustained
+        // for confirmationSamples (3) samples; the start event then carries
+        // the ONSET time (the first departing sample, 900), and the status
+        // flips only when the third sample (1100) confirms it.
+        controller = racePipelineProcessPoseSample(controller, poseSample(900, { noseX: 0.62 }), controller.generation).controller;
+        assert.equal(controller.chronosSession.status, "armed", "one displaced sample must not start the race");
+        controller = racePipelineProcessPoseSample(controller, poseSample(1000, { noseX: 0.62 }), controller.generation).controller;
+        assert.equal(controller.chronosSession.status, "armed", "two displaced samples must not start the race");
+        controller = racePipelineProcessPoseSample(controller, poseSample(1100, { noseX: 0.62 }), controller.generation).controller;
 
         assert.equal(controller.chronosSession.status, "running");
         const startEvent = controller.chronosSession.events.find((e) => e.type === "start");
@@ -189,7 +203,9 @@ describe("racePipelineProcessPoseSample() — start lifecycle", () => {
         for (const atMs of [500, 600, 700, 800]) {
             controller = racePipelineProcessPoseSample(controller, poseSample(atMs), controller.generation).controller;
         }
-        controller = racePipelineProcessPoseSample(controller, poseSample(900, { noseX: 0.62 }), controller.generation).controller;
+        for (const atMs of [900, 1000, 1100]) {
+            controller = racePipelineProcessPoseSample(controller, poseSample(atMs, { noseX: 0.62 }), controller.generation).controller;
+        }
         assert.equal(controller.chronosSession.status, "running");
 
         const baselineLengthAfterStart = controller.detectorState.startBaselineWindow.length;
@@ -197,7 +213,7 @@ describe("racePipelineProcessPoseSample() — start lifecycle", () => {
         // A second, even larger nose displacement — if the start detector
         // were still being called, this would be another qualifying
         // candidate. Hip stays still so tracking remains confirmed.
-        const after = racePipelineProcessPoseSample(controller, poseSample(1000, { noseX: 0.9 }), controller.generation);
+        const after = racePipelineProcessPoseSample(controller, poseSample(1200, { noseX: 0.9 }), controller.generation);
         controller = after.controller;
 
         // The start baseline window must be COMPLETELY untouched — proof

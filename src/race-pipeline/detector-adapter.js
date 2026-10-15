@@ -9,8 +9,9 @@
 // collects whatever candidate(s) they produce
 // (docs/RACE_PIPELINE_ARCHITECTURE.md §7).
 //
-// This file never reimplements start/turn heuristics — chronosDetectStart
-// and chronosDetectTurn remain the sole source of detection logic. Its
+// This file never reimplements start/turn heuristics — chronosAssessStart
+// (built on the chronosDetectStart primitive) and chronosDetectTurn remain
+// the sole source of detection logic. Its
 // only two jobs are (1) reshape {atMs, hasPose, landmarks:{hip,nose}} into
 // each detector's own flat {atMs, nose}/{atMs, hip, nose} sample shape,
 // and (2) hold the rolling history (baselineWindow / recentSamples /
@@ -24,7 +25,7 @@
 // invariant 3). It does not import src/chronos-engine/index.js,
 // session.js, or events.js at all.
 //
-// CANDIDATE CONTRACT NOTE: chronosDetectStart()/chronosDetectTurn()
+// CANDIDATE CONTRACT NOTE: chronosAssessStart()/chronosDetectTurn()
 // themselves return a bare {atMs, confidence, evidence} — they have no
 // notion of their own name (docs/RACE_PIPELINE_ARCHITECTURE.md §7). The
 // Stage 4D.5 candidate contract explicitly requires the candidate this
@@ -58,7 +59,7 @@
 // already-tested, already-correct hard-gate behavior — not a gap this
 // file needs to patch.
 
-import { chronosDetectStart } from "../chronos-engine/detectors/start-detector.js";
+import { chronosAssessStart, START_ASSESSMENT_DEFAULTS } from "../chronos-engine/detectors/start-detector.js";
 import { chronosDetectTurn } from "../chronos-engine/detectors/turn-detector.js";
 
 export const START_DETECTOR_NAME = "start-detector-v1";
@@ -82,7 +83,8 @@ export function racePipelineCreateDetectorState() {
     };
 }
 
-// Reshapes a targetPoseSample into chronosDetectStart()'s exact sample
+// Reshapes a targetPoseSample into chronosAssessStart()'s (and the
+// chronosDetectStart() primitive's) exact sample
 // shape: {atMs, nose}. Returns null only when there is no usable
 // timestamp to work from at all (missing/malformed targetPoseSample) —
 // a targetPoseSample with a valid atMs but an unusable/missing nose still
@@ -110,47 +112,70 @@ export function racePipelineBuildTurnDetectorSample(targetPoseSample) {
     return { atMs: targetPoseSample.atMs, hip, nose };
 }
 
-// Runs the start detector for one targetPoseSample against the caller-held
-// detectorState, and returns the (possibly null) candidate plus the next
-// detectorState. The sample used for THIS call is evaluated against the
-// baseline accumulated so far, then appended to the baseline for future
-// calls — mirroring exactly how the detector's own test suite builds a
-// baselineWindow disjoint from the current sample.
+// Runs the start assessment for one targetPoseSample against the caller-held
+// detectorState, and returns the (possibly null) candidate, the next
+// detectorState, and the full assessment (state + reason) for diagnostics.
 //
-// docs/RACE_PIPELINE_ARCHITECTURE.md §7 describes baselineWindow as "an
-// array of recent samples, appended to on every call" with no stated
-// maximum size or pruning rule anywhere in the architecture documents.
-// This file appends unconditionally, matching that literal description,
-// rather than inventing an unspecified cap/eviction threshold. Flagged in
-// the Stage 4D.5 report as an open question (unbounded growth over a long
-// analysis run), not resolved here.
+// The sample used for THIS call is evaluated against the history
+// accumulated so far, then appended to that history for future calls —
+// mirroring exactly how the detector's own test suite builds a baselineWindow
+// disjoint from the current sample.
+//
+// HISTORY IS A BOUNDED ROLLING WINDOW (Chronos reliability phase 1). It used
+// to be appended to unconditionally and never pruned (docs/
+// RACE_PIPELINE_ARCHITECTURE.md §7 gave no maximum), which both grew without
+// bound and let the baseline lag arbitrarily old data. It now keeps only
+// samples within baselineWindowMs of the newest one
+// (START_ASSESSMENT_DEFAULTS.baselineWindowMs, overridable via config).
+//
+// DUPLICATE / OUT-OF-ORDER SAMPLES are refused here, before the detector: a
+// sample whose timestamp is not strictly later than the newest one already
+// held carries no new information, must not be admitted to the history, and
+// must not alter any decision. The very same detectorState object is
+// returned (nothing was appended), and the assessment reports
+// "non-monotonic-timestamp".
 export function racePipelineDetectStartCandidate(targetPoseSample, detectorState, config) {
     const sample = racePipelineBuildStartDetectorSample(targetPoseSample);
     if (!sample) {
-        return { candidate: null, detectorState };
+        return { candidate: null, detectorState, assessment: null };
     }
 
-    const rawCandidate = chronosDetectStart({
+    const history = detectorState.startBaselineWindow;
+    const newestAtMs = history.length > 0 ? history[history.length - 1].atMs : null;
+    if (isFiniteNumber(newestAtMs) && sample.atMs <= newestAtMs) {
+        return {
+            candidate: null,
+            detectorState,
+            assessment: { state: "rejected", reason: "non-monotonic-timestamp", candidate: null, evidence: null }
+        };
+    }
+
+    const result = chronosAssessStart({
         sample,
-        baselineWindow: detectorState.startBaselineWindow,
+        baselineWindow: history,
         config
     });
 
-    const candidate = rawCandidate
+    const candidate = result.candidate
         ? {
-              atMs: rawCandidate.atMs,
-              confidence: rawCandidate.confidence,
-              evidence: rawCandidate.evidence,
+              atMs: result.candidate.atMs,
+              confidence: result.candidate.confidence,
+              evidence: result.candidate.evidence,
               detector: START_DETECTOR_NAME
           }
         : null;
 
+    const windowMs = config && isFiniteNumber(config.baselineWindowMs) && config.baselineWindowMs > 0
+        ? config.baselineWindowMs
+        : START_ASSESSMENT_DEFAULTS.baselineWindowMs;
+    const oldestKeptAtMs = sample.atMs - windowMs;
+
     const nextDetectorState = {
         ...detectorState,
-        startBaselineWindow: [...detectorState.startBaselineWindow, sample]
+        startBaselineWindow: [...history.filter((entry) => entry.atMs >= oldestKeptAtMs), sample]
     };
 
-    return { candidate, detectorState: nextDetectorState };
+    return { candidate, detectorState: nextDetectorState, assessment: result };
 }
 
 // Runs the turn detector for one targetPoseSample against the caller-held
