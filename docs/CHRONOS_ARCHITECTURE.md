@@ -228,6 +228,18 @@ An incoming event is validated before being accepted into
    `distanceMeters` that is not less than the previous accepted
    distance-bearing event's `distanceMeters` (strictly increasing is
    preferred; see §13 for how ties/near-ties are handled).
+5. **Race-distance bound (Chronos reliability, phase 2).** When the
+   session's `distanceMeters` (the race distance) is known, no
+   distance-bearing event may have a `distanceMeters` beyond it
+   (`distance-exceeds-race-distance`), and a `turn` may not be *at* it
+   (`turn-at-or-beyond-race-distance`): reaching the race distance is a
+   finish, and Chronos never relabels a turn as one or the other. A session
+   with no race distance is not bounded (the field is optional, §5).
+6. **Duplicate turns (phase 2).** A `turn` whose `distanceMeters` equals
+   that of an already-accepted `turn` is rejected
+   (`duplicate-turn-distance`): a second acceptance at one distance would be
+   the same physical turn counted twice. A `split` at a turn's distance is
+   still permitted.
 
 ## 11. Start/finish rules
 
@@ -514,6 +526,16 @@ remains as the per-sample displacement primitive. See
 `docs/RACE_PIPELINE_ARCHITECTURE.md` §7.2 for the contract, its
 provisional values, and its limitations.
 
+**Update (Chronos reliability, phase 2).** The turn heuristic's
+single-sample, wall-zone-and-slow behavior described above is superseded for
+the live pipeline by `chronosAssessTurn()`: a wall *reversal* (approach, an
+apex inside the wall zone, sustained recovery) within one contiguous run of
+observations, with a candidate time equal to the apex. `chronosDetectTurn()`
+remains as the single-sample primitive but is no longer called. Chronos
+additionally bounds accepted distances by the configured race distance and
+rejects duplicate turns (§10 rules 5–6). A missed turn still shifts later
+distance labels; see `docs/RACE_PIPELINE_ARCHITECTURE.md` §7.4 and §9.1.
+
 **Update (Chronos reliability, phases 1B and 1C).** Isolated single-sample
 outliers no longer move or veto the onset estimate, the last start assessment
 is surfaced in controller diagnostics, and the race page now asks the user to
@@ -521,7 +543,8 @@ mark a frame **before the start**; the start detector refuses any departure
 that begins before that frame. The detector estimates the **visual onset of
 motion**; the UI and docs call it an "estimated motion onset" and never an
 official start. See `docs/RACE_PIPELINE_ARCHITECTURE.md` §7.2 and §7.3. The
-turn detector's limitations above were unchanged by *that* update.
+turn detector's limitations above were unchanged by *that* update; phase 2
+(above) addresses them.
 
 ## 23. Prior art, not the engine
 

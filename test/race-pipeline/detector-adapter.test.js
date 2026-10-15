@@ -2,7 +2,7 @@
 //
 // Every fixture below is a hand-built, synthetic targetPoseSample — never
 // real video, never real MediaPipe/SwimmerTracking output. These tests
-// use the REAL chronosDetectStart()/chronosDetectTurn() detector modules
+// use the REAL chronosAssessStart()/chronosAssessTurn() detector modules
 // throughout (never mocked), per this stage's explicit instruction —
 // several tests directly compare the adapter's output against a manual
 // call into the same real detector function to prove the adapter adds no
@@ -22,7 +22,7 @@ import {
 } from "../../src/race-pipeline/detector-adapter.js";
 
 import { chronosDetectStart, chronosAssessStart } from "../../src/chronos-engine/detectors/start-detector.js";
-import { chronosDetectTurn } from "../../src/chronos-engine/detectors/turn-detector.js";
+import { chronosAssessTurn } from "../../src/chronos-engine/detectors/turn-detector.js";
 
 const REFERENCE_LANE_Y = 0.5;
 const TURN_CONFIG = { referenceLaneY: REFERENCE_LANE_Y };
@@ -33,6 +33,22 @@ function landmark(x, y, visibility = 0.9) {
 
 function targetPoseSample({ atMs, hasPose = true, hip = null, nose = null }) {
     return { atMs, hasPose, landmarks: hasPose ? { hip, nose } : null };
+}
+
+// SYNTHETIC wall reversal at the left edge (Chronos reliability phase 2): the
+// hip travels from 0.40 down to the apex at 0.10 in 0.02 steps (one sample per
+// 100 ms), then back up in 0.02 steps. A single in-zone, slow sample is no
+// longer a turn; this approach -> apex -> sustained recovery is.
+const APEX_AT_MS = 1500; // sample index 15
+function reversalHipX(index) {
+    return index <= 15 ? 0.40 - 0.02 * index : 0.10 + 0.02 * (index - 15);
+}
+function reversalSamples(count = 24) {
+    const out = [];
+    for (let i = 0; i < count; i += 1) {
+        out.push(targetPoseSample({ atMs: i * 100, hip: landmark(reversalHipX(i), 0.5, 0.9), nose: landmark(0.5, 0.5, 0.9) }));
+    }
+    return out;
 }
 
 // ===========================================================================
@@ -265,38 +281,40 @@ describe("detector adapter — candidate propagation, identity, confidence, evid
         assert.equal(candidate.evidence.baselineSampleCount, primitive.evidence.baselineSampleCount);
     });
 
-    test("turn: a qualifying sample produces a candidate with atMs/confidence/evidence/detector", () => {
+    test("turn: a sustained wall reversal produces a candidate with atMs/confidence/evidence/detector (the APEX time, not the confirming sample's)", () => {
+        // Chronos reliability phase 2: a single qualifying sample inside the wall
+        // zone used to be enough. The candidate now needs approach, an apex in
+        // the zone, and a sustained recovery, and carries the APEX time.
         let detectorState = racePipelineCreateDetectorState();
-        const prior = targetPoseSample({ atMs: 0, hip: landmark(0.3, 0.5, 0.9), nose: landmark(0.5, 0.5, 0.9) });
-        ({ detectorState } = racePipelineDetectTurnCandidate(prior, detectorState, TURN_CONFIG));
+        const candidates = [];
+        for (const sample of reversalSamples()) {
+            const result = racePipelineDetectTurnCandidate(sample, detectorState, TURN_CONFIG);
+            detectorState = result.detectorState;
+            if (result.candidate) candidates.push({ candidate: result.candidate, evaluatedAtMs: sample.atMs });
+        }
 
-        const current = targetPoseSample({ atMs: 1000, hip: landmark(0.2, 0.5, 0.9), nose: landmark(0.5, 0.5, 0.9) });
-        const { candidate } = racePipelineDetectTurnCandidate(current, detectorState, TURN_CONFIG);
-
-        assert.notEqual(candidate, null);
-        assert.equal(candidate.atMs, 1000);
+        assert.equal(candidates.length, 1); // exactly one candidate for the one wall interaction
+        const { candidate, evaluatedAtMs } = candidates[0];
+        assert.equal(candidate.atMs, APEX_AT_MS);
+        assert.equal(candidate.evidence.apexAtMs, APEX_AT_MS);
+        assert.equal(candidate.evidence.confirmedAtMs, evaluatedAtMs);
+        assert.ok(evaluatedAtMs > APEX_AT_MS, "confirmation comes after the apex");
+        assert.equal(candidate.evidence.wallSide, "near-zero");
         assert.equal(typeof candidate.confidence, "number");
-        assert.equal(typeof candidate.evidence, "object");
         assert.equal(candidate.detector, TURN_DETECTOR_NAME);
+        assert.equal(detectorState.turnPreviousCandidateAtMs, APEX_AT_MS);
     });
 
-    test("turn: confidence and evidence exactly match a direct chronosDetectTurn() call with the same inputs", () => {
+    test("turn: a single in-zone, slow sample is NOT a candidate any more (the pre-phase-2 behavior)", () => {
         let detectorState = racePipelineCreateDetectorState();
         const prior = targetPoseSample({ atMs: 0, hip: landmark(0.3, 0.5, 0.9), nose: landmark(0.5, 0.5, 0.9) });
         ({ detectorState } = racePipelineDetectTurnCandidate(prior, detectorState, TURN_CONFIG));
 
         const current = targetPoseSample({ atMs: 1000, hip: landmark(0.2, 0.5, 0.9), nose: landmark(0.5, 0.5, 0.9) });
-        const { candidate } = racePipelineDetectTurnCandidate(current, detectorState, TURN_CONFIG);
+        const { candidate, assessment } = racePipelineDetectTurnCandidate(current, detectorState, TURN_CONFIG);
 
-        const direct = chronosDetectTurn({
-            sample: { atMs: 1000, hip: { x: 0.2, y: 0.5, visibility: 0.9 }, nose: { x: 0.5, y: 0.5, visibility: 0.9 } },
-            recentSamples: [{ atMs: 0, hip: { x: 0.3, y: 0.5, visibility: 0.9 }, nose: { x: 0.5, y: 0.5, visibility: 0.9 } }],
-            previousCandidateAtMs: null,
-            config: TURN_CONFIG
-        });
-
-        assert.equal(candidate.confidence, direct.confidence);
-        assert.deepEqual(candidate.evidence, direct.evidence);
+        assert.equal(candidate, null);
+        assert.notEqual(assessment.state, "confirmed");
     });
 });
 
@@ -369,43 +387,39 @@ describe("detector adapter — no detector-logic duplication", () => {
         assert.deepEqual(lastAdapterCandidate.evidence, lastDirect.candidate.evidence);
     });
 
-    test("turn: a full sequence run through the adapter matches the same sequence run directly against chronosDetectTurn()", () => {
-        const hipTrajectory = [
-            [0, 0.3],
-            [100, 0.24],
-            [200, 0.23]
-        ];
-
+    test("turn: a full sequence run through the adapter matches the same sequence run directly against chronosAssessTurn(), sample by sample", () => {
         let detectorState = racePipelineCreateDetectorState();
         let manualRecentSamples = [];
         let manualPreviousCandidateAtMs = null;
-        let lastAdapterCandidate = null;
-        let lastDirectCandidate = null;
+        let confirmedSamples = 0;
 
-        for (const [atMs, hipX] of hipTrajectory) {
-            const sample = targetPoseSample({ atMs, hip: landmark(hipX, 0.5, 0.9), nose: landmark(0.5, 0.5, 0.9) });
+        for (const sample of reversalSamples()) {
             const built = racePipelineBuildTurnDetectorSample(sample);
 
-            const direct = chronosDetectTurn({
+            const direct = chronosAssessTurn({
                 sample: built,
                 recentSamples: manualRecentSamples,
                 previousCandidateAtMs: manualPreviousCandidateAtMs,
                 config: TURN_CONFIG
             });
 
-            const { candidate, detectorState: nextState } = racePipelineDetectTurnCandidate(sample, detectorState, TURN_CONFIG);
+            const { candidate, detectorState: nextState, assessment } = racePipelineDetectTurnCandidate(sample, detectorState, TURN_CONFIG);
 
-            lastDirectCandidate = direct;
-            lastAdapterCandidate = candidate;
+            // sample by sample: identical state, reason, evidence and candidate
+            assert.equal(assessment.state, direct.state);
+            assert.equal(assessment.reason, direct.reason);
+            assert.deepEqual(assessment.evidence, direct.evidence);
+            assert.deepEqual(candidate, direct.candidate ? { ...direct.candidate, detector: TURN_DETECTOR_NAME } : null);
+
+            if (direct.candidate) {
+                confirmedSamples += 1;
+                manualPreviousCandidateAtMs = direct.candidate.atMs;
+            }
             detectorState = nextState;
             manualRecentSamples = [...manualRecentSamples, built];
-            if (direct) {
-                manualPreviousCandidateAtMs = direct.atMs;
-            }
         }
 
-        assert.notEqual(lastDirectCandidate, null);
-        assert.deepEqual(lastAdapterCandidate, { ...lastDirectCandidate, detector: TURN_DETECTOR_NAME });
+        assert.equal(confirmedSamples, 1);
     });
 });
 
@@ -426,10 +440,12 @@ describe("detector adapter — deterministic repeated calls", () => {
 
     test("turn: identical inputs produce identical output across repeated calls", () => {
         let detectorState = racePipelineCreateDetectorState();
-        const prior = targetPoseSample({ atMs: 0, hip: landmark(0.3, 0.5, 0.9), nose: landmark(0.5, 0.5, 0.9) });
-        ({ detectorState } = racePipelineDetectTurnCandidate(prior, detectorState, TURN_CONFIG));
+        const samples = reversalSamples();
+        for (const sample of samples.slice(0, -1)) {
+            ({ detectorState } = racePipelineDetectTurnCandidate(sample, detectorState, TURN_CONFIG));
+        }
 
-        const current = targetPoseSample({ atMs: 1000, hip: landmark(0.2, 0.5, 0.9), nose: landmark(0.5, 0.5, 0.9) });
+        const current = samples[samples.length - 1];
 
         const first = racePipelineDetectTurnCandidate(current, detectorState, TURN_CONFIG);
         const second = racePipelineDetectTurnCandidate(current, detectorState, TURN_CONFIG);

@@ -31,6 +31,32 @@
 // un-advanced base, never against a value that moved on without Chronos's
 // agreement.
 //
+// RACE-DISTANCE PRECONDITIONS (Chronos reliability, phase 2). This file
+// ASSIGNS a turn's distance (confirmed + one pool length), so it must know
+// what the legal progression is, from the session's own configuration and
+// nowhere else: session.poolLengthMeters and session.distanceMeters (the race
+// distance derived from the selected event). It refuses to guess:
+//   - race distance absent/invalid        -> "race-distance-unknown"
+//   - race distance not a whole number of
+//     pool lengths (e.g. 60 m in a 25 m pool) -> "race-distance-not-multiple-of-pool-length"
+// With a valid configuration the legal turns are exactly the pool-length
+// multiples strictly below the race distance (a 50 m race in a 25 m pool has
+// ONE turn, at 25 m; a 50 m race in a 50 m pool has none). The upper bound
+// itself — no turn at or beyond the race distance, no event past it — is
+// enforced by ChronosEngine.recordEvent() (src/chronos-engine/events.js), the
+// authoritative layer; its reason is propagated verbatim. This file never
+// clamps an over-distance turn down to the race distance and never relabels
+// it as a finish.
+//
+// KNOWN LIMITATION — MISSED TURNS. The distance label is a COUNT: the Nth
+// accepted turn is labelled N pool lengths. If a real wall contact is never
+// detected (the pose is lost around a tumble turn, tracking drops, the
+// recovery is not observed), nothing here can know it was missed, and every
+// later turn is labelled one pool length too EARLY (the next wall is reported
+// as 25 m when it is really 50 m). A measured synthetic example and the
+// options considered are in docs/RACE_PIPELINE_ARCHITECTURE.md §9.1. Neither
+// this file nor Chronos invents the missing turn or its split.
+//
 // START DISTANCE: deliberately excluded from confirmedDistanceMeters
 // entirely (docs/RACE_PIPELINE_ARCHITECTURE.md §9: "start is deliberately
 // excluded from this counter... its distanceMeters defaults to 0 inside
@@ -169,6 +195,14 @@ export function racePipelineSubmitTurnCandidate(session, candidate, eventAdapter
 
     if (!session || !isPositiveFiniteNumber(session.poolLengthMeters)) {
         return rejectBeforeChronos(session, eventAdapterState, "invalid-pool-length-meters");
+    }
+
+    if (!isPositiveFiniteNumber(session.distanceMeters)) {
+        return rejectBeforeChronos(session, eventAdapterState, "race-distance-unknown");
+    }
+    const poolLengthsInRace = session.distanceMeters / session.poolLengthMeters;
+    if (Math.abs(poolLengthsInRace - Math.round(poolLengthsInRace)) > 1e-9) {
+        return rejectBeforeChronos(session, eventAdapterState, "race-distance-not-multiple-of-pool-length");
     }
 
     // Tentative — not yet persisted to eventAdapterState. Computed against

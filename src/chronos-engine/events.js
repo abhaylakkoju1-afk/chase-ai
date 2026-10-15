@@ -67,6 +67,37 @@ function findEvent(session, type) {
     return session.events.find((event) => event.type === type) || null;
 }
 
+// RACE-DISTANCE BOUND (Chronos reliability, phase 2). When the session knows
+// its race distance (session.distanceMeters, a positive finite number), no
+// distance-bearing event may lie beyond it, and a TURN may not lie AT it: a
+// swimmer who reaches the race distance has finished, and a turn there would
+// be a finish mislabelled as a turn (the engine never relabels one as the
+// other). When the session carries no race distance (it is optional,
+// docs/CHRONOS_ARCHITECTURE.md §5) there is nothing to bound against and the
+// check does not apply; callers that ASSIGN distances themselves, like the
+// race-pipeline event adapter, must refuse to do so without one.
+function raceDistanceBoundReason(session, input) {
+    const raceDistance = session.distanceMeters;
+    if (!isFiniteNumber(raceDistance) || raceDistance <= 0) {
+        return null;
+    }
+    if (input.distanceMeters > raceDistance) {
+        return "distance-exceeds-race-distance";
+    }
+    if (input.type === "turn" && input.distanceMeters >= raceDistance) {
+        return "turn-at-or-beyond-race-distance";
+    }
+    return null;
+}
+
+// A turn is a physical wall contact at one cumulative distance; a second
+// accepted turn at a distance an earlier turn already holds would be the same
+// physical turn counted twice (docs/CHRONOS_ARCHITECTURE.md §10 rule 4 prefers
+// strictly increasing distances).
+function hasTurnAtDistance(session, distanceMeters) {
+    return session.events.some((event) => event.type === "turn" && event.distanceMeters === distanceMeters);
+}
+
 function lastDistanceBearingEvent(session) {
     for (let i = session.events.length - 1; i >= 0; i -= 1) {
         if (isDistanceBearingType(session.events[i].type)) {
@@ -224,6 +255,11 @@ function recordFinish(session, input, atMs) {
         return reject(session, "finish-before-start-time");
     }
 
+    const boundReason = raceDistanceBoundReason(session, input);
+    if (boundReason) {
+        return reject(session, boundReason);
+    }
+
     const previousDistanceEvent = lastDistanceBearingEvent(session);
 
     if (previousDistanceEvent && input.distanceMeters < previousDistanceEvent.distanceMeters) {
@@ -268,10 +304,19 @@ function recordSplitOrTurn(session, input, atMs) {
         return reject(session, "event-before-start-time");
     }
 
+    const boundReason = raceDistanceBoundReason(session, input);
+    if (boundReason) {
+        return reject(session, boundReason);
+    }
+
     const previousDistanceEvent = lastDistanceBearingEvent(session);
 
     if (previousDistanceEvent && input.distanceMeters < previousDistanceEvent.distanceMeters) {
         return reject(session, "distance-out-of-order");
+    }
+
+    if (input.type === "turn" && hasTurnAtDistance(session, input.distanceMeters)) {
+        return reject(session, "duplicate-turn-distance");
     }
 
     if (previousDistanceEvent && atMs <= previousDistanceEvent.atMs) {

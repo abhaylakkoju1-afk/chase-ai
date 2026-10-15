@@ -27,6 +27,10 @@ function armedSession(overrides = {}) {
         poolLengthMeters: POOL_LENGTH_METERS,
         course: "Short Course",
         event: "Freestyle 100m",
+        // Phase 2: the event adapter assigns turn distances, so it requires
+        // the session to know its race distance (it refuses to guess one).
+        // 100 is what "Freestyle 100m" means.
+        distanceMeters: 100,
         timeSource: "video",
         ...overrides
     });

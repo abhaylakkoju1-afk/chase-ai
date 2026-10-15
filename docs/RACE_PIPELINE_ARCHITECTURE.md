@@ -364,15 +364,15 @@ adapter, nothing more.
 ```
 targetPoseSample.landmarks.nose  → chronosAssessStart({ sample: {atMs, nose}, baselineWindow, config })   (§7.2; built on the chronosDetectStart displacement primitive)
 targetPoseSample.landmarks.hip,
-targetPoseSample.landmarks.nose  → chronosDetectTurn({ sample: {atMs, hip, nose}, recentSamples, previousCandidateAtMs, config })
+targetPoseSample.landmarks.nose  → chronosAssessTurn({ sample: {atMs, hip, nose}, recentSamples, previousCandidateAtMs, config })   (§7.4; a wall REVERSAL, built beside the unchanged single-sample chronosDetectTurn primitive, which the live pipeline no longer calls)
 ```
 
 Confirmed exact shapes from `src/chronos-engine/detectors/*.js`
 (unchanged, Stage 4B):
 - `chronosDetectStart`'s `sample` is `{atMs, nose: {x,y,visibility}}` —
   flat, `nose` at the top level, not nested under `landmarks`.
-- `chronosDetectTurn`'s `sample` is `{atMs, hip: {...}, nose: {...}}` —
-  same flattening.
+- `chronosDetectTurn`'s and `chronosAssessTurn`'s `sample` is
+  `{atMs, hip: {...}, nose: {...}}` — same flattening.
 
 Since `targetPoseSample` is a `PoseSample` (`{atMs, hasPose, landmarks:
 {hip, nose}}`), the detector adapter's entire job for shape purposes is
@@ -388,14 +388,16 @@ regrouped.
   default; see §7.2). It was previously appended to on every call and
   never pruned. Duplicate and out-of-order samples are refused before
   they reach the detector and are never admitted to the window.
-- Turn: `recentSamples` (a short window for time-normalized velocity)
-  and `previousCandidateAtMs` (this detector's own last emitted
-  candidate, for its local suppression window — confirmed independent
-  of Chronos's `MIN_EVENT_GAP_MS`, Stage 4B's own test suite proves
-  this explicitly).
+- Turn: `recentSamples` — a **bounded rolling window**
+  (`TURN_ASSESSMENT_DEFAULTS.windowMs`, 12,000 ms; it used to grow without
+  bound) of the target's `{atMs, hip, nose}`, with duplicate and out-of-order
+  samples refused before the detector (§7.4) — and `previousCandidateAtMs`,
+  now the **apex time** of this detector's last emitted candidate, which is the
+  floor below which nothing is re-examined (so one wall interaction cannot be
+  reported twice). It is independent of Chronos's `MIN_EVENT_GAP_MS`.
 
 **Detector candidates are not authoritative race events.** A non-null
-return from `chronosAssessStart`/`chronosDetectTurn` is a **candidate**
+return from `chronosAssessStart`/`chronosAssessTurn` is a **candidate**
 — `{atMs, confidence, evidence}` — that must still pass through
 `event-adapter.js` and `ChronosEngine.recordEvent()` before it can ever
 become part of `session.events[]`. The detector adapter's job ends at
@@ -562,7 +564,8 @@ selection rule was left unchanged.
   `docs/CHRONOS_ARCHITECTURE.md` §24 requires approval for.
 - Pre-existing, outside the start detector: SwimmerTracking can lock from
   duplicate or descending timestamps; a sustained rewind drives tracking
-  into the terminal `ANALYSIS_DEGRADED` state.
+  into the terminal `ANALYSIS_DEGRADED` state. (The turn adapter's lack of
+  de-duplication was addressed in phase 2, §7.4.)
 
 ### 7.3 Start context: the pre-start reference frame (Chronos reliability, phase 1C)
 
@@ -696,9 +699,168 @@ video clears the mark.
 - Slow-departure, jitter, tracking-gap and accelerating-start limitations
   (§7.2) are unchanged.
 
+### 7.4 Turn assessment (Chronos reliability, phase 2)
+
+**Evidence labelling.** Every number below comes from deterministic
+**synthetic** trajectories with explicit ground truth (the time the swimmer
+reaches each wall), driven through the real controller. None of it is a
+measurement on real footage: no real race footage or independently annotated
+turn times exist in this repository. Passing tests establish implementation
+invariants, **not** real-world turn-detection accuracy.
+
+**Defects reproduced (previous implementation).** A synthetic 50 m race in a
+25 m pool (one real turn), swimmer at ≈ 0.058 frame-widths/s, 120 ms sampling,
+start accepted at 6,360 ms (estimated onset):
+
+| Race (pool) | Real turns | Accepted turns before | Largest confirmed distance before | Accepted after | Largest after |
+|---|---|---|---|---|---|
+| 50 m (25 m) | 1 | **8** (a phantom `25 m @ 7,800 ms`, 120 ms after the start was accepted) | **200 m** | 1 (`25 m @ 21,120 ms`) | 25 m |
+| 100 m (25 m) | 3 | 14 | 350 m | 3 | 75 m |
+| 200 m (25 m) | 7 | 26 | 650 m | 7 | 175 m |
+| 25 m (25 m) | 0 | 5 | 125 m | 0 | 0 |
+| 100 m (50 m) | 1 | 8 | 400 m | 1 | 50 m |
+| 50 m (50 m) | 0 | 5 | 250 m | 0 | 0 |
+
+Causes, each located in the code: (1) `chronosDetectTurn()` is a
+**single-sample** test — inside a wall zone, slow, in lane — so it fired on the
+first sample after the start (the swimmer was still inside the start zone) and
+then on every sample for as long as the swimmer stayed in a zone; (2) its
+velocity gate (0.12 frame-widths/s) is about twice ordinary swimming speed
+(≈ 0.058), so it selected nothing; (3) the 25 % zone is far too wide to be
+evidence on its own; (4) the adapter's turn history was never pruned and
+duplicate/out-of-order samples were not refused; (5) its only de-duplication
+was a 500 ms suppression plus Chronos's 2.5 s gap rule, which merely *thinned*
+the stream (one wall approach produced two or three accepted turns); and
+(6) nothing anywhere bounded distance by the race distance, so a 50 m race
+reached 125 m and beyond. Chronos and the adapter each trusted the other.
+
+**What a turn is now** (`docs/CHRONOS_ARCHITECTURE.md` §12: "wall proximity +
+direction reversal"). `chronosAssessTurn()` (`src/chronos-engine/detectors/turn-detector.js`,
+built beside the unchanged single-sample primitive, exactly as
+`chronosAssessStart()` is built beside `chronosDetectStart()`) requires all of,
+within **one contiguous run of observations**:
+
+1. **Approach** — the swimmer travelled at least `reversalDisplacement`
+   (0.08 frame-widths) toward a frame edge, ending at
+2. **Apex** — a turning point (a local extreme of hip `x`) inside that edge's
+   wall zone (`wallThreshold`, 0.25), followed by
+3. **Recovery** — travel back away from that edge of at least 0.08, held by
+   the last `confirmationSamples` (3) samples.
+
+Wall proximity, low velocity, a pause, or one noisy observation are none of
+them sufficient. The zone is only the *location* gate for the apex.
+
+**Signals available, and absent.** Input is the confirmed target's
+`{atMs, hip, nose}` per sample. Available and used: hip `x` over time
+(approach / apex / recovery), nose `y` (lane agreement), per-landmark
+visibility, and timing. Available but **not** used: `nose.x − hip.x` (facing
+direction), because it is unreliable through a flip. **Absent** from the
+representation: wall position (the frame edge is only a proxy, valid for a
+static side-on camera framing the whole pool width, `docs/CHRONOS_ARCHITECTURE.md`
+§22), body rotation or a flip, hand/foot contact, depth. Underwater pose is
+often lost, so the evidence around a tumble turn is frequently *missing*; the
+detector then reports no turn (see continuity) rather than infer one.
+
+**States and reasons** (same vocabulary as §7.2). Only `confirmed` carries a
+candidate.
+
+| State | Reasons | Meaning |
+|---|---|---|
+| `none` | `insufficient-history`, `no-wall-reversal` | no wall interaction to report (including a rest-then-departure at a wall: no approach; and reversals in mid-pool) |
+| `plausible` | `awaiting-recovery`, `recovery-not-sustained` | an approach to a wall zone is under way, or a recovery has begun, and is not yet confirmed |
+| `confirmed` | `wall-reversal` | approach + apex + sustained recovery |
+| `rejected` | `invalid-sample`, `low-visibility-sample`, `missing-reference-lane-y`, `invalid-earliest-apex`, `lane-deviation`, and (from the adapter) `non-monotonic-timestamp` | a hard gate failed |
+
+**Two timestamps, never conflated.** `candidate.atMs` is the **apex**: the first
+sample of the plateau at the turning point, an estimate of the wall-contact
+*onset* (not an official wall touch). `evidence.confirmedAtMs` is the later
+sample at which the recovery had been held. The Chronos event carries the apex
+time. In the synthetic runs the apex is early by up to
+`apexPlateauTolerance / speed` (0.005 / 0.058 ≈ 0.09 s) plus one sampling
+interval and late by up to the dwell at the wall plus one sampling interval;
+confirmation trailed the apex by 2.16 s in the 50 m run (0.4 s dwell + ≈ 1.4 s of recovery travel + the held samples). These are
+properties of synthetic paths, not measured accuracy.
+
+**Observation continuity.** The run ends at any gap between consecutive usable
+samples longer than `maxSampleGapMs` (600 ms). Approach, apex and recovery must
+all lie in the newest run; evidence cannot be joined across a gap (the pose was
+lost, or tracking dropped and reacquired, possibly a different swimmer), and an
+apex timed across a gap would be a guess. Low-visibility and malformed samples
+are not usable. Result: a dropout at the apex produces **no** turn, not a
+fabricated one (see §9.1 for what that does to later distance labels).
+
+**Single-sample outliers.** An interior sample that departs from both
+neighbours, on the same side, by more than `spikeThreshold` (0.04) is ignored.
+Two consecutive outliers are not recognised at the detector (documented
+limitation); in the pipeline, SwimmerTracking's continuity check rejects a jump
+that large before it reaches the detector (tested).
+
+**One wall interaction, one candidate.** Only samples strictly later than a
+*floor* are examined: the apex time of this detector's previous candidate
+(`turnPreviousCandidateAtMs`, kept by the adapter and updated whether or not
+Chronos accepts it — a rejected candidate is not retried) and, from the
+controller, the accepted start's time (`earliestApexMs`), so no apex at or before
+the race start can be proposed. The same apex therefore cannot be reported
+twice, and the next turn needs its own fresh approach and recovery.
+
+**Adapter and controller.** `racePipelineDetectTurnCandidate()` now prunes its
+history to `windowMs` (12 s) and refuses duplicate/out-of-order samples before
+the detector (returning the same state object, `non-monotonic-timestamp`). It
+returns `{candidate, detectorState, assessment}`. The controller records
+`diagnostics.lastTurnAssessment = {state, reason, atMs, apexAtMs}` (the evaluated
+sample and the apex it concerns), informational only; it is not rendered in the
+UI. The controller's turn gate is unchanged: only while Chronos is `running`, only
+with a calibrated `referenceLaneY`.
+
+**Parameters** (all provisional, **none validated on real footage**; frame-widths
+horizontal or ms):
+
+| Parameter | Default | Provenance |
+|---|---|---|
+| `wallThreshold` | 0.25 | the existing legacy zone; location gate only |
+| `reversalDisplacement` | 0.08 | the start detector's displacement threshold / legacy figure; ≫ stroke-cycle oscillation, > the start noise band 0.02 |
+| `confirmationSamples` | 3 | consecutive latest samples beyond the recovery displacement |
+| `maxSampleGapMs` | 600 | ≈ 5 × the 120 ms minimum sampling interval; below tracking's 1,500 ms loss grace |
+| `spikeThreshold` | 0.04 | single-sample outlier amplitude |
+| `apexPlateauTolerance` | 0.005 | jitter tolerated inside the apex plateau |
+| `windowMs` | 12,000 | holds approach + dwell + recovery for a wall dwell of ≈ 8 s |
+| `laneDeviationThreshold`, `minVisibility` | 0.20, 0.5 | unchanged legacy values |
+
+**Behavior demonstrated (synthetic).** Valid turns are found once each, at the
+right wall, across swim speeds 0.03–0.15, sampling cadences 120–300 ms, hip
+jitter ±0.004 and both walls; a seeded fuzz of 150 random multi-leg paths agrees
+with an independent oracle (exactly the wall reversals, once each, spikes
+injected away from the apex); the controller-level fuzz of 60 races (with
+dropouts, duplicates, swaps and intruders) never violates a Chronos or
+race-distance invariant. Not turns: swimming (even slowly) through a wall zone and
+stopping, a start from a wall, a wall approach that ends the clip, mid-pool
+reversals, short approaches, short or unsustained recoveries, a single noisy
+frame, and a walk-in to the blocks when the pre-start frame is marked after it.
+
+**Limitations.**
+- **Thresholds are provisional and unvalidated.** Detection on real footage is
+  unmeasured.
+- **A missed turn is not detected as missed** and shifts later labels (§9.1).
+- **Static side-on camera framing the whole pool** is assumed. A panning,
+  zoomed or end-on camera invalidates the wall zones.
+- **Pose loss around the turn means no turn.** Tumble turns often lose the pose;
+  expect missed turns there. A dropout longer than `maxSampleGapMs` at the apex,
+  or a loss tracking cannot recover (terminal `ANALYSIS_DEGRADED`), yields none.
+- A pause at the wall longer than ≈ 8 s (the window) yields no turn.
+- Apex time carries the plateau/sampling error above; slow swimmers (0.02 w/s)
+  can have the apex ≈ 0.25 s early.
+- Slow start detection (§7.2) is upstream: a late or missed start means turns are
+  only looked for after the accepted start, and labelled from there.
+- A wrong start context (§7.3) is not corrected by turn logic: a walk-in accepted
+  as the start can be followed by its arrival at the blocks being proposed as a
+  turn (tested as a labelled limitation).
+- Two consecutive outlier samples are not recognised at the detector level.
+- Pre-existing: tracking can lock from duplicate/descending timestamps, and a
+  sustained rewind degrades tracking terminally.
+
 ### 7.1 `referenceLaneY` source (decided, Stage 4D.7)
 
-`chronosDetectTurn`'s `config.referenceLaneY` has no default and no
+`chronosDetectTurn`'s and `chronosAssessTurn`'s `config.referenceLaneY` has no default and no
 legitimate first-frame derivation (Stage 4D.5.1 investigation; the
 legacy `laneCenterY`-from-first-frame heuristic in dead pre-Stage-4D.6
 code is explicitly rejected as a pattern, not reused). Stage 4D.7
@@ -846,6 +1008,65 @@ moment finish is recorded — a race whose total distance is inconsistent
 with its own turn count is a data-quality concern for a later stage
 (§16's "invalid video"/configuration-mismatch category), not something
 the event adapter silently corrects.
+
+**Race-distance rules (Chronos reliability, phase 2).** The adapter *assigns*
+each turn's distance, so it must know the legal progression from the session's
+own configuration — `session.poolLengthMeters` and `session.distanceMeters` (the
+race distance, derived from the selected event, §10.1) — and never guess:
+
+| Where | Rule | Reason on refusal |
+|---|---|---|
+| `event-adapter.js` (before Chronos) | race distance must be a positive finite number | `race-distance-unknown` |
+| `event-adapter.js` (before Chronos) | race distance must be a whole number of pool lengths (tolerance 1e-9) | `race-distance-not-multiple-of-pool-length` |
+| `chronos-engine/events.js` | no distance-bearing event beyond the race distance | `distance-exceeds-race-distance` |
+| `chronos-engine/events.js` | a **turn** may not lie *at* the race distance (that is a finish; Chronos never relabels one as the other) | `turn-at-or-beyond-race-distance` |
+| `chronos-engine/events.js` | a second turn at a distance an earlier turn already holds is a duplicate | `duplicate-turn-distance` |
+
+So the legal turns are exactly the pool-length multiples **strictly below** the
+race distance: a 50 m race in a 25 m pool has one (25 m), in a 50 m pool none; a
+100 m race in a 25 m pool has three; 200 m has seven. The bound is checked before
+the ordering rules, so an over-distance event never reaches them. A refusal
+leaves `session` and the adapter state **byte-for-byte unchanged** (the same
+objects are returned). Chronos's reason is propagated verbatim; nothing here
+clamps a turn to the race distance. A session created without a race distance
+(`distanceMeters` is optional in `docs/CHRONOS_ARCHITECTURE.md` §5) is not bounded
+by Chronos — unchanged for manual use — but the pipeline never feeds it
+detector turns (`race-distance-unknown`). `finish` distance is still the
+session's configured total and is still never created by the pipeline; reaching
+the final wall, or the end of the video, creates no finish, no final time and no
+final split.
+
+**Reprocessing.** Submitting an already-accepted candidate again is rejected
+(`non-monotonic-timestamp`, or `duplicate-turn-distance`) and cannot advance the
+counter; the detector adapter additionally never re-admits a sample whose
+timestamp is not newer than the newest it holds (§7.4).
+
+### 9.1 Missed turns (known limitation, UNRESOLVED design decision)
+
+The distance label is a **count**: the Nth accepted turn is labelled
+N × `poolLengthMeters`. If a real wall contact is never detected — the pose is
+lost around a tumble turn, tracking drops, the recovery is not observed — nothing
+in the pipeline can know it was missed, and **every later turn is labelled one
+pool length too early**. Measured on the synthetic 100 m race in a 25 m pool,
+with the pose hidden from 20.5 s to 21.7 s (the first wall, real distance 25 m,
+reached at 21.17 s): the pipeline reports turns `25 m @ 36.72 s` and
+`50 m @ 52.32 s`, whose true distances are 50 m and 75 m. No turn or split is
+fabricated for the missed wall; the later ones are mislabelled.
+
+A guard was tried and **removed**: requiring consecutive turns to alternate walls
+(and the first to be at the wall opposite the start). It catches a duplicate on
+the same wall, which the detector's fresh-approach rule already prevents, but
+for a missed turn it converted a one-length shift into a two-length shift and
+dropped a genuine turn, so it added state and an assumption for no measured
+benefit.
+
+Options for a future decision (none implemented; each changes behavior and needs
+approval): (a) after an unobserved gap *at a wall* (last seen approaching a wall,
+next seen moving away), stop recording turns for the rest of the race and say
+so; (b) derive distance from observed alternation between the two wall zones
+rather than counting turns; (c) accept the limitation and surface it. Until one
+is chosen, treat turn distance labels after any pose dropout near a wall as
+suspect.
 
 ## 10. Race Session Lifecycle
 
@@ -1126,6 +1347,9 @@ rules:
 | Target not selected (`UNSELECTED`) | `SwimmerTracking.observe()` returns `ok: false` — the frame is skipped for tracking/detector purposes; no candidate, no event |
 | Target lost / degraded (`TARGET_LOST`/`ANALYSIS_DEGRADED`) | `targetPoseSample` is `null` (or `observe()` itself is `ok: false` for `ANALYSIS_DEGRADED`) — nothing proceeds to the detector adapter for that frame; `status` remains available for the UI to reflect (a UI concern, not a pipeline-semantics one) |
 | Detector candidate rejected by Chronos | No `TimingEvent` is added; per §9, distance does not advance; the adapter does not retry or reinterpret |
+| Pose lost around a turn (a gap longer than `maxSampleGapMs` at the apex, or tracking lost) | No turn candidate (§7.4): an indeterminate turn is not guessed. Later turn labels may then be one pool length early (§9.1) |
+| Race distance missing, or not a whole number of pool lengths | Turn candidates are refused before Chronos with `race-distance-unknown` / `race-distance-not-multiple-of-pool-length` (§9) |
+| Wall contact beyond the race distance (clip runs past the finish) | Chronos rejects it (`turn-at-or-beyond-race-distance`); nothing advances and no finish is created (§9) |
 | Chronos event rejected for any other reason | Same as above — `recordEvent()`'s result is trusted verbatim (§8, §17 invariant 6) |
 | Video seek | No special-case handling by the adapters themselves (§4); a large backward seek possibly warranting a full reset is an **open question for Stage 4D.6**, not resolved here |
 | Stale async MediaPipe result | Discarded via the generation-token check (§4), before a `PoseSample` is ever built |
@@ -1152,7 +1376,12 @@ rules:
 8. **PB storage is never automatically mutated** (§12).
 9. **UI never performs authoritative timing math** — `ui-bindings.js` is
    presentation-only (§3).
-10. **Chase AI remains completely isolated.** No file under
+10. **The configured race distance bounds the turn progression** (§9):
+    legal turns are the pool-length multiples strictly below it; Chronos
+    refuses any event beyond it and any turn at it; the pipeline never
+    clamps, relabels as a finish, or fabricates a finish at the end of the
+    video.
+11. **Chase AI remains completely isolated.** No file under
     `src/chase-engine/*` is imported, modified, or depended upon by
     `race-pipeline`, `SwimmerTracking`, or Chronos, at any point in this
     architecture.

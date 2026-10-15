@@ -233,12 +233,16 @@ describe("racePipelineProcessPoseSample() — start lifecycle", () => {
 // start detection every time.
 // ===========================================================================
 
-function runningControllerWithLockedTarget({ referenceLaneY = 0.5 } = {}) {
+function runningControllerWithLockedTarget({ referenceLaneY = 0.5, distanceMeters = 100 } = {}) {
+    // Phase 2: the event adapter assigns turn distances from the session's own
+    // race distance and refuses to guess one, so the fixture states it
+    // (100 is what "Freestyle 100m" means; a 50 m race is used where noted).
     const created = ChronosEngine.createSession({
         sessionId: "turn-fixture",
         poolLengthMeters: 25,
         course: "Short Course",
-        event: "Freestyle 100m",
+        event: distanceMeters === 100 ? "Freestyle 100m" : "Freestyle 50m",
+        distanceMeters,
         timeSource: "video"
     });
     const armed = ChronosEngine.armSession(created.session);
@@ -268,9 +272,9 @@ function runningControllerWithLockedTarget({ referenceLaneY = 0.5 } = {}) {
         config: {
             poolLengthMeters: 25,
             course: "Short Course",
-            event: "Freestyle 100m",
+            event: distanceMeters === 100 ? "Freestyle 100m" : "Freestyle 50m",
             strokeKey: null,
-            distanceMeters: null,
+            distanceMeters,
             referenceLaneY
         },
         blockedReason: null,
@@ -285,23 +289,27 @@ function runningControllerWithLockedTarget({ referenceLaneY = 0.5 } = {}) {
     };
 }
 
-// A linear hip approach toward the near-zero wall edge, nose held fixed at
-// (0.5, referenceLaneY). Hand-verified (see the accompanying investigation
-// in this stage's own working notes) to keep SwimmerTracking continuously
-// CONFIRMED (well under maxSteadyStatePositionError) while still crossing
-// the turn detector's wallThreshold (0.25) with velocity well under its
-// velocityThreshold (0.12/s). atMs values continue from the fixture's lock
-// (last locked sample at atMs 1400).
-const TURN_APPROACH = [
-    { atMs: 2400, hipX: 0.45 },
-    { atMs: 3400, hipX: 0.40 },
-    { atMs: 4400, hipX: 0.35 },
-    { atMs: 5400, hipX: 0.30 },
-    { atMs: 6400, hipX: 0.25 }, // exactly at wallThreshold — NOT "near" (strict <)
-    { atMs: 7400, hipX: 0.20 }, // first wall-qualifying sample -> turn candidate #1 (accepted)
-    { atMs: 8400, hipX: 0.19 }, // second candidate, too soon after #1 (gap 1000ms < 2500ms) -> rejected
-    { atMs: 10200, hipX: 0.18 } // third candidate, gap from #1 is 2800ms >= 2500ms -> accepted
-];
+// SYNTHETIC wall reversal at the near-zero edge, nose held fixed at
+// (0.5, referenceLaneY): the hip travels 0.50 -> 0.10 at 0.02 per 200 ms
+// (0.1 frame-widths/s), turns at 0.10 (sample 20, atMs 5400), and returns
+// 0.10 -> 0.34 at the same speed. Smooth enough to keep SwimmerTracking
+// continuously CONFIRMED (well under maxSteadyStatePositionError). atMs
+// values continue from the fixture's lock (last locked sample at atMs 1400).
+//
+// Chronos reliability phase 2: this REPLACES a monotone approach that ended
+// inside the wall zone (samples 1 s apart, 0.20 / 0.19 / 0.18) and which the
+// old detector turned into TWO accepted turns (25 m, then 50 m) from a
+// single wall approach with no reversal at all. Wall proximity alone is not
+// a turn; approach -> apex -> sustained recovery is.
+const TURN_APEX_AT_MS = 5400;
+const TURN_APPROACH = (() => {
+    const out = [];
+    for (let i = 1; i <= 32; i += 1) {
+        const hipX = i <= 20 ? 0.50 - 0.02 * i : 0.10 + 0.02 * (i - 20);
+        out.push({ atMs: 1400 + 200 * i, hipX: Math.round(hipX * 1000) / 1000 });
+    }
+    return out;
+})();
 
 function driveTurnApproach(controller) {
     let current = controller;
@@ -317,39 +325,52 @@ function driveTurnApproach(controller) {
 // ===========================================================================
 
 describe("racePipelineProcessPoseSample() — turn lifecycle (the 25m worked example, end to end)", () => {
-    test("a full wall-approach sequence produces exactly the expected accept/reject/accept turn pattern and distance progression", () => {
+    test("one wall reversal produces exactly ONE accepted turn, stamped with the apex time, at 25 m", () => {
         let controller = runningControllerWithLockedTarget();
         controller = driveTurnApproach(controller);
 
         const turnEvents = controller.chronosSession.events.filter((e) => e.type === "turn");
-        assert.equal(turnEvents.length, 2); // only the two ACCEPTED turns land in session.events
-        assert.equal(turnEvents[0].atMs, 7400);
+        assert.equal(turnEvents.length, 1); // one physical wall interaction -> one turn event
+        assert.equal(turnEvents[0].atMs, TURN_APEX_AT_MS); // the apex, not the later confirming sample
         assert.equal(turnEvents[0].distanceMeters, 25);
         assert.equal(turnEvents[0].source, "detector");
         assert.equal(turnEvents[0].detector, "turn-detector-v1");
-        assert.equal(turnEvents[1].atMs, 10200);
-        assert.equal(turnEvents[1].distanceMeters, 50);
 
-        assert.equal(controller.eventAdapterState.confirmedDistanceMeters, 50);
-
-        // The rejected middle candidate must never have been able to
-        // advance distance even transiently.
+        assert.equal(controller.eventAdapterState.confirmedDistanceMeters, 25);
         assert.equal(controller.diagnostics.lastEvent.kind, "turn");
+        assert.equal(controller.diagnostics.lastEvent.ok, true);
+        assert.equal(controller.diagnostics.lastEvent.atMs, TURN_APEX_AT_MS);
     });
 
-    test("the rejected duplicate candidate specifically reports Chronos's own too-soon reason, not a fabricated one", () => {
-        let controller = runningControllerWithLockedTarget();
+    test("a candidate Chronos rejects reports Chronos's own reason verbatim and leaves distance untouched (a turn at the 50 m race distance)", () => {
+        // 50 m race in a 25 m pool: the only legal turn is at 25 m. A second
+        // reversal (at the finish wall) would be assigned 50 m = the race
+        // distance, which Chronos refuses to call a turn.
+        let controller = runningControllerWithLockedTarget({ distanceMeters: 50 });
+        controller = driveTurnApproach(controller);
+        assert.equal(controller.eventAdapterState.confirmedDistanceMeters, 25);
+        assert.equal(controller.chronosSession.events.filter((e) => e.type === "turn").length, 1);
 
-        // Drive through the first accepted candidate and the rejected one,
-        // stopping right after the rejection to inspect it directly.
-        for (const { atMs, hipX } of TURN_APPROACH.slice(0, 7)) {
+        // Swim to the near-one wall (hip 0.34 -> 0.90, 0.02 per 200 ms), reverse, recover.
+        let atMs = 1400 + 200 * 32;
+        let hipX = 0.34;
+        for (let i = 0; i < 28; i += 1) {
+            atMs += 200;
+            hipX += 0.02;
+            controller = racePipelineProcessPoseSample(controller, poseSample(atMs, { hipX }), controller.generation).controller;
+        }
+        for (let i = 0; i < 8; i += 1) {
+            atMs += 200;
+            hipX -= 0.02;
             controller = racePipelineProcessPoseSample(controller, poseSample(atMs, { hipX }), controller.generation).controller;
         }
 
         assert.equal(controller.diagnostics.lastEvent.kind, "turn");
         assert.equal(controller.diagnostics.lastEvent.ok, false);
-        assert.equal(controller.diagnostics.lastEvent.reason, "event-too-soon-after-previous");
+        assert.equal(controller.diagnostics.lastEvent.reason, "turn-at-or-beyond-race-distance");
         assert.equal(controller.eventAdapterState.confirmedDistanceMeters, 25); // unchanged by the rejection
+        assert.equal(controller.chronosSession.events.filter((e) => e.type === "turn").length, 1);
+        assert.equal(controller.chronosSession.status, "running"); // never relabelled as, or turned into, a finish
     });
 });
 
