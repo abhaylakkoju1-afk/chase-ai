@@ -248,7 +248,8 @@ An incoming event is validated before being accepted into
 7. **Distance confidence (phase 2C).** A caller that finds a turn could have
    been concealed (an observation gap beside a wall, analysis ending early, or a
    complete wall reversal refused by the lane gate, or a complete reversal with its
-   apex outside the wall zone) records it with
+   apex outside the wall zone, or a race that needs intermediate turns being analysed
+   with no lane reference, so no turn detector runs) records it with
    `ChronosEngine.markDistanceUnconfirmed(session, {reason, sinceAtMs,
    resumedAtMs?, evidence?})` (running sessions only; idempotent, first record
    kept; it changes neither status nor events). From then on every

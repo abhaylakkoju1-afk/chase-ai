@@ -337,7 +337,13 @@ describe("start reliability — one accepted start, no re-initialization", () =>
 
     test("re-processing an already-processed earlier frame after acceptance cannot alter the accepted start", () => {
         const ts = times(12000);
-        const accepted = drive(freshController(), ts.map((t) => pose(t, hipAt(t)))).controller;
+        // This test is about terminal tracking degradation after the start, so it supplies a lane
+        // reference (the shared CONFIG omits one to isolate start behavior). Without a reference the race
+        // is marked unconfirmed from the accepted start instead (phase 3B), and that first record would
+        // be the one kept; the start assertions below are identical either way.
+        const withLaneReference = racePipelineStartAnalysis(racePipelineCreateController(), { ...CONFIG, referenceLaneY: 0.5 });
+        assert.equal(withLaneReference.ok, true);
+        const accepted = drive(withLaneReference.controller, ts.map((t) => pose(t, hipAt(t)))).controller;
         // The replayed earlier frames rewind time by > 1 s, which drives SwimmerTracking into terminal
         // degradation; since phase 2C (follow-up) that correctly records the race's distance as
         // unconfirmed (a 50 m race with its required turn outstanding). The property under test is that the
