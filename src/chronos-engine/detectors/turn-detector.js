@@ -805,3 +805,163 @@ export function chronosAssessObservationGap({ sample, recentSamples, config } = 
     }
     return { ambiguous: false, reason: "gap-away-from-wall-zones", evidence };
 }
+
+// ---------------------------------------------------------------------
+// COMPLETE REVERSAL OUTSIDE THE WALL ZONE (Chronos reliability, phase 2E)
+// ---------------------------------------------------------------------
+//
+// THE GAP. chronosAssessTurn() accepts a reversal only when its APEX lies inside
+// a wall zone (x < wallThreshold or x > 1 - wallThreshold). A real wall touch
+// whose apex falls just OUTSIDE the zone (the camera frames more than the pool,
+// the zone is narrower than the real margin to the wall) is therefore not a
+// turn, is not a gap, is not refused by any gate, and reads "none /
+// no-wall-reversal": distance stays "confirmed" and the NEXT wall is recorded one
+// pool length too early. The public assessment does not even say that a
+// reversal happened.
+//
+// WHAT THE EVIDENCE CAN AND CANNOT SAY. The observations contain a COMPLETE,
+// SUSTAINED reversal — travel of at least `reversalDisplacement` toward an
+// extreme, an apex, and travel of at least `reversalDisplacement` back that the
+// last `confirmationSamples` samples hold — which ordinary motion (monotone
+// swimming, stroke-cycle oscillation, jitter, single-sample outliers) never
+// produces. They do NOT say whether that reversal was a wall: where the wall is
+// in the frame is exactly what the observations lack (it would come from
+// calibration). A genuine wall touch just outside the zone and a swimmer who stops
+// mid-pool and returns look identical. So this function does NOT classify and
+// does NOT claim a turn occurred: it reports, as a plain fact, "a complete
+// reversal happened and the zone gate did not accept it". Whether that is a
+// concealed wall turn or movement that is not a wall at all, the race's distance
+// can no longer be trusted, which is the controller's conservative conclusion.
+// It introduces NO new threshold: it is the same reversal evidence, the same
+// floor and the same run as chronosAssessTurn(), with the zone test inverted.
+//
+// WHAT IT NEVER REPORTS: an approach without a completed reversal; a recovery
+// that is not held; a reversal whose apex IS inside the zone (that is
+// chronosAssessTurn()'s: confirmed, or refused by the lane gate); anything across
+// an observation gap or from before the floor (the previous candidate's apex and
+// the accepted start).
+//
+// PARTITION. For one input, a complete reversal is exactly one of: confirmed or
+// lane-refused by chronosAssessTurn() (apex in a zone), or reported here (apex
+// outside the zone for its type). A test pins that they never overlap.
+//
+// RESULT. { outside, reason, evidence }; `outside` true only with reason
+// "complete-reversal-outside-wall-zone". `evidence.apexAtMs` is the plateau's
+// first sample (the same apex timing as a turn candidate, with the same error
+// bounds). `evidence.distanceOutsideZone` is how far the apex lies beyond the
+// zone edge the swimmer was travelling toward (0 exactly at the strict boundary,
+// which counts as outside). Pure: no clock, DOM, session or module state.
+
+/**
+ * @param {object} args Same inputs as chronosAssessTurn() (sample, recentSamples,
+ *   previousCandidateAtMs, config with optional earliestApexMs). referenceLaneY
+ *   is NOT required: the lane is irrelevant here.
+ * @returns {{outside:boolean, reason:string, evidence:object|null}}
+ */
+export function chronosAssessReversalOutsideWallZone({ sample, recentSamples, previousCandidateAtMs, config } = {}) {
+    const cfg = { ...TURN_ASSESSMENT_DEFAULTS, ...(config || {}) };
+    const no = (reason, evidence = null) => ({ outside: false, reason, evidence });
+
+    const earliestApexPresent = config && config.earliestApexMs !== undefined && config.earliestApexMs !== null;
+    if (earliestApexPresent && (!isFiniteNumber(config.earliestApexMs) || config.earliestApexMs < 0)) {
+        return no("invalid-earliest-apex");
+    }
+    if (!sample || !isFiniteNumber(sample.atMs)) {
+        return no("invalid-sample");
+    }
+    const hip = extractLandmark(sample.hip);
+    const nose = extractLandmark(sample.nose);
+    if (!hip || !nose) {
+        return no("invalid-sample");
+    }
+    const currentVisibility = Math.min(hip.visibility, nose.visibility);
+    if (currentVisibility < cfg.minVisibility) {
+        return no("low-visibility-sample");
+    }
+
+    const history = [];
+    if (Array.isArray(recentSamples)) {
+        for (const entry of recentSamples) {
+            if (!entry || !isFiniteNumber(entry.atMs) || entry.atMs >= sample.atMs) {
+                continue;
+            }
+            const entryHip = extractLandmark(entry.hip);
+            const entryNose = extractLandmark(entry.nose);
+            if (!entryHip || !entryNose) {
+                continue;
+            }
+            const visibility = Math.min(entryHip.visibility, entryNose.visibility);
+            if (visibility < cfg.minVisibility) {
+                continue;
+            }
+            history.push({ atMs: entry.atMs, x: entryHip.x, noseY: entryNose.y, visibility });
+        }
+    }
+    history.sort((a, b) => a.atMs - b.atMs);
+    const ordered = history.filter((entry, index) => index === 0 || entry.atMs > history[index - 1].atMs);
+    ordered.push({ atMs: sample.atMs, x: hip.x, noseY: nose.y, visibility: currentVisibility });
+
+    let floorMs = -Infinity;
+    if (isFiniteNumber(previousCandidateAtMs)) floorMs = Math.max(floorMs, previousCandidateAtMs);
+    if (earliestApexPresent) floorMs = Math.max(floorMs, config.earliestApexMs);
+    const afterFloor = ordered.filter((entry) => entry.atMs > floorMs);
+
+    let runStart = afterFloor.length - 1;
+    while (runStart > 0 && afterFloor[runStart].atMs - afterFloor[runStart - 1].atMs <= cfg.maxSampleGapMs) {
+        runStart -= 1;
+    }
+    const run = removeTurnOutliers(afterFloor.slice(Math.max(runStart, 0)), cfg.spikeThreshold);
+    if (run.length < cfg.confirmationSamples + 1) {
+        return no("insufficient-history");
+    }
+
+    const xs = run.map((entry) => entry.x);
+    const found = findReversalPivots(xs, cfg.reversalDisplacement);
+    const latestPivot = found.pivots.length > 0 ? found.pivots[found.pivots.length - 1] : null;
+    if (!latestPivot) {
+        return no("no-complete-reversal");
+    }
+
+    const delta = cfg.reversalDisplacement;
+    const apexX = xs[latestPivot.index];
+    const isMax = latestPivot.type === "max";
+    // the zone edge the swimmer was travelling TOWARD (a max pivot approached the near-one wall; a min, the near-zero wall)
+    const zoneEdgeX = isMax ? 1 - cfg.wallThreshold : cfg.wallThreshold;
+    const insideItsZone = isMax ? apexX > zoneEdgeX : apexX < zoneEdgeX;
+    if (insideItsZone) {
+        return no("apex-inside-wall-zone"); // chronosAssessTurn()'s: confirmed, plausible, or refused by the lane gate
+    }
+    if (latestPivot.approach < delta) {
+        return no("no-complete-reversal");
+    }
+
+    const last = run.length - 1;
+    const away = (x) => (isMax ? apexX - x : x - apexX);
+    const trailingStart = last - cfg.confirmationSamples + 1;
+    const recoverySwing = Math.min(...xs.slice(trailingStart).map(away));
+    if (!(trailingStart > latestPivot.index) || recoverySwing < delta) {
+        return no("no-complete-reversal");
+    }
+
+    let apexIndex = latestPivot.index;
+    while (apexIndex > 0 && Math.abs(xs[apexIndex - 1] - apexX) <= cfg.apexPlateauTolerance) {
+        apexIndex -= 1;
+    }
+
+    return {
+        outside: true,
+        reason: "complete-reversal-outside-wall-zone",
+        evidence: {
+            apexAtMs: run[apexIndex].atMs,
+            confirmedAtMs: sample.atMs,
+            apexHipX: apexX,
+            apexType: latestPivot.type,
+            approachedWallSide: isMax ? "near-one" : "near-zero",
+            zoneEdgeX,
+            distanceOutsideZone: isMax ? zoneEdgeX - apexX : apexX - zoneEdgeX,
+            approachSwing: latestPivot.approach,
+            recoverySwing,
+            runSampleCount: run.length
+        }
+    };
+}

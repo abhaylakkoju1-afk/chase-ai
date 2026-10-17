@@ -62,7 +62,12 @@
 // file needs to patch.
 
 import { chronosAssessStart, START_ASSESSMENT_DEFAULTS } from "../chronos-engine/detectors/start-detector.js";
-import { chronosAssessTurn, chronosAssessObservationGap, TURN_ASSESSMENT_DEFAULTS } from "../chronos-engine/detectors/turn-detector.js";
+import {
+    chronosAssessTurn,
+    chronosAssessObservationGap,
+    chronosAssessReversalOutsideWallZone,
+    TURN_ASSESSMENT_DEFAULTS
+} from "../chronos-engine/detectors/turn-detector.js";
 
 export const START_DETECTOR_NAME = "start-detector-v1";
 export const TURN_DETECTOR_NAME = "turn-detector-v1";
@@ -208,6 +213,13 @@ export function racePipelineDetectStartCandidate(targetPoseSample, detectorState
 // session's distance progression unconfirmed). It is computed against the
 // history BEFORE this sample is appended.
 //
+// COMPLETE REVERSAL OUTSIDE THE WALL ZONE (phase 2E). The result also carries
+// `outsideZone`: chronosAssessReversalOutsideWallZone()'s answer — whether the
+// newest observations contain a COMPLETE, sustained reversal whose apex lies
+// outside the wall zone, which chronosAssessTurn() cannot accept and does not
+// mention. Reported only; the controller decides (it marks distance
+// unconfirmed). Same history and floor as the assessment above.
+//
 // turnPreviousCandidateAtMs is the APEX time of the last emitted candidate.
 // The detector examines only samples strictly after it, so the same wall
 // interaction cannot be reported twice; it is updated only when this call
@@ -216,7 +228,7 @@ export function racePipelineDetectStartCandidate(targetPoseSample, detectorState
 export function racePipelineDetectTurnCandidate(targetPoseSample, detectorState, config) {
     const sample = racePipelineBuildTurnDetectorSample(targetPoseSample);
     if (!sample) {
-        return { candidate: null, detectorState, assessment: null, gap: null };
+        return { candidate: null, detectorState, assessment: null, gap: null, outsideZone: null };
     }
 
     const history = detectorState.turnRecentSamples;
@@ -226,11 +238,18 @@ export function racePipelineDetectTurnCandidate(targetPoseSample, detectorState,
             candidate: null,
             detectorState,
             assessment: { state: "rejected", reason: "non-monotonic-timestamp", candidate: null, evidence: null },
-            gap: null
+            gap: null,
+            outsideZone: null
         };
     }
 
     const gap = chronosAssessObservationGap({ sample, recentSamples: history, config });
+    const outsideZone = chronosAssessReversalOutsideWallZone({
+        sample,
+        recentSamples: history,
+        previousCandidateAtMs: detectorState.turnPreviousCandidateAtMs,
+        config
+    });
 
     const result = chronosAssessTurn({
         sample,
@@ -259,5 +278,5 @@ export function racePipelineDetectTurnCandidate(targetPoseSample, detectorState,
         turnPreviousCandidateAtMs: candidate ? candidate.atMs : detectorState.turnPreviousCandidateAtMs
     };
 
-    return { candidate, detectorState: nextDetectorState, assessment: result, gap };
+    return { candidate, detectorState: nextDetectorState, assessment: result, gap, outsideZone };
 }
