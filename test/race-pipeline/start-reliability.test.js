@@ -338,11 +338,18 @@ describe("start reliability — one accepted start, no re-initialization", () =>
     test("re-processing an already-processed earlier frame after acceptance cannot alter the accepted start", () => {
         const ts = times(12000);
         const accepted = drive(freshController(), ts.map((t) => pose(t, hipAt(t)))).controller;
-        const snapshot = JSON.stringify(accepted.chronosSession);
+        // The replayed earlier frames rewind time by > 1 s, which drives SwimmerTracking into terminal
+        // degradation; since phase 2C (follow-up) that correctly records the race's distance as
+        // unconfirmed (a 50 m race with its required turn outstanding). The property under test is that the
+        // ACCEPTED START and the event sequence are untouched, so the comparison is the whole session
+        // except that one record, which is asserted separately.
+        const withoutConfidence = (session) => JSON.stringify({ ...session, distanceConfidence: null });
+        const snapshot = withoutConfidence(accepted.chronosSession);
 
         const replay = drive(accepted, [pose(6360, hipAt(6360)), pose(7440, hipAt(7440))]).controller;
 
-        assert.equal(JSON.stringify(replay.chronosSession), snapshot);
+        assert.equal(withoutConfidence(replay.chronosSession), snapshot);
+        assert.equal(replay.chronosSession.distanceConfidence.reason, "analysis-ended-before-distance-confirmed");
     });
 
     test("losing the target right AFTER the start does not retroactively invalidate or alter the accepted start", () => {

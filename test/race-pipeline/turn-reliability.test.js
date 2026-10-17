@@ -461,17 +461,18 @@ describe("tracking loss around a turn", () => {
         assert.equal(result.finish, null);
     });
 
-    test("LIMITATION (documented, UNRESOLVED): a MISSED turn is not detected as missed, so the next wall contact is labelled one pool length too early", () => {
-        // The dropout hides the first wall contact (25 m). The next wall contact — physically 50 m — is then
-        // accepted as the FIRST turn and labelled 25 m, the one after it 50 m. The pipeline cannot know a turn
-        // was missed: the label is a count. See docs/RACE_PIPELINE_ARCHITECTURE.md §9.1.
+    test("a MISSED turn no longer shifts later labels: distance is marked unconfirmed and later wall contacts get NO trusted distance (phase 2C; was a documented limitation)", () => {
+        // The dropout hides the first wall contact (25 m). Before phase 2C the next wall contact — physically
+        // 50 m — was accepted as the FIRST turn and labelled 25 m (and the one after, 50 m). Now the gap is
+        // adjacent to a wall zone, so the distance progression is unconfirmed from the last observation before
+        // it; later wall contacts are kept only as diagnostics. Detailed coverage: distance-confidence.test.js.
         const result = runRace({ config, samples: sampleRace(path, { dropouts: [[arrival - 700, arrival + 500]] }) });
-        assert.deepEqual(
-            result.turns.map((turn) => turn.distanceMeters),
-            [25, 50],
-            "labels are one pool length too early (physical walls are 50 m and 75 m)"
-        );
-        assert.ok(Math.abs(result.turns[0].atMs - path.turns[1].arrivalMs) < 600, "the first accepted turn is the SECOND physical wall contact");
+        assert.equal(result.turns.length, 0, "no turn is recorded with a (wrong) trusted distance");
+        assert.equal(result.confirmedDistanceMeters, 0);
+        assert.equal(result.controller.chronosSession.distanceConfidence.state, "unconfirmed");
+        assert.equal(result.report.distanceConfidence.state, "unconfirmed");
+        assert.equal(result.controller.diagnostics.unconfirmedTurnObservations.length, 2, "the two later wall contacts are observations only");
+        assert.ok(result.lastEventChanges.filter((c) => c.kind === "turn").every((c) => c.ok === false && c.reason === "distance-progression-unconfirmed"));
     });
 
     test("a pose dropout mid-pool (target lost and reacquired) does not disturb later turns", () => {

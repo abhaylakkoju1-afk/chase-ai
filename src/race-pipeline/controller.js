@@ -94,6 +94,22 @@ import {
 
 export const TURN_DETECTION_UNAVAILABLE_REASON = "Turn detection unavailable: reference lane Y not configured.";
 
+// The reason recorded when an observation gap next to a wall zone could have
+// concealed a turn (Chronos reliability, phase 2C; see runTurnDetection).
+export const DISTANCE_AMBIGUITY_REASON = "possible-missed-turn-during-tracking-gap-near-wall";
+
+// The reason recorded when analysis ended (tracking degraded terminally, or the
+// stream ended while the target was lost) before the race's required turns were
+// all recorded (Chronos reliability, phase 2C follow-up).
+export const DISTANCE_ANALYSIS_ENDED_REASON = "analysis-ended-before-distance-confirmed";
+
+// How many untrusted turn observations the diagnostics keep (oldest dropped).
+const MAX_UNCONFIRMED_TURN_OBSERVATIONS = 100;
+
+function freshDistanceConfidence() {
+    return { state: "confirmed", reason: null, sinceAtMs: null, resumedAtMs: null };
+}
+
 function isFiniteNumber(value) {
     return typeof value === "number" && Number.isFinite(value);
 }
@@ -124,6 +140,14 @@ function freshDiagnostics() {
         // Written only while the session is "running" and turn detection is
         // available. Informational only, like lastStartAssessment.
         lastTurnAssessment: null,
+        // Chronos reliability phase 2C: a read-through of the session's
+        // distance confidence ("confirmed" until a turn could have been
+        // concealed in an observation gap, then "unconfirmed" for the rest of
+        // the race), and the turn candidates that were seen afterwards but NOT
+        // recorded because their distance can no longer be trusted. Evidence,
+        // not events: nothing here reaches Chronos.
+        distanceConfidence: freshDistanceConfidence(),
+        unconfirmedTurnObservations: [],
         turnDetectionAvailable: false,
         turnDetectionUnavailableReason: TURN_DETECTION_UNAVAILABLE_REASON
     };
@@ -212,6 +236,94 @@ function validateConfig(config) {
     return null;
 }
 
+/* TERMINAL TRACKING (Chronos reliability, phase 2C follow-up).
+
+   SwimmerTracking's ANALYSIS_DEGRADED is terminal: afterwards no sample ever
+   reaches a detector, so the observation-gap rule (which needs a sample AFTER
+   the gap) can never run. Without this step a race whose analysis ended just
+   after a possibly concealed turn would report distance as "confirmed" while
+   its turn history is incomplete. The same holds for a stream that ends while
+   the target is still TARGET_LOST (a recoverable state, so only the explicit
+   end-of-stream notification, racePipelineEndAnalysis(), counts it).
+
+   When the race has an accepted start (Chronos is running), the distance is not
+   already unconfirmed, and tracking is terminal, this marks distance
+   unconfirmed — UNLESS no required turn can be missing:
+     - the race distance and pool length are both valid and the distance is a
+       whole number of pool lengths (the same contract the event adapter uses),
+       so the required turns are the pool-length multiples strictly below the
+       race distance; and
+     - the trusted counter has already reached the last of them
+       (confirmedDistanceMeters >= distance - pool): nothing is outstanding. A
+       race with no turn at all (distance <= pool) is the same case.
+   If the configuration cannot be counted, the answer is "possible" and the
+   mark is set (evidence.requiredTurnsKnown: false) — the number of turns is
+   never guessed in either direction.
+
+   sinceAtMs is the last confirmed observation (tracking's lastConfirmedAtMs),
+   never earlier than the accepted start; if that is unavailable the start time
+   is used (everything after the start is then unverified — the safest
+   representation, not an invented instant). resumedAtMs is null: tracking never
+   resumed. Idempotent: an existing record is never replaced. Before the start
+   nothing is marked (no distance had begun). No turn, split or finish is
+   created. */
+function applyTerminalTrackingTreatment(controller, { streamEnded = false } = {}) {
+    const session = controller.chronosSession;
+    const tracking = controller.trackingSession;
+    if (!session || !tracking || session.status !== "running" || session.distanceConfidence) {
+        return controller;
+    }
+
+    const terminal = tracking.status === "ANALYSIS_DEGRADED" || (streamEnded && tracking.status === "TARGET_LOST");
+    if (!terminal) {
+        return controller;
+    }
+
+    const confirmedDistanceMeters = controller.eventAdapterState ? controller.eventAdapterState.confirmedDistanceMeters : 0;
+    const poolLengthMeters = session.poolLengthMeters;
+    const raceDistanceMeters = session.distanceMeters;
+    const poolLengths = isPositiveFiniteNumber(poolLengthMeters) && isPositiveFiniteNumber(raceDistanceMeters)
+        ? raceDistanceMeters / poolLengthMeters
+        : null;
+    const requiredTurnsKnown = poolLengths !== null && Math.abs(poolLengths - Math.round(poolLengths)) <= 1e-9;
+    const requiredTurns = requiredTurnsKnown ? Math.max(0, Math.round(poolLengths) - 1) : null;
+
+    if (requiredTurnsKnown && confirmedDistanceMeters >= raceDistanceMeters - poolLengthMeters) {
+        return controller;
+    }
+
+    const startEvent = session.events.find((event) => event.type === "start");
+    const lastConfirmedAtMs = isFiniteNumber(tracking.lastConfirmedAtMs) ? tracking.lastConfirmedAtMs : null;
+    const sinceAtMs = lastConfirmedAtMs !== null && lastConfirmedAtMs >= startEvent.atMs ? lastConfirmedAtMs : startEvent.atMs;
+
+    const marked = ChronosEngine.markDistanceUnconfirmed(session, {
+        reason: DISTANCE_ANALYSIS_ENDED_REASON,
+        sinceAtMs,
+        resumedAtMs: null,
+        evidence: {
+            trigger: tracking.status === "ANALYSIS_DEGRADED" ? "tracking-degraded" : "stream-ended-while-target-lost",
+            trackingStatus: tracking.status,
+            degradedReason: tracking.degradedReason ?? null,
+            lastConfirmedAtMs,
+            confirmedDistanceMeters,
+            requiredTurns,
+            requiredTurnsKnown
+        }
+    });
+    if (!marked.ok) {
+        return controller;
+    }
+
+    return {
+        ...controller,
+        chronosSession: marked.session,
+        diagnostics: {
+            ...controller.diagnostics,
+            distanceConfidence: { state: "unconfirmed", reason: DISTANCE_ANALYSIS_ENDED_REASON, sinceAtMs, resumedAtMs: null }
+        }
+    };
+}
+
 function blockedController(controller, reason) {
     return {
         ...racePipelineCreateController(),
@@ -292,6 +404,8 @@ export function racePipelineStartAnalysis(controller, config) {
             lastEvent: null,
             lastStartAssessment: null,
             lastTurnAssessment: null,
+            distanceConfidence: freshDistanceConfidence(),
+            unconfirmedTurnObservations: [],
             turnDetectionAvailable: referenceLaneY !== null,
             turnDetectionUnavailableReason: referenceLaneY !== null ? null : TURN_DETECTION_UNAVAILABLE_REASON
         }
@@ -389,7 +503,7 @@ function runTurnDetection(controller, targetPoseSample) {
 
     const startEvent = controller.chronosSession.events.find((event) => event.type === "start") || null;
 
-    const { candidate, detectorState, assessment } = racePipelineDetectTurnCandidate(
+    const { candidate, detectorState, assessment, gap } = racePipelineDetectTurnCandidate(
         targetPoseSample,
         controller.detectorState,
         {
@@ -399,6 +513,40 @@ function runTurnDetection(controller, targetPoseSample) {
     );
 
     let nextController = { ...controller, detectorState };
+
+    /* DISTANCE CONFIDENCE (Chronos reliability, phase 2C). If the interval
+       since the previous usable observation is longer than the observation-run
+       limit AND touches a wall zone, a turn could have been concealed in it. We
+       do not decide whether one was, how many, or what a later wall contact
+       means: we mark the session's distance progression UNCONFIRMED from the
+       last observation before the gap, for the rest of the race. Chronos then
+       refuses detector-sourced distance events, and the event adapter refuses
+       turn candidates, without any guess. Marking is idempotent (the first
+       ambiguity is kept) and runs BEFORE this sample's candidate is
+       submitted. */
+    if (gap && gap.ambiguous && !nextController.chronosSession.distanceConfidence) {
+        const marked = ChronosEngine.markDistanceUnconfirmed(nextController.chronosSession, {
+            reason: DISTANCE_AMBIGUITY_REASON,
+            sinceAtMs: gap.evidence.fromAtMs,
+            resumedAtMs: gap.evidence.toAtMs,
+            evidence: gap.evidence
+        });
+        if (marked.ok) {
+            nextController = {
+                ...nextController,
+                chronosSession: marked.session,
+                diagnostics: {
+                    ...nextController.diagnostics,
+                    distanceConfidence: {
+                        state: "unconfirmed",
+                        reason: DISTANCE_AMBIGUITY_REASON,
+                        sinceAtMs: gap.evidence.fromAtMs,
+                        resumedAtMs: gap.evidence.toAtMs
+                    }
+                }
+            };
+        }
+    }
 
     if (assessment) {
         nextController = {
@@ -427,13 +575,27 @@ function runTurnDetection(controller, targetPoseSample) {
             candidate,
             nextController.eventAdapterState
         );
+        const unconfirmed = submitResult.reason === "distance-progression-unconfirmed";
         nextController = {
             ...nextController,
             chronosSession: submitResult.session,
             eventAdapterState: submitResult.eventAdapterState,
             diagnostics: {
                 ...nextController.diagnostics,
-                lastEvent: { kind: "turn", ok: submitResult.ok, reason: submitResult.reason, atMs: candidate.atMs }
+                lastEvent: { kind: "turn", ok: submitResult.ok, reason: submitResult.reason, atMs: candidate.atMs },
+                // A candidate seen while distance is unconfirmed is kept as an
+                // observation (never an event, never a distance).
+                unconfirmedTurnObservations: unconfirmed
+                    ? [
+                          ...(nextController.diagnostics.unconfirmedTurnObservations || []),
+                          {
+                              apexAtMs: candidate.atMs,
+                              confirmedAtMs: candidate.evidence ? candidate.evidence.confirmedAtMs : null,
+                              wallSide: candidate.evidence ? candidate.evidence.wallSide : null,
+                              confidence: candidate.confidence
+                          }
+                      ].slice(-MAX_UNCONFIRMED_TURN_OBSERVATIONS)
+                    : (nextController.diagnostics.unconfirmedTurnObservations || [])
             }
         };
     }
@@ -501,11 +663,11 @@ export function racePipelineProcessPoseSample(controller, poseSample, sampleGene
 
     if (!trackingResult.ok) {
         return {
-            controller: {
+            controller: applyTerminalTrackingTreatment({
                 ...controller,
                 trackingSession: trackingResult.session,
                 diagnostics: { ...controller.diagnostics, lastTrackingStatus: trackingResult.session.status }
-            },
+            }),
             processed: false,
             reason: trackingResult.reason
         };
@@ -526,14 +688,39 @@ export function racePipelineProcessPoseSample(controller, poseSample, sampleGene
         // Not a confirmed target observation this frame (locking,
         // ambiguous, gap, lost, degraded) — nothing proceeds to a
         // detector, matching docs/SWIMMER_TRACKING_ARCHITECTURE.md §13
-        // exactly.
-        return { controller: nextController, processed: true, reason: null };
+        // exactly. (If this frame left tracking terminally degraded, the
+        // distance confidence is settled here: see applyTerminalTrackingTreatment.)
+        return { controller: applyTerminalTrackingTreatment(nextController), processed: true, reason: null };
     }
 
     nextController = runStartDetection(nextController, targetPoseSample);
     nextController = runTurnDetection(nextController, targetPoseSample);
 
     return { controller: nextController, processed: true, reason: null };
+}
+
+/**
+ * End-of-stream notification (Chronos reliability, phase 2C follow-up): tell the
+ * controller that no further samples will arrive (the video ended). If tracking
+ * is terminally degraded, or the target is still lost, and the race's required
+ * turns are not all recorded, the race's distance is marked unconfirmed
+ * (applyTerminalTrackingTreatment). Otherwise nothing changes. It never creates
+ * a turn, split or finish, never stops or resets the analysis, and is
+ * idempotent. A recoverable loss that RESUMED before the end is unaffected: only
+ * the state at the end of the stream counts.
+ *
+ * The host must call it when the stream ends. The race page does: its video
+ * `ended` handler (index.html, initRaceVideoEndedListener) calls it after
+ * stopping the frame driver and before re-rendering, and applies the returned
+ * controller. Only the genuine `ended` event does; a pause, a seek or a
+ * recoverable loss does not.
+ *
+ * @param {object} controller
+ * @returns {{controller:object, marked:boolean}}
+ */
+export function racePipelineEndAnalysis(controller) {
+    const next = applyTerminalTrackingTreatment(controller, { streamEnded: true });
+    return { controller: next, marked: next !== controller };
 }
 
 /**

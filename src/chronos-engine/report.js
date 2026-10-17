@@ -117,7 +117,48 @@ function buildSplits(events, startEvent) {
     });
 }
 
-function buildDataQuality(events, cfg) {
+// Chronos reliability phase 2C: the race's distance-confidence state, always
+// present so a consumer never has to infer it from absence. "confirmed" means
+// no concealed turn has been suspected; "unconfirmed" means distances assigned
+// by a detector after `sinceAtMs` cannot be trusted and none were recorded
+// (docs/RACE_PIPELINE_ARCHITECTURE.md §9.1). Copied from the session, never
+// recomputed.
+function summarizeDistanceConfidence(session) {
+    const confidence = session.distanceConfidence;
+    if (confidence && confidence.state === "unconfirmed") {
+        return {
+            state: "unconfirmed",
+            reason: confidence.reason ?? null,
+            sinceAtMs: confidence.sinceAtMs ?? null,
+            resumedAtMs: confidence.resumedAtMs ?? null
+        };
+    }
+    return { state: "confirmed", reason: null, sinceAtMs: null, resumedAtMs: null };
+}
+
+// The distance established by ACCEPTED turn/split events — never by a finish,
+// and never by the configured race distance (`report.distanceMeters`). When
+// the distance progression is unconfirmed, only events at or before the point
+// it was last trusted (`sinceAtMs`) count: anything a person records after
+// that is an assertion, not something the pipeline established. 0 when no such
+// event exists. (Chronos reliability, phase 2C follow-up.)
+function summarizeConfirmedDistance(events, distanceConfidence) {
+    let confirmed = 0;
+    for (const event of events) {
+        if (event.type !== "turn" && event.type !== "split") {
+            continue;
+        }
+        if (distanceConfidence.state === "unconfirmed" && isFiniteNumber(distanceConfidence.sinceAtMs) && event.atMs > distanceConfidence.sinceAtMs) {
+            continue;
+        }
+        if (isFiniteNumber(event.distanceMeters) && event.distanceMeters > confirmed) {
+            confirmed = event.distanceMeters;
+        }
+    }
+    return confirmed;
+}
+
+function buildDataQuality(events, cfg, distanceConfidence, finishEvent, finalTimeMs) {
     const manualEventCount = events.filter((event) => event.source === "manual").length;
     const detectorEventCount = events.filter((event) => event.source === "detector").length;
     const lowConfidenceEventCount = events.filter(
@@ -134,6 +175,15 @@ function buildDataQuality(events, cfg) {
     }
     if (!findEventByType(events, "finish")) {
         notes.push("no finish event recorded");
+    }
+    if (distanceConfidence.state === "unconfirmed") {
+        notes.push(`distance progression unconfirmed after ${distanceConfidence.sinceAtMs}ms: ${distanceConfidence.reason}`);
+        // A finish exists: its TIME is recorded exactly as supplied, but nothing
+        // verifies that the swimmer covered the race distance (the finish
+        // event's own distance is an assertion, not an observation).
+        if (finishEvent) {
+            notes.push(`finish time recorded (finish at ${finishEvent.atMs}ms, final time ${finalTimeMs}ms) but the distance sequence is unverified: ${distanceConfidence.reason}`);
+        }
     }
     if (lowConfidenceEventCount > 0) {
         notes.push(`${lowConfidenceEventCount} detector event(s) below the confidence threshold (${cfg.lowConfidenceThreshold})`);
@@ -170,6 +220,7 @@ export function chronosBuildReport(session, config) {
     }
 
     const cfg = mergeConfig(config);
+    const distanceConfidence = summarizeDistanceConfidence(session);
 
     const startEvent = findEventByType(session.events, "start");
     const finishEvent = findEventByType(session.events, "finish");
@@ -180,7 +231,14 @@ export function chronosBuildReport(session, config) {
         course: session.course ?? null,
         poolLengthMeters: session.poolLengthMeters ?? null,
         strokeKey: session.strokeKey ?? null,
+        // The CONFIGURED race distance (from the selected event). It says what
+        // the race is, never how far the swimmer was shown to have gone: see
+        // `confirmedDistanceMeters` and `distanceConfidence` for that.
         distanceMeters: session.distanceMeters ?? null,
+        // Distance established by accepted turn/split events (see
+        // summarizeConfirmedDistance); excludes the finish and the configured
+        // distance.
+        confirmedDistanceMeters: summarizeConfirmedDistance(session.events, distanceConfidence),
         status: session.status ?? null,
 
         start: summarizeEvent(startEvent),
@@ -195,7 +253,9 @@ export function chronosBuildReport(session, config) {
 
         splits: buildSplits(session.events, startEvent),
 
-        dataQuality: buildDataQuality(session.events, cfg)
+        distanceConfidence,
+
+        dataQuality: buildDataQuality(session.events, cfg, distanceConfidence, finishEvent, session.finalTimeMs ?? null)
     };
 
     return { ok: true, reason: null, report };

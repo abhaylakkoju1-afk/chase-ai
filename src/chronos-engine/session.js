@@ -126,7 +126,12 @@ export function chronosCreateSession(params) {
         timeSource: params.timeSource,
 
         events: [],
-        finalTimeMs: null
+        finalTimeMs: null,
+
+        // Chronos reliability phase 2C: null while the race's distance
+        // progression is trusted; an "unconfirmed" record once it cannot be
+        // (see chronosMarkDistanceUnconfirmed). Never cleared.
+        distanceConfidence: null
     };
 
     return { ok: true, reason: null, session };
@@ -159,6 +164,76 @@ export function chronosTransition(session, targetStatus) {
         ok: true,
         reason: null,
         session: { ...session, status: targetStatus }
+    };
+}
+
+// DISTANCE CONFIDENCE (Chronos reliability, phase 2C).
+//
+// A detector assigns distances by COUNTING turns, so a turn the detector never
+// saw (the swimmer was hidden at a wall) silently shifts every later label. When
+// the caller finds that a turn COULD have been concealed, it marks the race's
+// distance progression UNCONFIRMED here. From then on Chronos refuses every
+// DETECTOR-sourced split/turn/finish (src/chronos-engine/events.js,
+// "distance-progression-unconfirmed"); manual events are unaffected (a person
+// supplies the distance). Events already accepted are untouched: they were
+// validated before the gap.
+//
+// Chronos does not decide WHETHER a turn was concealed — the caller does, from
+// evidence Chronos never sees — and it never infers which turns are missing or
+// what a later wall contact represents. There is deliberately no way to clear
+// the mark: nothing in the event model can establish a missing turn count
+// without guessing, so the degraded state lasts for the rest of the session.
+// Idempotent: a second call keeps the FIRST record (the earliest point at which
+// distance could have been affected).
+//
+// params: {reason: non-empty string, sinceAtMs: finite, >= the start event's
+// time (the earliest point a concealed turn could affect distance — normally the
+// last observation before the gap), resumedAtMs?: finite or null (the first
+// observation after it), evidence?: plain object (diagnostics only)}.
+export function chronosMarkDistanceUnconfirmed(session, params) {
+    if (!session || typeof session !== "object") {
+        return { ok: false, reason: "missing-session", session: null };
+    }
+    if (session.status !== "running") {
+        return { ok: false, reason: `distance-confidence-illegal-in-status-${session.status}`, session };
+    }
+    if (!params || typeof params !== "object" || !isNonEmptyString(params.reason)) {
+        return { ok: false, reason: "missing-distance-confidence-reason", session };
+    }
+    const startEvent = Array.isArray(session.events) ? session.events.find((event) => event.type === "start") : null;
+    if (
+        typeof params.sinceAtMs !== "number" ||
+        !Number.isFinite(params.sinceAtMs) ||
+        (startEvent && params.sinceAtMs < startEvent.atMs)
+    ) {
+        return { ok: false, reason: "invalid-distance-confidence-since", session };
+    }
+    if (
+        params.resumedAtMs !== undefined &&
+        params.resumedAtMs !== null &&
+        (typeof params.resumedAtMs !== "number" || !Number.isFinite(params.resumedAtMs) || params.resumedAtMs < params.sinceAtMs)
+    ) {
+        return { ok: false, reason: "invalid-distance-confidence-resumed", session };
+    }
+
+    if (session.distanceConfidence && session.distanceConfidence.state === "unconfirmed") {
+        return { ok: true, reason: null, session, alreadyUnconfirmed: true };
+    }
+
+    return {
+        ok: true,
+        reason: null,
+        session: {
+            ...session,
+            distanceConfidence: {
+                state: "unconfirmed",
+                reason: params.reason,
+                sinceAtMs: params.sinceAtMs,
+                resumedAtMs: params.resumedAtMs ?? null,
+                evidence: params.evidence && typeof params.evidence === "object" ? { ...params.evidence } : null
+            }
+        },
+        alreadyUnconfirmed: false
     };
 }
 

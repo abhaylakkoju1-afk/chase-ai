@@ -113,7 +113,12 @@ RaceSession = {
   timeSource: "video" | "manual" | "wallclock",
 
   events: TimingEvent[],
-  finalTimeMs: number | null
+  finalTimeMs: number | null,
+
+  // Phase 2C: null while detector-assigned distances are trusted; otherwise
+  // {state: "unconfirmed", reason, sinceAtMs, resumedAtMs, evidence}. One-way
+  // (never cleared). See §10 rule 7.
+  distanceConfidence: null | { state: "unconfirmed", reason: string, sinceAtMs: number, resumedAtMs: number | null, evidence: object | null }
 }
 ```
 
@@ -240,6 +245,21 @@ An incoming event is validated before being accepted into
    (`duplicate-turn-distance`): a second acceptance at one distance would be
    the same physical turn counted twice. A `split` at a turn's distance is
    still permitted.
+7. **Distance confidence (phase 2C).** A caller that finds a turn could have
+   been concealed (an observation gap beside a wall) records it with
+   `ChronosEngine.markDistanceUnconfirmed(session, {reason, sinceAtMs,
+   resumedAtMs?, evidence?})` (running sessions only; idempotent, first record
+   kept; it changes neither status nor events). From then on every
+   **detector-sourced** `turn`, `split` and `finish` is rejected with
+   `distance-progression-unconfirmed` (original session returned); **manual**
+   events are unaffected. There is no way to clear it. Chronos does not decide
+   whether a turn was concealed and never infers which turns are missing. The
+   report carries `distanceConfidence` and a data-quality note; when a finish
+   exists it also notes that the finish time is recorded but the distance
+   sequence is unverified, and `confirmedDistanceMeters` (distance established by
+   accepted turn/split events, distinct from the configured `distanceMeters`).
+   `comparePB()` returns `comparable: false, reason: "distance-unconfirmed"` for
+   such a report (never a PB, not even a first one); the recorded time is kept.
 
 ## 11. Start/finish rules
 
@@ -533,8 +553,9 @@ apex inside the wall zone, sustained recovery) within one contiguous run of
 observations, with a candidate time equal to the apex. `chronosDetectTurn()`
 remains as the single-sample primitive but is no longer called. Chronos
 additionally bounds accepted distances by the configured race distance and
-rejects duplicate turns (§10 rules 5–6). A missed turn still shifts later
-distance labels; see `docs/RACE_PIPELINE_ARCHITECTURE.md` §7.4 and §9.1.
+rejects duplicate turns (§10 rules 5–6). A concealed
+turn no longer shifts later distance labels: phase 2C marks the race's distance
+unconfirmed (§10 rule 7); see `docs/RACE_PIPELINE_ARCHITECTURE.md` §7.4 and §9.1.
 
 **Update (Chronos reliability, phases 1B and 1C).** Isolated single-sample
 outliers no longer move or veto the onset estimate, the last start assessment

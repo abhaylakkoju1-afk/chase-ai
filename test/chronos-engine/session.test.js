@@ -310,10 +310,13 @@ describe("public API surface — window.ChronosEngine (src/chronos-engine/index.
     // pb-comparison.js), exactly the two additional methods
     // docs/CHRONOS_ARCHITECTURE.md §18's own indicative list already
     // named — this list grew accordingly, but the exclusions below
-    // (getSession, raw transition) still hold.
+    // (getSession, raw transition) still hold. Chronos reliability phase 2C
+    // added exactly one more: markDistanceUnconfirmed (session.js), the narrow,
+    // one-way way to record that a detector's distance count can no longer be
+    // trusted. It cannot change status or add events.
     const exposedNames = Object.keys(ChronosEngine).sort();
     assert.deepEqual(exposedNames, [
-      "abortSession", "armSession", "buildReport", "comparePB", "createSession", "recordEvent"
+      "abortSession", "armSession", "buildReport", "comparePB", "createSession", "markDistanceUnconfirmed", "recordEvent"
     ]);
     assert.equal(ChronosEngine.getSession, undefined);
     assert.equal(ChronosEngine.transition, undefined);

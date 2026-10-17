@@ -34,6 +34,16 @@
 // The page samples every 4th frame (~133 ms). The estimated motion onset for the
 // departure is the first sample more than 0.02 beyond rest: 6.40 s.
 
+// END OF STREAM (Chronos reliability phase 2C follow-up). The second describe
+// block at the bottom drives the page's REAL video "ended" handler (the video is
+// seeked near its end and played until the browser fires "ended") and checks
+// what the page's real controller did with it. The page's controller is a
+// module-scoped variable, so the tests observe it through the shared
+// ChronosEngine singleton the page and controller both import: a pass-through
+// spy on markDistanceUnconfirmed() and on buildReport() (the report the page
+// itself last built). Nothing in index.html is exposed or changed for testing.
+// Same synthetic-only caveat as above.
+
 import { test, expect } from "@playwright/test";
 
 test.describe.configure({ mode: "serial" });
@@ -55,12 +65,24 @@ async function installScriptedPageHooks(page) {
     route.fulfill({ contentType: "text/javascript", body: "/* replaced by the e2e test */" })
   );
   await page.addInitScript(() => {
-    const hipAt = (t) => {
+    const walkThenDepart = (t) => {
       if (t < 2.4) return 0.1;
       if (t < 3.4) return 0.1 + 0.15 * (t - 2.4);
       if (t < 6.0) return 0.25;
       return 0.25 + 0.06 * (t - 6.0);
     };
+    // "turn": rest at the near wall until 6 s, swim to the far wall at 0.1
+    // frame-widths/s (arrive 14.4 s), touch for 0.4 s, swim back. One turn (25 m
+    // of a 50 m race in a 25 m pool).
+    const turnRace = (t) => {
+      if (t < 6.0) return 0.06;
+      if (t < 14.4) return 0.06 + 0.1 * (t - 6.0);
+      if (t < 14.8) return 0.9;
+      return Math.max(0.4, 0.9 - 0.1 * (t - 14.8));
+    };
+    window.__trajectory = "walk-then-depart";
+    const hipAt = (t) => (window.__trajectory === "turn" ? turnRace(t) : walkThenDepart(t));
+    window.__poseHiddenFromS = null; // when set, the pose is "lost" from this scripted second on
     window.__scriptedTime = 0;
     window.__poseCalls = 0;
     window.__rvfc = null;
@@ -72,6 +94,10 @@ async function installScriptedPageHooks(page) {
       async send() {
         const hip = hipAt(window.__scriptedTime);
         window.__poseCalls += 1;
+        if (window.__poseHiddenFromS !== null && window.__scriptedTime >= window.__poseHiddenFromS) {
+          this.cb({ poseLandmarks: [] }); // no pose found this frame
+          return;
+        }
         const landmarks = new Array(33).fill(null).map(() => ({ x: 0.5, y: 0.5, z: 0, visibility: 0.9 }));
         landmarks[0] = { x: hip + 0.04, y: 0.5, z: 0, visibility: 0.9 }; // nose
         landmarks[23] = { x: hip, y: 0.5, z: 0, visibility: 0.9 };       // left hip
@@ -213,6 +239,79 @@ async function runAnalysisUntilOnset(page) {
   });
 }
 
+// ---- end-of-stream helpers ------------------------------------------------
+
+// Pass-through spies on the shared ChronosEngine singleton (same object the page's controller calls).
+async function installEngineSpies(page) {
+  await page.evaluate(() => {
+    const engine = window.ChronosEngine;
+    window.__marks = [];
+    window.__lastReport = null;
+    const mark = engine.markDistanceUnconfirmed;
+    engine.markDistanceUnconfirmed = function (session, params) {
+      const result = mark.call(this, session, params);
+      window.__marks.push({ reason: params.reason, sinceAtMs: params.sinceAtMs, trigger: params.evidence && params.evidence.trigger, ok: result.ok });
+      return result;
+    };
+    const build = engine.buildReport;
+    engine.buildReport = function (...args) {
+      const result = build.apply(this, args);
+      window.__lastReport = result.report;
+      return result;
+    };
+    window.__endedCount = 0;
+    document.getElementById("racePlayer").addEventListener("ended", () => { window.__endedCount += 1; });
+  });
+}
+
+// Mark a pre-start frame, install the spies, start the analysis and take over the frame clock.
+async function startScriptedAnalysis(page, trajectory) {
+  await page.evaluate((name) => { window.__trajectory = name; }, trajectory);
+  await markPreStartFrame(page, 4.0);
+  await installEngineSpies(page);
+  await page.click("#raceAutoStartBtn");
+  await page.waitForFunction(() => window.__rvfc !== null, null, { timeout: 30000 });
+  await page.evaluate(() => {
+    document.getElementById("racePlayer").pause();
+    window.__tickK = 0;
+  });
+}
+
+// Fire the page's own frame callback at exact 30 fps scripted times up to `seconds`.
+async function tickTo(page, seconds) {
+  await page.evaluate(async (target) => {
+    while (window.__tickK <= target * 30) {
+      const t = window.__tickK / 30;
+      window.__scriptedTime = t;
+      const cb = window.__rvfc;
+      window.__rvfc = null;
+      if (cb) cb(performance.now(), { mediaTime: t });
+      window.__tickK += 1;
+      await new Promise((r) => setTimeout(r, 3));
+    }
+  }, seconds);
+}
+
+async function hidePoseFrom(page, seconds) {
+  await page.evaluate((s) => { window.__poseHiddenFromS = s; }, seconds);
+}
+
+// Let the browser reach the REAL end of the video: seek near the end and play until "ended" fires.
+async function playToRealEnd(page) {
+  await page.evaluate(async () => {
+    const v = document.getElementById("racePlayer");
+    await new Promise((resolve) => {
+      v.addEventListener("ended", () => resolve(), { once: true });
+      v.currentTime = Math.max(0, v.duration - 0.3);
+      v.play();
+    });
+  });
+}
+
+const trackingLine = async (page) => (await page.locator("#racePipelineDiagnostics").innerText()).match(/Tracking: (\w+)/)?.[1] ?? null;
+const lastReport = (page) => page.evaluate(() => window.__lastReport);
+const marksOf = (page) => page.evaluate(() => window.__marks);
+
 function onsetSeconds(reportText) {
   const m = reportText.match(/Estimated motion onset:\s*(\d+\.\d\d)s/);
   return m ? Number(m[1]) : null;
@@ -326,6 +425,180 @@ test.describe("race page: pre-start reference frame (synthetic video, scripted p
 
     await page.click("#raceAutoStartBtn");
     expect(await page.locator("#racePipelineStatus").innerText()).toMatch(/lane calibration/);
+    expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
+
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// END OF STREAM
+// ===========================================================================
+
+const ENDED_REASON = "analysis-ended-before-distance-confirmed";
+const ENDED_STATUS_TEXT = "Analysis incomplete — video ended without a finish event.";
+
+test.describe("race page: the video's end is passed to the controller (synthetic video, scripted pose and frame callbacks)", () => {
+  test.setTimeout(240000);
+
+  test("a clip that ends while the target is still LOST, with a required turn outstanding, is marked distance-unconfirmed — and not before it ends", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+    await startScriptedAnalysis(page, "turn");
+
+    await hidePoseFrom(page, 9.0); // after the start is accepted (~7.5 s), before the turn
+    await tickTo(page, 12.0);
+
+    // Lost, but only lost: a recoverable state is NOT terminal and must not be marked.
+    expect(await trackingLine(page)).toBe("TARGET_LOST");
+    expect(await marksOf(page)).toEqual([]);
+    const before = await lastReport(page);
+    expect(before.start).not.toBeNull();
+    expect(before.distanceConfidence.state).toBe("confirmed");
+    expect(await page.evaluate(() => window.__endedCount)).toBe(0);
+
+    await playToRealEnd(page);
+
+    // The page's own handler ran (existing behavior intact)...
+    expect(await page.evaluate(() => window.__endedCount)).toBe(1);
+    await expect(page.locator("#racePipelineStatus")).toHaveText(ENDED_STATUS_TEXT);
+    // ...and passed the end to the controller exactly once.
+    const marks = await marksOf(page);
+    expect(marks).toHaveLength(1);
+    expect(marks[0].reason).toBe(ENDED_REASON);
+    expect(marks[0].trigger).toBe("stream-ended-while-target-lost");
+    expect(marks[0].ok).toBe(true);
+    expect(marks[0].sinceAtMs).toBeGreaterThan(8500);
+    expect(marks[0].sinceAtMs).toBeLessThanOrEqual(9100); // the last confirmed observation, just before the pose was lost
+
+    // The report the page built AFTER the end reflects it, and nothing was fabricated.
+    const after = await lastReport(page);
+    expect(after.distanceConfidence).toMatchObject({ state: "unconfirmed", reason: ENDED_REASON, sinceAtMs: marks[0].sinceAtMs, resumedAtMs: null });
+    expect(after.dataQuality.notes.some((n) => n.includes("distance progression unconfirmed") && n.includes(ENDED_REASON))).toBe(true);
+    expect(after.finish).toBeNull();
+    expect(after.finalTimeMs).toBeNull();
+    expect(after.splits).toEqual([]);
+    expect(after.confirmedDistanceMeters).toBe(0);
+    expect(after.start).toEqual(before.start);
+    expect(await page.locator("#racePipelineReport").innerText()).toMatch(/Final Time:\s*Not available/);
+    expect(await page.locator("#racePipelinePbComparison").innerText()).toMatch(/PB comparison unavailable until the race is finished/);
+    expect(await page.locator("#timer").innerText()).toBe("0.00 s");
+
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+
+  test("repeated 'ended' handling is idempotent: the first ambiguity record is kept and nothing else appears", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+    await startScriptedAnalysis(page, "turn");
+    await hidePoseFrom(page, 9.0);
+    await tickTo(page, 12.0);
+    await playToRealEnd(page);
+    const first = await lastReport(page);
+    expect(first.distanceConfidence.state).toBe("unconfirmed");
+
+    for (let i = 0; i < 3; i += 1) {
+      await page.evaluate(() => document.getElementById("racePlayer").dispatchEvent(new Event("ended")));
+    }
+
+    expect(await page.evaluate(() => window.__endedCount)).toBe(4);
+    expect(await marksOf(page)).toHaveLength(1); // the controller never re-marked
+    const again = await lastReport(page);
+    expect(again.distanceConfidence).toEqual(first.distanceConfidence);
+    expect(again.splits).toEqual(first.splits);
+    expect(again.finish).toBeNull();
+    expect(again.dataQuality.notes.filter((n) => n.startsWith("distance progression unconfirmed"))).toHaveLength(1);
+    await expect(page.locator("#racePipelineStatus")).toHaveText(ENDED_STATUS_TEXT);
+
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+
+  test("a clip that ends after ALL required turns are recorded is NOT downgraded, even though the target is lost at the end", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+    await startScriptedAnalysis(page, "turn");
+
+    await tickTo(page, 16.5); // start ~7.5 s, far wall 14.4 s, recovery confirmed ~16 s
+    const recorded = await lastReport(page);
+    expect(recorded.splits.map((s) => [s.kind, s.distanceMeters])).toEqual([["turn", 25]]);
+    expect(recorded.distanceConfidence.state).toBe("confirmed");
+
+    await hidePoseFrom(page, 17.0);
+    await tickTo(page, 19.5);
+    expect(await trackingLine(page)).toBe("TARGET_LOST");
+
+    await playToRealEnd(page);
+
+    await expect(page.locator("#racePipelineStatus")).toHaveText(ENDED_STATUS_TEXT);
+    expect(await marksOf(page)).toEqual([]);
+    const after = await lastReport(page);
+    expect(after.distanceConfidence.state).toBe("confirmed");
+    expect(after.splits).toEqual(recorded.splits);
+    expect(after.confirmedDistanceMeters).toBe(25);
+    expect(after.finish).toBeNull();
+    expect(after.finalTimeMs).toBeNull();
+
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+
+  test("a clip that ends BEFORE an accepted start does not mark race distance unconfirmed", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+    await startScriptedAnalysis(page, "walk-then-depart");
+
+    await hidePoseFrom(page, 3.0); // lost long before the departure at 6.0 s
+    await tickTo(page, 6.0);
+    expect(await trackingLine(page)).toBe("TARGET_LOST");
+
+    await playToRealEnd(page);
+
+    await expect(page.locator("#racePipelineStatus")).toHaveText(ENDED_STATUS_TEXT);
+    expect(await marksOf(page)).toEqual([]);
+    const after = await lastReport(page);
+    expect(after.status).toBe("armed");
+    expect(after.start).toBeNull();
+    expect(after.distanceConfidence.state).toBe("confirmed");
+    expect(after.splits).toEqual([]);
+
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+
+  test("a RECOVERABLE loss, with a pause and a seek during it and no end of stream, never triggers end-of-stream handling", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+    await startScriptedAnalysis(page, "turn");
+
+    await hidePoseFrom(page, 9.0);
+    await tickTo(page, 10.8);
+    expect(await trackingLine(page)).toBe("TARGET_LOST");
+
+    // An ordinary pause and seek while lost: neither is the end of the stream.
+    await page.evaluate(() => {
+      const v = document.getElementById("racePlayer");
+      v.pause();
+      v.currentTime = 1;
+    });
+    await page.waitForFunction(() => !document.getElementById("racePlayer").seeking);
+    expect(await page.evaluate(() => window.__endedCount)).toBe(0);
+    expect(await marksOf(page)).toEqual([]);
+
+    await page.evaluate(() => { window.__poseHiddenFromS = null; }); // the swimmer is visible again
+    await tickTo(page, 13.0);
+
+    expect(await trackingLine(page)).toBe("TARGET_LOCKED"); // reacquired: recoverable stayed recoverable
+    expect(await marksOf(page)).toEqual([]);
+    const report = await lastReport(page);
+    expect(report.distanceConfidence.state).toBe("confirmed");
+    expect(report.start).not.toBeNull();
+    await expect(page.locator("#racePipelineStatus")).not.toHaveText(ENDED_STATUS_TEXT);
+
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+
+  test("the video ending with NO analysis running is a safe no-op for the controller and keeps the existing message", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+    await installEngineSpies(page);
+
+    await playToRealEnd(page);
+
+    expect(await page.evaluate(() => window.__endedCount)).toBe(1);
+    await expect(page.locator("#racePipelineStatus")).toHaveText(ENDED_STATUS_TEXT);
+    expect(await marksOf(page)).toEqual([]);
     expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
 
     expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);

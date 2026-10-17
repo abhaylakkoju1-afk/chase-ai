@@ -33,7 +33,8 @@
 import {
     chronosCreateSession,
     chronosArmSession,
-    chronosAbortSession
+    chronosAbortSession,
+    chronosMarkDistanceUnconfirmed
 } from "./session.js";
 
 import { chronosRecordEvent } from "./events.js";
@@ -45,6 +46,7 @@ export const ChronosEngine = {
     armSession: chronosArmSession,
     recordEvent: chronosRecordEvent,
     abortSession: chronosAbortSession,
+    markDistanceUnconfirmed: chronosMarkDistanceUnconfirmed,
     buildReport: chronosBuildReport,
     comparePB: chronosComparePB
 };

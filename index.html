@@ -3166,6 +3166,7 @@ window.addEventListener(
             racePipelineStartAnalysis,
             racePipelineProcessPoseSample,
             racePipelineStopAnalysis,
+            racePipelineEndAnalysis,
             racePipelineBuildReport,
             racePipelineControllerStatus
         } from "./src/race-pipeline/controller.js";
@@ -3499,6 +3500,18 @@ window.addEventListener(
 
             video.addEventListener("ended", () => {
                 stopRaceFrameProcessing();
+
+                /* Chronos reliability phase 2C follow-up: the stream has
+                   genuinely ended (only this event: not a pause, a seek, or a
+                   recoverable tracking loss). Tell the controller, so a clip
+                   that ends while the target is still lost, with required turns
+                   not yet recorded, is marked distance-unconfirmed exactly as
+                   terminal tracking degradation is. The controller owns every
+                   rule (idempotent; does nothing before the start, with no
+                   active analysis, or when nothing is outstanding) and creates
+                   no turn, split or finish. Done BEFORE re-rendering so the
+                   report below reflects it. */
+                raceController = racePipelineEndAnalysis(raceController).controller;
 
                 /* Stage 4D.6/4D.7 §13: no automatic finish event is
                    fabricated here. If the session never received a valid

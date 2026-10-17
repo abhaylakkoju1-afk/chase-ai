@@ -48,14 +48,17 @@
 // clamps an over-distance turn down to the race distance and never relabels
 // it as a finish.
 //
-// KNOWN LIMITATION — MISSED TURNS. The distance label is a COUNT: the Nth
-// accepted turn is labelled N pool lengths. If a real wall contact is never
-// detected (the pose is lost around a tumble turn, tracking drops, the
-// recovery is not observed), nothing here can know it was missed, and every
-// later turn is labelled one pool length too EARLY (the next wall is reported
-// as 25 m when it is really 50 m). A measured synthetic example and the
-// options considered are in docs/RACE_PIPELINE_ARCHITECTURE.md §9.1. Neither
-// this file nor Chronos invents the missing turn or its split.
+// MISSED TURNS (Chronos reliability, phase 2C). The distance label is a
+// COUNT: the Nth accepted turn is labelled N pool lengths, so a wall contact the
+// pose never shows would shift every later label one pool length too early.
+// This file cannot know that; the CONTROLLER detects an observation gap that
+// could have concealed a turn (detector-adapter.js / turn-detector.js,
+// chronosAssessObservationGap) and marks the Chronos session's distance
+// progression unconfirmed. From then on this file refuses every turn candidate
+// ("distance-progression-unconfirmed") and never advances
+// confirmedDistanceMeters, which stays the last TRUSTED distance. See
+// docs/RACE_PIPELINE_ARCHITECTURE.md §9.1. Neither this file nor Chronos
+// invents the missing turn or its split.
 //
 // START DISTANCE: deliberately excluded from confirmedDistanceMeters
 // entirely (docs/RACE_PIPELINE_ARCHITECTURE.md §9: "start is deliberately
@@ -195,6 +198,15 @@ export function racePipelineSubmitTurnCandidate(session, candidate, eventAdapter
 
     if (!session || !isPositiveFiniteNumber(session.poolLengthMeters)) {
         return rejectBeforeChronos(session, eventAdapterState, "invalid-pool-length-meters");
+    }
+
+    // Chronos reliability phase 2C: once the session's distance progression is
+    // unconfirmed (a turn may have been concealed in an observation gap), no
+    // distance is assigned: the candidate is refused here, untouched
+    // confirmedDistanceMeters, with the same reason Chronos itself uses. The
+    // caller keeps the candidate as a diagnostic observation only.
+    if (session.distanceConfidence && session.distanceConfidence.state === "unconfirmed") {
+        return rejectBeforeChronos(session, eventAdapterState, "distance-progression-unconfirmed");
     }
 
     if (!isPositiveFiniteNumber(session.distanceMeters)) {

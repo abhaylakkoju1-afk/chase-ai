@@ -121,6 +121,18 @@ export function chronosComparePB(report, pb) {
         return buildUnavailableResult("race-not-finished", !!pb);
     }
 
+    // A finished result whose distance progression is UNCONFIRMED (a turn may
+    // have been concealed, or analysis ended before the required turns were
+    // recorded — docs/RACE_PIPELINE_ARCHITECTURE.md §9.1) is not a verified
+    // race-distance result, so it is never compared and never declared a PB,
+    // not even the first one for the event. The recorded time is untouched (it
+    // stays in the report); only the comparison is withheld. Checked BEFORE the
+    // no-PB branch below precisely because that branch would otherwise call an
+    // unverified time a new PB.
+    if (report.distanceConfidence && report.distanceConfidence.state === "unconfirmed") {
+        return buildUnavailableResult("distance-unconfirmed", !!pb);
+    }
+
     if (pb === null || pb === undefined) {
         // No prior record for this event/course — a genuine, deterministic
         // "first PB" outcome, not an error. This is the one case where

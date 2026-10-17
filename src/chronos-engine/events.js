@@ -376,6 +376,21 @@ export function chronosRecordEvent(session, input) {
         return reject(session, `event-type-illegal-in-status-${session.status}`);
     }
 
+    // DISTANCE CONFIDENCE (Chronos reliability, phase 2C). Once the session's
+    // distance progression has been marked unconfirmed
+    // (chronosMarkDistanceUnconfirmed in session.js), a DETECTOR may no longer
+    // assign a distance: its count of turns can no longer be trusted. Manual
+    // events are exempt — a person supplies the distance. A refusal returns the
+    // original session untouched.
+    if (
+        input.source === "detector" &&
+        isDistanceBearingType(input.type) &&
+        session.distanceConfidence &&
+        session.distanceConfidence.state === "unconfirmed"
+    ) {
+        return reject(session, "distance-progression-unconfirmed");
+    }
+
     const timestampResult = chronosResolveTimestamp({
         timeSource: session.timeSource,
         atMs: input.atMs
