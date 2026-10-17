@@ -692,6 +692,31 @@ body {
 }
 
 
+/* The gate is dark in both themes, but the generic light-mode heading
+   rule (body.light-mode h1 in base-global.css) turned this h1 near-black
+   and removed its spacing and glow. Restore the logo's own values. */
+body.light-mode .entry-logo {
+
+    color:
+        #f4f8fb;
+
+    letter-spacing:
+        clamp(5px, 1vw, 13px);
+
+    text-shadow:
+
+        0 0 12px
+        rgba(255,255,255,.28),
+
+        0 0 35px
+        rgba(0,180,255,.28),
+
+        0 0 75px
+        rgba(0,100,255,.16);
+
+}
+
+
 @keyframes logoReveal {
 
     from {

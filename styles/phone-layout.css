@@ -182,7 +182,8 @@
 
     /* Entry gate: "SWIMTICS" at clamp(3rem, 15vw, 5rem) was clipped at
        the right edge ("SWIMTIC") */
-    .entry-logo {
+    .entry-logo,
+    body.light-mode .entry-logo {
         font-size: clamp(2rem, 10.5vw, 5rem);
         letter-spacing: 2px;
     }
