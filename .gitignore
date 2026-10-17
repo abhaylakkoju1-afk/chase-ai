@@ -1,3 +1,7 @@
 node_modules/
 test-results/
 playwright-report/
+# Firebase emulator logs
+database-debug.log
+firebase-debug.log
+firebase-debug.*.log

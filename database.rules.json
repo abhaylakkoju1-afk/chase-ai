@@ -1,0 +1,87 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren()",
+
+        "profile": {
+          ".validate": "newData.hasChildren()",
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$field": {
+            ".validate": "$field.matches(/^(name|dob|gender|nationality|club|primaryStroke|secondaryStroke|eventsPref|distanceType|height|weight|wingspan|strengths|weaknesses|level|hours|coach|facility|shortGoal|longGoal|competition|lastComp|bestMeet|medals)$/) && newData.isString() && newData.val().length <= 200"
+          }
+        },
+
+        "pbs": {
+          ".validate": "newData.hasChildren()",
+          "$pbKey": {
+            ".validate": "$pbKey.length <= 400 && newData.hasChildren(['event', 'course', 'time'])",
+            "event": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "course": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 40"
+            },
+            "time": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+            },
+            "history": {
+              ".validate": "newData.hasChildren()",
+              "$entryId": {
+                ".validate": "$entryId.length <= 120 && newData.hasChildren(['s', 'n'])",
+                "s": {
+                  ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() < 100000"
+                },
+                "n": {
+                  ".validate": "newData.isNumber()"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+
+        "meta": {
+          ".validate": "newData.hasChildren()",
+          "imports": {
+            ".validate": "newData.hasChildren()",
+            "$fingerprint": {
+              ".validate": "$fingerprint.length <= 64 && newData.hasChildren(['at', 'pbEntries', 'profileFields'])",
+              "at": {
+                ".validate": "newData.isNumber()"
+              },
+              "pbEntries": {
+                ".validate": "newData.isNumber()"
+              },
+              "profileFields": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}
