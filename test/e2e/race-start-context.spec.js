@@ -198,16 +198,34 @@ async function openRacePageWithVideo(page) {
 
 // Clicks the middle of the video overlay with Playwright's own actionability
 // handling (scroll into view, hit-target check) so the click works at any viewport size.
-async function clickSwimmer(page) {
+// The part of the <video> element's box that the picture actually fills (the browser's default
+// `object-fit: contain`), in viewport pixels. In the page's normal layout the box already has the
+// video's aspect ratio, so this equals the element's box; it differs only when something gives the
+// box another aspect ratio (letterbox or pillarbox).
+async function renderedContent(page) {
+  return page.evaluate(() => {
+    const v = document.getElementById("racePlayer");
+    const r = v.getBoundingClientRect();
+    const scale = Math.min(r.width / v.videoWidth, r.height / v.videoHeight);
+    const width = v.videoWidth * scale;
+    const height = v.videoHeight * scale;
+    return { left: r.left + (r.width - width) / 2, top: r.top + (r.height - height) / 2, width, height };
+  });
+}
+
+// `fy` is the click's vertical position as a fraction of the video's rendered CONTENT height (the overlay
+// canvas is a few pixels taller than the video, so the canvas's own height is not the reference).
+async function clickSwimmer(page, fy = 0.5) {
   const canvas = page.locator("#raceCanvas");
   await canvas.scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
-  await canvas.click({ position: { x: box.width * 0.5, y: box.height * 0.5 } });
+  const content = await renderedContent(page);
+  await canvas.click({ position: { x: content.left + content.width * 0.5 - box.x, y: content.top + content.height * fy - box.y } });
 }
 
 // The user's calibration gesture: press the button (which pauses the video),
 // scrub to a frame, then click the swimmer.
-async function markPreStartFrame(page, seekSeconds) {
+async function markPreStartFrame(page, seekSeconds, fy = 0.5) {
   await page.click("#raceCalibrateBtn");
   await page.evaluate(async (t) => {
     const v = document.getElementById("racePlayer");
@@ -216,7 +234,7 @@ async function markPreStartFrame(page, seekSeconds) {
       v.currentTime = t;
     });
   }, seekSeconds);
-  await clickSwimmer(page);
+  await clickSwimmer(page, fy);
 }
 
 // Starts the analysis, then fires the page's own frame callback at exact 30 fps
@@ -250,7 +268,13 @@ async function installEngineSpies(page) {
     const mark = engine.markDistanceUnconfirmed;
     engine.markDistanceUnconfirmed = function (session, params) {
       const result = mark.call(this, session, params);
-      window.__marks.push({ reason: params.reason, sinceAtMs: params.sinceAtMs, trigger: params.evidence && params.evidence.trigger, ok: result.ok });
+      window.__marks.push({
+        reason: params.reason,
+        sinceAtMs: params.sinceAtMs,
+        trigger: params.evidence && params.evidence.trigger,
+        laneDeviation: params.evidence ? params.evidence.laneDeviation : undefined,
+        ok: result.ok
+      });
       return result;
     };
     const build = engine.buildReport;
@@ -265,9 +289,9 @@ async function installEngineSpies(page) {
 }
 
 // Mark a pre-start frame, install the spies, start the analysis and take over the frame clock.
-async function startScriptedAnalysis(page, trajectory) {
+async function startScriptedAnalysis(page, trajectory, laneFraction = 0.5) {
   await page.evaluate((name) => { window.__trajectory = name; }, trajectory);
-  await markPreStartFrame(page, 4.0);
+  await markPreStartFrame(page, 4.0, laneFraction);
   await installEngineSpies(page);
   await page.click("#raceAutoStartBtn");
   await page.waitForFunction(() => window.__rvfc !== null, null, { timeout: 30000 });
@@ -601,6 +625,297 @@ test.describe("race page: the video's end is passed to the controller (synthetic
     expect(await marksOf(page)).toEqual([]);
     expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
 
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// LANE REFERENCE (Chronos reliability, phase 3)
+// ===========================================================================
+//
+// The calibration click's vertical position, as a fraction of the VIDEO's
+// displayed height, becomes the controller's `referenceLaneY` (alongside the
+// pre-start frame's media time, from the same click). The page's controller is
+// module-scoped, so the lane reference is observed through its one visible
+// consequence: the scripted swimmer's nose is always at y = 0.5, so when the
+// lane gate refuses the wall reversal, the evidence handed to
+// ChronosEngine.markDistanceUnconfirmed() carries |0.5 - referenceLaneY| as
+// `laneDeviation`, which pins the reference to the pixel the user clicked.
+// The expected value is computed independently, inside the page, from the real
+// click event and the video element's own box. Synthetic video, scripted pose
+// and frame callbacks, exactly as above: this shows wiring and geometry, not
+// that the clicked point corresponds to anything about a real swimmer.
+
+const LANE_GATE_REASON = "wall-reversal-refused-by-lane-gate";
+
+// Records, from the real click event, the fraction of the video's rendered CONTENT height that was
+// clicked. Computed inside the page, independently of the page's own click handler, from the
+// element's box and the video's native size (object-fit: contain).
+async function recordClickedVideoFraction(page) {
+  await page.evaluate(() => {
+    window.__clickedFraction = null;
+    document.getElementById("raceCanvas").addEventListener("click", (event) => {
+      const v = document.getElementById("racePlayer");
+      const r = v.getBoundingClientRect();
+      const scale = Math.min(r.width / v.videoWidth, r.height / v.videoHeight);
+      const height = v.videoHeight * scale;
+      const top = r.top + (r.height - height) / 2;
+      window.__clickedFraction = (event.clientY - top) / height;
+    }, true);
+  });
+}
+
+test.describe("race page: the lane reference is the clicked position in the video frame", () => {
+  test.setTimeout(240000);
+
+  for (const [name, viewport, fraction] of [
+    ["narrow screen, upper part of the frame", { width: 390, height: 800 }, 0.2],
+    ["desktop, lower part of the frame", { width: 1280, height: 900 }, 0.8]
+  ]) {
+    test(`${name}: the reference equals the clicked fraction of the video height, so the swimmer at 0.50 is refused by the gate and distance is marked unconfirmed`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      const errors = await openRacePageWithVideo(page);
+      await recordClickedVideoFraction(page);
+      await startScriptedAnalysis(page, "turn", fraction);
+
+      const clicked = await page.evaluate(() => window.__clickedFraction);
+      expect(Math.abs(clicked - fraction)).toBeLessThan(0.02); // the click landed where it was aimed
+
+      await tickTo(page, 17.0);
+
+      const marks = await marksOf(page);
+      expect(marks).toHaveLength(1);
+      expect(marks[0].reason).toBe(LANE_GATE_REASON);
+      expect(marks[0].trigger).toBe("lane-gate-refusal");
+      // |nose.y (0.5) - referenceLaneY| with referenceLaneY the clicked fraction of the VIDEO's height.
+      // (Mapping against the overlay canvas, which is a few pixels taller, shifted this by up to ~0.02.)
+      expect(Math.abs(marks[0].laneDeviation - Math.abs(0.5 - clicked))).toBeLessThan(0.0005);
+
+      // Nothing is trusted, and the report says so.
+      const report = await lastReport(page);
+      expect(report.splits).toEqual([]);
+      expect(report.distanceConfidence).toMatchObject({ state: "unconfirmed", reason: LANE_GATE_REASON });
+      // The pre-start reference came from the same click and reached the same analysis.
+      expect(await page.locator("#racePipelineReport").innerText()).toMatch(/Pre-start reference frame: 4\.0\ds/);
+
+      expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+    });
+  }
+
+  test("CONTROL: a click at 40% of the video height is within the lane threshold of the swimmer: the turn is accepted and distance stays confirmed", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+    await startScriptedAnalysis(page, "turn", 0.4);
+
+    await tickTo(page, 17.0);
+
+    expect(await marksOf(page)).toEqual([]);
+    const report = await lastReport(page);
+    expect(report.splits.map((s) => [s.kind, s.distanceMeters])).toEqual([["turn", 25]]);
+    expect(report.distanceConfidence.state).toBe("confirmed");
+
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+
+  test("a click that lands outside the video content clears BOTH references, even after a valid calibration: nothing half-set remains and the analysis cannot start", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+
+    await markPreStartFrame(page, 4.0);
+    expect(await page.locator("#raceCalibrationStatus").innerText()).toMatch(/Pre-start reference frame: 4\.0\d s/);
+
+    // Calibrate again, this time clicking the strip at the bottom of the overlay that is not part of the video.
+    await page.click("#raceCalibrateBtn");
+    const canvas = page.locator("#raceCanvas");
+    const box = await canvas.boundingBox();
+    const videoBox = await page.locator("#racePlayer").boundingBox();
+    expect(box.height).toBeGreaterThan(videoBox.height); // the strip exists in this layout
+    await canvas.click({ position: { x: box.width * 0.5, y: box.height - 1 } });
+
+    const status = await page.locator("#raceCalibrationStatus").innerText();
+    expect(status).toMatch(/outside the video frame — lane reference not set/);
+    expect(status).not.toMatch(/Pre-start reference frame/);     // the earlier, valid mark was not kept
+
+    await page.click("#raceAutoStartBtn");
+    expect(await page.locator("#racePipelineStatus").innerText()).toMatch(/lane calibration/);
+    expect(await page.locator("#racePipelineReport").innerText()).toBe("");
+    expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
+
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// RESPONSIVE AND OFFSET LAYOUTS (Chronos reliability, phase 3A)
+// ===========================================================================
+//
+// The same coordinate contract (docs/RACE_PIPELINE_ARCHITECTURE.md section 7.1) must hold wherever the
+// page puts the video: at different viewport sizes, with the video offset from the viewport origin or
+// narrowed, and when its box has another aspect ratio than the picture (letterbox). Each scenario is
+// measured on the REAL page with REAL browser geometry. The injected CSS below is test-only: the first
+// replicates, verbatim in effect, the one rule the separate mobile-layout workstream applies to this
+// wrapper on phones (`#race .race-video-frame { width: 100% }`), which is not in this branch; the
+// others force offsets and an aspect-ratio mismatch the page does not produce by itself. Synthetic
+// video, scripted pose and frame callbacks, as above: this shows geometry and wiring, not that a
+// clicked point means anything about a real swimmer.
+
+async function measureLaneReference(page, { viewport, css = "", fraction }) {
+  if (viewport) await page.setViewportSize(viewport);
+  const errors = await openRacePageWithVideo(page);
+  if (css) await page.addStyleTag({ content: css });
+  await recordClickedVideoFraction(page);
+  await startScriptedAnalysis(page, "turn", fraction);
+  const clicked = await page.evaluate(() => window.__clickedFraction);
+  await tickTo(page, 17.0);
+  const marks = await marksOf(page);
+  return { errors, clicked, marks, fraction };
+}
+
+function expectReferencePinned({ clicked, marks, fraction }) {
+  expect(Math.abs(clicked - fraction)).toBeLessThan(0.02);             // the click landed where it was aimed
+  expect(marks).toHaveLength(1);
+  expect(marks[0].reason).toBe(LANE_GATE_REASON);
+  // |nose.y (0.5) - referenceLaneY| must equal |0.5 - the clicked fraction of the rendered content|.
+  expect(Math.abs(marks[0].laneDeviation - Math.abs(0.5 - clicked))).toBeLessThan(0.0005);
+}
+
+test.describe("race page: the lane reference follows the video's rendered content in every supported layout", () => {
+  test.setTimeout(240000);
+
+  const scenarios = [
+    ["desktop, video narrowed and offset from the viewport origin", { width: 1280, height: 900 },
+      "#race .race-video-frame { width: 45% !important; margin: 70px 0 0 120px !important; }", 0.8],
+    ["phone width with the mobile workstream's wrapper rule (width: 100%)", { width: 390, height: 800 },
+      "#race .race-video-frame { width: 100% !important; }", 0.2],
+    ["tablet width, video box taller than the picture (letterboxed, bars above and below)", { width: 820, height: 1000 },
+      "#racePlayer { height: 560px !important; }", 0.25],
+    ["desktop, video box much wider than the picture (pillarboxed, bars left and right)", { width: 1280, height: 900 },
+      "#racePlayer { height: 260px !important; }", 0.85]
+  ];
+  for (const [name, viewport, css, fraction] of scenarios) {
+    test(name + ": the reference equals the clicked fraction of the rendered content", async ({ page }) => {
+      const result = await measureLaneReference(page, { viewport, css, fraction });
+      expectReferencePinned(result);
+      expect(result.errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+    });
+  }
+
+  test("the SAME source point gives the same reference at two meaningfully different viewport sizes", async ({ page, context }) => {
+    const desktop = await measureLaneReference(page, { viewport: { width: 1280, height: 900 }, fraction: 0.15 });
+    const phonePage = await context.newPage();
+    const phone = await measureLaneReference(phonePage, { viewport: { width: 390, height: 800 }, fraction: 0.15 });
+    await phonePage.close();
+
+    expectReferencePinned(desktop);
+    expectReferencePinned(phone);
+    // Clicked at the same relative point of the source video, the two layouts (697 x 392 px against 168 x 94 px of
+    // video) must have produced the same lane reference, within the pixel rounding of the smaller one.
+    expect(Math.abs(desktop.marks[0].laneDeviation - phone.marks[0].laneDeviation)).toBeLessThan(0.012);
+    expect(Math.abs(desktop.clicked - phone.clicked)).toBeLessThan(0.012);
+  });
+});
+
+test.describe("race page: calibration clicks outside the picture are refused, and the rendered geometry matches the contract", () => {
+  test.setTimeout(240000);
+
+  test("a click in the letterbox bar above the picture is refused: no reference is recorded, the analysis cannot start", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const errors = await openRacePageWithVideo(page);
+    await page.addStyleTag({ content: "#racePlayer { height: 560px !important; }" });
+
+    await page.click("#raceCalibrateBtn");
+    const canvas = page.locator("#raceCanvas");
+    await canvas.scrollIntoViewIfNeeded();
+    const box = await canvas.boundingBox();
+    const content = await renderedContent(page);
+    expect(content.top - box.y).toBeGreaterThan(40);                                    // fixture sanity: the bar is real
+    await canvas.click({ position: { x: content.left + content.width / 2 - box.x, y: (content.top - box.y) / 2 } });
+
+    expect(await page.locator("#raceCalibrationStatus").innerText()).toMatch(/outside the video frame — lane reference not set/);
+    await page.click("#raceAutoStartBtn");
+    expect(await page.locator("#racePipelineStatus").innerText()).toMatch(/lane calibration/);
+    expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+
+  test("a click just inside the first and last row of the picture is accepted; one pixel outside is refused (real geometry)", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const errors = await openRacePageWithVideo(page);
+
+    const attempt = async (y) => {
+      await page.click("#raceCalibrateBtn");
+      await page.evaluate(async () => {
+        const v = document.getElementById("racePlayer");
+        await new Promise((resolve) => { v.addEventListener("seeked", () => resolve(), { once: true }); v.currentTime = 2; });
+      });
+      const canvas = page.locator("#raceCanvas");
+      await canvas.scrollIntoViewIfNeeded();
+      const box = await canvas.boundingBox();
+      const content = await renderedContent(page);
+      await canvas.click({ position: { x: content.left + content.width / 2 - box.x, y: content.top + y(content) - box.y } });
+      return page.locator("#raceCalibrationStatus").innerText();
+    };
+
+    // `y` is the click's offset below the TOP of the rendered picture, in CSS pixels.
+    expect(await attempt(() => 1)).toMatch(/Pre-start reference frame/);                            // 1 px inside the top edge
+    expect(await attempt((c) => c.height - 1)).toMatch(/Pre-start reference frame/);               // 1 px inside the bottom edge
+    expect(await attempt((c) => c.height + 1.5)).toMatch(/outside the video frame/);               // just below the picture: the overlay canvas's extra strip
+    expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
+  });
+
+  test("the page's real geometry satisfies the mapping contract: the click handler's inputs recover a known source point in every layout", async ({ page }) => {
+    const errors = await openRacePageWithVideo(page);
+    const layouts = [
+      { name: "desktop", viewport: { width: 1280, height: 900 }, css: "" },
+      { name: "tablet", viewport: { width: 820, height: 1000 }, css: "" },
+      { name: "phone", viewport: { width: 390, height: 800 }, css: "" },
+      { name: "phone, wrapper 100%", viewport: { width: 390, height: 800 }, css: "#race .race-video-frame { width: 100% !important; }" },
+      { name: "desktop, offset and narrowed", viewport: { width: 1280, height: 900 }, css: "#race .race-video-frame { width: 45% !important; margin: 70px 0 0 120px !important; }" },
+      { name: "letterboxed", viewport: { width: 1280, height: 900 }, css: "#racePlayer { height: 560px !important; }" },
+      { name: "pillarboxed", viewport: { width: 1280, height: 900 }, css: "#racePlayer { height: 260px !important; }" }
+    ];
+    for (const layout of layouts) {
+      await page.setViewportSize(layout.viewport);
+      await page.evaluate(() => document.getElementById("race-test-css")?.remove());
+      await page.evaluate((css) => { const s = document.createElement("style"); s.id = "race-test-css"; s.textContent = css; document.head.appendChild(s); }, layout.css);
+      await page.locator("#raceCanvas").scrollIntoViewIfNeeded();
+      const result = await page.evaluate(async () => {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const mod = await import("/src/race-pipeline/race-config.js");
+        const v = document.getElementById("racePlayer");
+        const c = document.getElementById("raceCanvas");
+        const r = v.getBoundingClientRect();
+        const cr = c.getBoundingClientRect();
+        const scale = Math.min(r.width / v.videoWidth, r.height / v.videoHeight);
+        const width = v.videoWidth * scale;
+        const height = v.videoHeight * scale;
+        const left = r.left + (r.width - width) / 2;
+        const top = r.top + (r.height - height) / 2;
+        let worst = 0;
+        let rejected = 0;
+        // 0.001 and 0.999 stand in for the edges: the exact corners are covered by the pure unit tests, and here the point
+        // is summed from viewport floats, which can land 1e-13 px outside the content and be (correctly) refused.
+        for (const fx of [0.001, 0.25, 0.5, 0.999]) {
+          for (const fy of [0.001, 0.2, 0.5, 0.8, 0.999]) {
+            // The viewport point at which source-frame fraction (fx, fy) is drawn, then exactly what the click handler passes.
+            const clientX = left + fx * width;
+            const clientY = top + fy * height;
+            const point = mod.racePipelineMapClickToNormalizedPoint({
+              clickX: clientX - r.left, clickY: clientY - r.top,
+              containerWidth: r.width, containerHeight: r.height,
+              videoNativeWidth: v.videoWidth, videoNativeHeight: v.videoHeight
+            });
+            if (point === null) { rejected += 1; continue; }
+            worst = Math.max(worst, Math.abs(point.x - fx), Math.abs(point.y - fy));
+          }
+        }
+        return { worst, rejected, canvasOriginMatchesVideo: Math.abs(cr.left - r.left) < 0.5 && Math.abs(cr.top - r.top) < 0.5, canvasCoversVideo: cr.width >= r.width - 0.5 && cr.height >= r.height - 0.5, videoBox: [Math.round(r.width), Math.round(r.height)], contentBox: [Math.round(width), Math.round(height)] };
+      });
+      expect(result.rejected, layout.name).toBe(0);
+      expect(result.worst, layout.name).toBeLessThan(1e-6);
+      // The overlay canvas shares the video's origin and covers it (it may extend a few pixels beyond it), which is why the
+      // video's own box, not the canvas's, is the reference for the mapping.
+      expect(result.canvasOriginMatchesVideo, layout.name).toBe(true);
+      expect(result.canvasCoversVideo, layout.name).toBe(true);
+    }
     expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
   });
 });

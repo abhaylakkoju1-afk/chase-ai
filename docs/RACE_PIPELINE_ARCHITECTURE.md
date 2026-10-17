@@ -902,7 +902,11 @@ new calibration primitive:
 - **Failure mode:** a click landing outside the actual video content
   (a letterbox bar) or before the video's native dimensions are known
   produces `null`, never a clamped or guessed point — calibration is
-  rejected and must be retried, and turn detection stays disabled with a
+  rejected and must be retried. A rejected click also clears any earlier
+  calibration (the lane position and the pre-start frame together), and the
+  page does not start the analysis without both (it reports the missing
+  "lane calibration"). A caller of the controller that supplies no
+  `referenceLaneY` at all gets turn detection disabled for that race, with a
   stable reason (`TURN_DETECTION_UNAVAILABLE_REASON`,
   `src/race-pipeline/controller.js`).
 - **Lifetime:** a calibration belongs to the current page/analysis
@@ -917,6 +921,119 @@ new calibration primitive:
   the same inputs; the calibration *value* is whatever the user clicked,
   which is inherently a one-time human input, not a re-derivable
   computation.
+
+**What the reference is, how it is checked, and what the lane gate can and cannot
+say (phase 3).**
+
+- **Coordinate and meaning.** `referenceLaneY` is a *normalized* vertical
+  position: the fraction of the video frame's height, measured from the top edge
+  (0) to the bottom edge (1), i.e. image coordinates with y pointing down, the same
+  space as MediaPipe's landmark `y` (the analysis canvas is the whole frame scaled
+  uniformly, `prepareRaceAnalysisCanvas()`, so a landmark's `y` is a fraction of the
+  full frame height, never of the viewport or of a letterboxed area). It is not
+  pixels, and no pixel value is stored anywhere. It is the `y` of the point the user
+  clicked on the swimmer, wherever on the swimmer that was, in the pre-start
+  (resting) pose.
+- **From a click to the reference: five coordinate systems, one conversion.**
+  `racePipelineMapClickToNormalizedPoint()` (`race-config.js`, a pure function)
+  does the arithmetic; the click handler in `index.html` supplies its inputs.
+  1. *Viewport:* the pointer event's `(clientX, clientY)`, CSS pixels from the
+     viewport's top-left.
+  2. *Element-local:* `(ex, ey) = (clientX − R.left, clientY − R.top)`, where `R` is
+     `video.getBoundingClientRect()`: the `<video>` element's own box, in the same
+     viewport pixels. Scrolling, the element's offset from the viewport origin, the
+     wrapper's width and the viewport size all cancel here, because both terms move
+     together.
+  3. *Rendered content:* the part of that box the picture actually fills. The video
+     is rendered with the browser's default `object-fit: contain` and
+     `object-position: 50% 50%`. With the native size `W × H` (`video.videoWidth`,
+     `videoHeight`, the displayed size after any rotation metadata) and the box
+     `w × h` (`R.width`, `R.height`): if `W/H > w/h` then `drawW = w`,
+     `drawH = w·H/W`, `offX = 0`, `offY = (h − drawH)/2`; otherwise `drawH = h`,
+     `drawW = h·W/H`, `offX = (w − drawW)/2`, `offY = 0`. For the page's normal layout
+     (`<video width="100%">`, height automatic) the box already has the video's
+     aspect ratio, so `off = 0` and the content is the whole box; the offsets are
+     non-zero only if something gives the box a different aspect ratio.
+  4. *Source pixels:* `(sx, sy) = (x·W, y·H)`. Derived for reasoning only; never
+     stored.
+  5. *Normalized frame coordinates:* `x = (ex − offX)/drawW`,
+     `y = (ey − offY)/drawH`. **This is the only representation that is stored**:
+     `calibrationPoint = {x, y}` and `referenceLaneY = y`.
+
+  *Invariant.* The same point of the source video gives the same `(x, y)` however
+  the page is laid out (viewport size, scroll position, element offset, wrapper
+  width, letterboxing), because every term is relative to the video's own current
+  box and size. *Rejection, not clamping.* A click outside the rendered content (in a
+  letterbox bar, or in the few-pixel strip the overlay canvas has below the inline
+  video), an unknown native size (metadata not loaded), or a non-finite or
+  non-positive input gives `null`: both the lane position and the pre-start frame
+  are cleared and the user is told the click landed outside the video frame. A
+  result is never clamped into range. The click is measured against the `<video>`
+  element's box and not the overlay canvas's: the canvas fills a wrapper that is a
+  few pixels taller than the inline video (a line-box gap), and measuring against it
+  shifted every reference up by about half that strip (≈ 0.005 of the frame height
+  on a desktop layout, ≈ 0.02 on a 390 px-wide screen; measured).
+- **Supported layouts, and what is not handled.** Supported: the page's normal
+  layout; any viewport width, including the phone layout that only changes the
+  wrapper's width (`#race .race-video-frame { width: 100% }`); any scroll position or
+  offset of the video; a box with a different aspect ratio than the video
+  (letterbox or pillarbox under `contain`); and a uniform CSS scale, since the box and
+  the click are then in the same viewport pixels. Not handled, and not detected:
+  `object-fit: cover`, `fill` or `scale-down`, a non-default `object-position`, a
+  rotation or skew transform, and an ancestor that clips the video. If a later layout
+  introduces one of these, the mapping must be extended and re-tested; until then a
+  calibration made under it would be wrong without any error.
+- **What it is compared with.** The turn assessment takes the swimmer's **nose**
+  `y` at the sample that opens the reversal's apex plateau (one sample, not
+  smoothed) and compares `|nose.y − referenceLaneY|` with `laneDeviationThreshold`
+  (**0.20 of the frame height**, strict `>`; a legacy value, provisional and not
+  validated on real footage). It is applied only to a *complete* wall reversal
+  (§7.4). The detector assumes the pool's length runs along the frame's horizontal
+  axis (wall zones are on `x`) and a lane's width along the vertical axis; a rotated,
+  portrait or diagonal framing, perspective that changes `y` along the pool, or
+  camera motion is not detected or compensated.
+- **Validation, in layers, with no substituted default.** The calibration builder
+  (`race-config.js`) produces `null` for a click that is non-finite or outside
+  `[0, 1]` and for an unreadable video position; `racePipelineDescribeMissingConfigFields()`
+  then reports "lane calibration" and the page does not start. The controller
+  (`validateConfig()`) independently refuses any `referenceLaneY` that is present but
+  not a number in `[0, 1]` (`invalid-reference-lane-y`), because the gate only
+  measures distance from the reference: before phase 3 a finite value outside the
+  frame was accepted, and a value just outside it (for example 1.1) admitted a
+  swimmer near the frame edge (`|0.95 − 1.1| = 0.15`) while one far outside refused
+  everything. An absent reference (`null`/`undefined`) is not an error at the
+  controller: turn detection is disabled for the race and
+  `diagnostics.turnDetectionAvailable` is `false` with
+  `TURN_DETECTION_UNAVAILABLE_REASON`; no lane position is ever substituted.
+- **Both-or-neither coupling (§7.3).** One calibration click records the lane
+  position and the pre-start frame's media time together, requires a paused video,
+  and a failed click or a newly selected video clears both. The controller refuses
+  to start without a valid `startReferenceMs`.
+- **What the gate can establish.** That, at the reversal's apex, the nose was
+  within 0.20 of the frame height of the clicked height (or was not, in which case
+  the reversal is refused and, if a required turn is outstanding, distance becomes
+  unconfirmed, §9.1). A required turn refused by the gate therefore never leaves
+  the downstream distance trusted: the next wall is not recorded one pool length
+  too early.
+- **What it cannot.** It does not prove that a turn occurred, that a wall was
+  touched, or that the landmark is accurate. It does not verify the click: the
+  user may click any part of the swimmer, and a swimmer on a block or standing in
+  the water at rest is not at the height at which they swim, so the reference is
+  approximate by construction. A reference that is wrong by less than the
+  threshold is accepted exactly like a perfect one, and the gate cannot tell them
+  apart; a reference that is wrong by more than the threshold refuses every
+  complete reversal, which is conservative (nothing wrong is trusted) but gives up
+  the race's turn labels. It is not wall-position calibration and not
+  frame-width-to-metres scale calibration; neither exists, and the 0.25/0.75 wall
+  zones and the distance model are unaffected by it.
+- **Remaining limitations.** The threshold and the single-sample nose comparison
+  are unvalidated. The UI does not tell the user which part of the swimmer to
+  click. The reference is a single static height; it does not follow the lane if
+  the camera moves or the swimmer changes lanes. Evidence is synthetic
+  (`test/race-pipeline/click-mapping.test.js`, `lane-calibration.test.js`,
+  `lane-gate-confidence.test.js`, and the browser tests in
+  `test/e2e/race-start-context.spec.js`, which measure the page's real rendered geometry): it shows the
+  logic and wiring on constructed inputs, not accuracy on real swimming video.
 
 ## 8. Event Contract
 

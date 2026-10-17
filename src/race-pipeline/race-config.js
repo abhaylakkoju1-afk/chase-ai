@@ -192,14 +192,18 @@ export function racePipelineDescribeMissingConfigFields(config) {
 // hasn't loaded). Stage 4D.7 §4: "if calibration cannot produce a valid
 // finite normalized Y value: reject calibration... do not fabricate a
 // value."
-export function racePipelineMapClickToNormalizedPoint({
-    clickX,
-    clickY,
-    containerWidth,
-    containerHeight,
-    videoNativeWidth,
-    videoNativeHeight
-} = {}) {
+export function racePipelineMapClickToNormalizedPoint(args) {
+    // Total over its input: a missing or non-object argument (null included, which
+    // a destructuring default would not catch) is "no usable click", never a throw.
+    const {
+        clickX,
+        clickY,
+        containerWidth,
+        containerHeight,
+        videoNativeWidth,
+        videoNativeHeight
+    } = args !== null && typeof args === "object" ? args : {};
+
     if (
         !isPositiveFiniteNumber(containerWidth) ||
         !isPositiveFiniteNumber(containerHeight) ||
