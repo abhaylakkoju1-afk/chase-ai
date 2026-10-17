@@ -62,7 +62,7 @@
 // file needs to patch.
 
 import { chronosAssessStart, START_ASSESSMENT_DEFAULTS } from "../chronos-engine/detectors/start-detector.js";
-import { chronosAssessTurn, TURN_ASSESSMENT_DEFAULTS } from "../chronos-engine/detectors/turn-detector.js";
+import { chronosAssessTurn, chronosAssessObservationGap, TURN_ASSESSMENT_DEFAULTS } from "../chronos-engine/detectors/turn-detector.js";
 
 export const START_DETECTOR_NAME = "start-detector-v1";
 export const TURN_DETECTOR_NAME = "turn-detector-v1";
@@ -200,6 +200,14 @@ export function racePipelineDetectStartCandidate(targetPoseSample, detectorState
 //      assessment reports "non-monotonic-timestamp". Reprocessing the same
 //      observations therefore cannot change the history or emit a candidate.
 //
+// OBSERVATION GAPS (Chronos reliability phase 2C). For every ACCEPTED sample
+// (never a refused duplicate/out-of-order one) the result also carries `gap`:
+// chronosAssessObservationGap()'s answer about the interval since the previous
+// usable observation — whether a turn COULD have been concealed in it. The
+// adapter only reports it; the controller decides what to do (it marks the
+// session's distance progression unconfirmed). It is computed against the
+// history BEFORE this sample is appended.
+//
 // turnPreviousCandidateAtMs is the APEX time of the last emitted candidate.
 // The detector examines only samples strictly after it, so the same wall
 // interaction cannot be reported twice; it is updated only when this call
@@ -208,7 +216,7 @@ export function racePipelineDetectStartCandidate(targetPoseSample, detectorState
 export function racePipelineDetectTurnCandidate(targetPoseSample, detectorState, config) {
     const sample = racePipelineBuildTurnDetectorSample(targetPoseSample);
     if (!sample) {
-        return { candidate: null, detectorState, assessment: null };
+        return { candidate: null, detectorState, assessment: null, gap: null };
     }
 
     const history = detectorState.turnRecentSamples;
@@ -217,9 +225,12 @@ export function racePipelineDetectTurnCandidate(targetPoseSample, detectorState,
         return {
             candidate: null,
             detectorState,
-            assessment: { state: "rejected", reason: "non-monotonic-timestamp", candidate: null, evidence: null }
+            assessment: { state: "rejected", reason: "non-monotonic-timestamp", candidate: null, evidence: null },
+            gap: null
         };
     }
+
+    const gap = chronosAssessObservationGap({ sample, recentSamples: history, config });
 
     const result = chronosAssessTurn({
         sample,
@@ -248,5 +259,5 @@ export function racePipelineDetectTurnCandidate(targetPoseSample, detectorState,
         turnPreviousCandidateAtMs: candidate ? candidate.atMs : detectorState.turnPreviousCandidateAtMs
     };
 
-    return { candidate, detectorState: nextDetectorState, assessment: result };
+    return { candidate, detectorState: nextDetectorState, assessment: result, gap };
 }

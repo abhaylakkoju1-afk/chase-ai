@@ -687,3 +687,121 @@ export function chronosAssessTurn({ sample, recentSamples, previousCandidateAtMs
 
     return turnAssessment("none", "no-wall-reversal", null, baseEvidence);
 }
+
+// ---------------------------------------------------------------------
+// OBSERVATION-GAP ASSESSMENT (Chronos reliability, phase 2C)
+// ---------------------------------------------------------------------
+//
+// PURPOSE. A wall turn the pose never shows (it is lost around a tumble, or
+// tracking drops) is simply not detected, and the distance label is a COUNT,
+// so every later turn would be labelled one pool length too early. This
+// function answers one narrow question about the interval between two
+// consecutive usable observations: COULD A TURN HAVE BEEN CONCEALED IN IT?
+// It never answers whether one WAS, how many, or what distance a later wall
+// contact represents — it does not use elapsed time, speed, the race distance
+// or an expected turn count to reason about that, and nothing here invents a
+// turn.
+//
+// THE RULE (exact). Given the newest usable sample and the most recent usable
+// sample before it, the interval is AMBIGUOUS when BOTH hold:
+//   1. the gap between them is longer than `maxSampleGapMs` (600 ms) — the
+//      very limit at which chronosAssessTurn() ends an observation run and
+//      refuses to join evidence across it; and
+//   2. at least one of the two bounding observations lies inside a wall zone
+//      (hip.x < wallThreshold or hip.x > 1 - wallThreshold, the SAME zone and
+//      strict comparison the turn assessment uses).
+// A gap with BOTH ends outside both zones is "harmless" for this purpose.
+// Samples that are not usable (malformed, low visibility, hip or nose
+// missing) are not observations: they make the gap longer, never shorter.
+//
+// WHY THIS IS CONSERVATIVE, AND WHERE IT IS NOT. A turn needs a wall visit. A
+// wall visit hidden between two observations that are both mid-pool would need
+// an excursion of at least twice the distance to the zone edge; SwimmerTracking
+// forwards a post-gap sample only if it matches the pre-gap motion (continuity
+// error <= 0.08) and gives the target up after 1.5 s (loss) and 5 s
+// (reacquisition), so a gap that long ends the analysis (ANALYSIS_DEGRADED)
+// rather than resuming. The zone (0.25) is wider than the ~0.09-0.15
+// frame-widths an ordinary swimmer covers in tracking's loss grace, so a turn
+// concealed by a gap tracking still bridges has an endpoint inside it. This is
+// a heuristic argument about the existing evidence, NOT a proof: it fails for
+// framing in which the zone is narrower than that distance (a zoomed camera),
+// and a mid-pool/mid-pool gap that hides a full excursion is not flagged. It
+// also flags harmless gaps next to a wall (for example the swimmer already
+// counted as having turned, pushing off underwater): by design, when the
+// evidence cannot tell a harmless gap from a concealed turn, it says
+// "possible".
+//
+// RESULT. { ambiguous, reason, evidence }:
+//   reason "gap-adjacent-to-wall-zone"  — ambiguous: true
+//   reason "gap-away-from-wall-zones"   — a long gap, both ends outside the zones
+//   reason "continuous"                 — no gap above the limit
+//   reason "no-previous-observation"    — nothing before this sample
+//   reason "current-sample-unusable" / "invalid-sample" — not an observation
+// `evidence.fromAtMs` is the last observation BEFORE the gap: the earliest
+// point at which a concealed turn could affect distance assignment.
+// Pure: no clock, DOM, session or module state.
+
+function wallZoneOf(x, wallThreshold) {
+    if (x < wallThreshold) return "near-zero";
+    if (x > 1 - wallThreshold) return "near-one";
+    return null;
+}
+
+/**
+ * @param {object} args
+ * @param {{atMs:number, hip:object, nose:object}} args.sample The newest sample.
+ * @param {Array<{atMs:number, hip:object, nose:object}>} args.recentSamples Prior
+ *   samples of the same target (any order; unusable and not-earlier entries ignored).
+ * @param {object} [args.config] Overrides for TURN_ASSESSMENT_DEFAULTS
+ *   (wallThreshold, maxSampleGapMs, minVisibility).
+ * @returns {{ambiguous:boolean, reason:string, evidence:object|null}}
+ */
+export function chronosAssessObservationGap({ sample, recentSamples, config } = {}) {
+    const cfg = { ...TURN_ASSESSMENT_DEFAULTS, ...(config || {}) };
+
+    if (!sample || !isFiniteNumber(sample.atMs)) {
+        return { ambiguous: false, reason: "invalid-sample", evidence: null };
+    }
+    const hip = extractLandmark(sample.hip);
+    const nose = extractLandmark(sample.nose);
+    if (!hip || !nose || Math.min(hip.visibility, nose.visibility) < cfg.minVisibility) {
+        return { ambiguous: false, reason: "current-sample-unusable", evidence: null };
+    }
+
+    let previous = null;
+    if (Array.isArray(recentSamples)) {
+        for (const entry of recentSamples) {
+            if (!entry || !isFiniteNumber(entry.atMs) || entry.atMs >= sample.atMs) continue;
+            const entryHip = extractLandmark(entry.hip);
+            const entryNose = extractLandmark(entry.nose);
+            if (!entryHip || !entryNose || Math.min(entryHip.visibility, entryNose.visibility) < cfg.minVisibility) continue;
+            if (previous === null || entry.atMs > previous.atMs) {
+                previous = { atMs: entry.atMs, x: entryHip.x };
+            }
+        }
+    }
+    if (previous === null) {
+        return { ambiguous: false, reason: "no-previous-observation", evidence: null };
+    }
+
+    const gapMs = sample.atMs - previous.atMs;
+    const beforeWallSide = wallZoneOf(previous.x, cfg.wallThreshold);
+    const afterWallSide = wallZoneOf(hip.x, cfg.wallThreshold);
+    const evidence = {
+        gapMs,
+        fromAtMs: previous.atMs,
+        toAtMs: sample.atMs,
+        beforeHipX: previous.x,
+        afterHipX: hip.x,
+        beforeWallSide,
+        afterWallSide
+    };
+
+    if (gapMs <= cfg.maxSampleGapMs) {
+        return { ambiguous: false, reason: "continuous", evidence };
+    }
+    if (beforeWallSide !== null || afterWallSide !== null) {
+        return { ambiguous: true, reason: "gap-adjacent-to-wall-zone", evidence };
+    }
+    return { ambiguous: false, reason: "gap-away-from-wall-zones", evidence };
+}

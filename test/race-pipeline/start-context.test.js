@@ -324,9 +324,14 @@ describe("start reference — invariants (synthetic)", () => {
         const twice = drive(freshController(2800), doubled).controller;
         assert.deepEqual(startEvents(twice), startEvents(once));
 
-        const snapshot = JSON.stringify(once.chronosSession);
+        // Replaying earlier frames rewinds time by > 1 s, which drives SwimmerTracking into terminal
+        // degradation; since phase 2C (follow-up) that records the race's distance as unconfirmed. The
+        // property under test is that the accepted start and event sequence are untouched, so everything
+        // except that one record is compared strictly.
+        const withoutConfidence = (session) => JSON.stringify({ ...session, distanceConfidence: null });
+        const snapshot = withoutConfidence(once.chronosSession);
         const replay = drive(once, [pose(1000, hipAt(1000)), pose(6360, hipAt(6360)), pose(7440, hipAt(7440))]).controller;
-        assert.equal(JSON.stringify(replay.chronosSession), snapshot);
+        assert.equal(withoutConfidence(replay.chronosSession), snapshot);
     });
 
     test("a rejected or ambiguous candidate never starts the session", () => {

@@ -787,7 +787,9 @@ all lie in the newest run; evidence cannot be joined across a gap (the pose was
 lost, or tracking dropped and reacquired, possibly a different swimmer), and an
 apex timed across a gap would be a guess. Low-visibility and malformed samples
 are not usable. Result: a dropout at the apex produces **no** turn, not a
-fabricated one (see §9.1 for what that does to later distance labels).
+fabricated one. The same interval is also what makes later distance labels
+untrustworthy; phase 2C marks the race's distance unconfirmed when such a gap
+touches a wall zone (§9.1).
 
 **Single-sample outliers.** An interior sample that departs from both
 neighbours, on the same side, by more than `spikeThreshold` (0.04) is ignored.
@@ -840,12 +842,17 @@ frame, and a walk-in to the blocks when the pre-start frame is marked after it.
 **Limitations.**
 - **Thresholds are provisional and unvalidated.** Detection on real footage is
   unmeasured.
-- **A missed turn is not detected as missed** and shifts later labels (§9.1).
+- **A missed turn is not detected as missed**, but a gap that could have concealed
+  one next to a wall marks the race's distance unconfirmed for the rest of the
+  race (§9.1, phase 2C): later turns are observations only, never trusted
+  distances. A reversal missed *without* any observation gap is a detection miss
+  and is not flagged.
 - **Static side-on camera framing the whole pool** is assumed. A panning,
   zoomed or end-on camera invalidates the wall zones.
 - **Pose loss around the turn means no turn.** Tumble turns often lose the pose;
-  expect missed turns there. A dropout longer than `maxSampleGapMs` at the apex,
-  or a loss tracking cannot recover (terminal `ANALYSIS_DEGRADED`), yields none.
+  expect missed turns there (and, by §9.1, unconfirmed distance afterwards). A
+  dropout longer than `maxSampleGapMs` at the apex, or a loss tracking cannot
+  recover (terminal `ANALYSIS_DEGRADED`), yields none.
 - A pause at the wall longer than ≈ 8 s (the window) yields no turn.
 - Apex time carries the plateau/sampling error above; slow swimmers (0.02 w/s)
   can have the apex ≈ 0.25 s early.
@@ -1041,32 +1048,154 @@ final split.
 counter; the detector adapter additionally never re-admits a sample whose
 timestamp is not newer than the newest it holds (§7.4).
 
-### 9.1 Missed turns (known limitation, UNRESOLVED design decision)
+### 9.1 Missed turns: conservative distance confidence (Chronos reliability, phase 2C)
 
-The distance label is a **count**: the Nth accepted turn is labelled
-N × `poolLengthMeters`. If a real wall contact is never detected — the pose is
-lost around a tumble turn, tracking drops, the recovery is not observed — nothing
-in the pipeline can know it was missed, and **every later turn is labelled one
-pool length too early**. Measured on the synthetic 100 m race in a 25 m pool,
-with the pose hidden from 20.5 s to 21.7 s (the first wall, real distance 25 m,
-reached at 21.17 s): the pipeline reports turns `25 m @ 36.72 s` and
-`50 m @ 52.32 s`, whose true distances are 50 m and 75 m. No turn or split is
-fabricated for the missed wall; the later ones are mislabelled.
+**The hazard.** The distance label is a **count**: the Nth accepted turn is
+labelled N × `poolLengthMeters`. A wall contact the pose never shows (lost around
+a tumble turn, tracking dropped) is simply not detected, and before phase 2C
+every later turn was then labelled one pool length too early. Measured on the
+synthetic 100 m race in a 25 m pool, pose hidden 20.5–21.7 s (the first wall,
+25 m, is reached at 21.17 s):
 
-A guard was tried and **removed**: requiring consecutive turns to alternate walls
-(and the first to be at the wall opposite the start). It catches a duplicate on
-the same wall, which the detector's fresh-approach rule already prevents, but
-for a missed turn it converted a one-length shift into a two-length shift and
-dropped a genuine turn, so it added state and an assumption for no measured
-benefit.
+| Run | Trusted turns | Confidence |
+|---|---|---|
+| before 2C, uninterrupted | 25 m @ 21,120 · 50 m @ 36,720 · 75 m @ 52,320 | — |
+| **before 2C, pose hidden** | **25 m @ 36,720 · 50 m @ 52,320** (true distances 50 m and 75 m) | — |
+| 2C, uninterrupted | 25 m @ 21,120 · 50 m @ 36,720 · 75 m @ 52,320 | confirmed |
+| **2C, pose hidden** | **none** | **unconfirmed since 20,400 ms** (resumed 22,080); the two later walls (near-zero apex 36,720, near-one apex 52,320) kept as observations only |
+| 2C, pose hidden 12.0–13.0 s (mid-pool) | 25 · 50 · 75 m, as uninterrupted | confirmed |
 
-Options for a future decision (none implemented; each changes behavior and needs
-approval): (a) after an unobserved gap *at a wall* (last seen approaching a wall,
-next seen moving away), stop recording turns for the rest of the race and say
-so; (b) derive distance from observed alternation between the two wall zones
-rather than counting turns; (c) accept the limitation and surface it. Until one
-is chosen, treat turn distance labels after any pose dropout near a wall as
-suspect.
+Across 300 seeded random synthetic races with random dropouts, the previous
+behavior mislabelled 53 trusted turns; with 2C, none (every trusted turn is the
+right wall at the right distance, none is trusted after the ambiguity).
+
+**The ambiguity rule (exact).** `chronosAssessObservationGap()`
+(`turn-detector.js`) is run by the detector adapter on every accepted sample and
+asks only *could a turn have been concealed between two usable observations?* It
+says yes when **both** hold: (1) the time since the previous usable observation
+is longer than `maxSampleGapMs` (600 ms) — the limit at which the turn assessment
+already ends an observation run — and (2) **either** bounding observation (the
+last before the gap, or the first after it) lies inside a wall zone
+(`x < 0.25` or `x > 0.75`, strict, the turn assessment's own zone). A gap with
+both ends outside both zones is harmless. Unusable samples (low visibility,
+missing hip/nose, malformed) are not observations: they lengthen a gap. A
+duplicate or out-of-order sample is refused before this check and is not an
+observation either. The rule uses no elapsed time (beyond the gap limit), speed,
+race distance or expected turn count, and never says whether a turn *was*
+concealed, how many, or what a later wall contact means.
+
+**Why it is conservative, and where it is not.** If the evidence cannot tell a
+harmless gap from a concealed turn, the answer is "possible". It therefore also
+flags harmless gaps beside a wall (for example the swimmer pushing off
+underwater right after a turn that *was* recorded). It does not flag a gap with
+both ends mid-pool. That is a heuristic over existing evidence, not a proof: a
+turn concealed in such a gap would need an excursion to a wall and back, which
+SwimmerTracking will not bridge (a post-gap sample must match the pre-gap motion
+within 0.08; the target is dropped after 1.5 s and reacquisition ends the
+analysis, `ANALYSIS_DEGRADED`, after 5 s), and the 0.25 zone is wider than the
+≈ 0.09–0.15 frame-widths an ordinary swimmer covers in tracking's loss grace. It
+**fails** for framing where the zone is narrower than that distance (a zoomed
+camera) and is not validated on real footage. Where tracking degrades
+terminally, nothing further is recorded, so nothing can be mislabelled — but the
+gap rule needs a sample *after* the gap, which then never arrives; that case is
+handled separately (below, "Terminal tracking").
+
+**Representation.** Chronos owns the state, because it owns event acceptance.
+`RaceSession.distanceConfidence` is `null` while distance is trusted and
+`{state: "unconfirmed", reason, sinceAtMs, resumedAtMs, evidence}` once it is
+not. `sinceAtMs` is the last observation **before** the gap — the earliest point
+a concealed turn could affect distance assignment; `resumedAtMs` the first
+delivered observation after it (SwimmerTracking may withhold frames after a
+reversal, so it can be later than the first frame after the hole). The reason the
+controller records is `possible-missed-turn-during-tracking-gap-near-wall`. It is
+set by `ChronosEngine.markDistanceUnconfirmed()` (running sessions only;
+idempotent — the **first** record is kept). The report always carries
+`distanceConfidence` (`confirmed` or `unconfirmed`, copied from the session) and
+a data-quality note. The controller mirrors it in `diagnostics.distanceConfidence`
+and keeps turn candidates seen afterwards in
+`diagnostics.unconfirmedTurnObservations` (apex time, confirmation time, wall side,
+confidence — **no distance**; at most 100). None of this is rendered in the UI.
+
+**Effect.** Once unconfirmed: the event adapter refuses every turn candidate
+(`distance-progression-unconfirmed`, before Chronos, counter and state untouched);
+Chronos independently refuses any *detector-sourced* turn, split or finish with
+the same reason (original session returned). So `confirmedDistanceMeters` — which
+now means "the last **trusted** distance" — stops advancing, no downstream split
+exists in the report (splits derive only from accepted events), and no trusted
+finish time can arise. The accepted start and every event accepted before the gap
+are untouched; raw observations and diagnostics are kept. **Manual events are
+unaffected** (a person supplies the distance), including a manual finish.
+
+**Recovery.** None, by design. There is no API that clears the state, and no
+event, tracking recovery, later wall contact, or elapsed time changes it. Re-
+establishing distance would require knowing how many turns were concealed, which
+the available evidence (two bounding positions) cannot establish without
+guessing. The degraded state lasts for the rest of the race; a new race (new
+analysis) starts fresh because the state lives in that race's session. No manual
+recovery UI exists.
+
+**Terminal tracking (phase 2C follow-up).** SwimmerTracking's
+`ANALYSIS_DEGRADED` is terminal (`tracking.js`: sustained ambiguity ≥ 1 s, or the
+5 s reacquisition window exhausted); afterwards no sample reaches a detector.
+Measured on the synthetic 100 m race, hiding the pose for ≥ ≈ 2 s at a wall ends
+in exactly this, and before the follow-up the report still read "confirmed" with
+its turn history incomplete (300 seeded random races: 33 of 39 degraded races
+were left unmarked). The controller (`applyTerminalTrackingTreatment`, called
+from `racePipelineProcessPoseSample` on both the degrading frame and every later
+`ok:false` frame) now marks distance unconfirmed with reason
+`analysis-ended-before-distance-confirmed` when **all** hold: the race has an
+accepted start; distance is not already unconfirmed (the first record is always
+kept); tracking is `ANALYSIS_DEGRADED`; and a required turn may be outstanding.
+Required turns are counted **only** from a valid configuration — pool length and
+race distance both valid, the distance a whole number of pool lengths — as the
+pool-length multiples strictly below the race distance; they are outstanding
+when the trusted counter `confirmedDistanceMeters` is below
+`distance − poolLength`. If everything required is already recorded (or the race
+has no turn, distance ≤ pool), degradation does not downgrade confidence. If the
+configuration cannot be counted the answer is "possible" and the mark is set
+(`evidence.requiredTurnsKnown: false`); the number of turns is never guessed.
+`sinceAtMs` is tracking's last confirmed observation (never earlier than the start;
+the start time if none is usable), `resumedAtMs` is `null`, `evidence` names the
+trigger, tracking status and degraded reason. Nothing is marked before the start,
+on a recoverable `TARGET_LOST`, or after a loss that recovered.
+
+A stream that ends while the target is still `TARGET_LOST` (recoverable until it
+ends) needs an end-of-stream signal the controller did not have:
+`racePipelineEndAnalysis(controller)` applies the same treatment (idempotent,
+pure, creates no event). The race page's video `ended` handler (`index.html`,
+`initRaceVideoEndedListener`) calls it, right after stopping the frame driver and
+before re-rendering the report and diagnostics, and applies the returned
+controller (`raceController = racePipelineEndAnalysis(raceController).controller`).
+Only the genuine `ended` event does: a pause, a seek or a recoverable loss does
+not. It is safe to repeat, and with no active analysis, before the start, or with
+nothing outstanding it changes nothing. The page's existing end-of-video message
+and rendering are unchanged. Covered in a real browser by
+`test/e2e/race-start-context.spec.js` (synthetic video, scripted pose).
+
+**Finish and PB (phase 2C follow-up).** A finish records a TIME; with distance
+unconfirmed it is kept exactly, but nothing verifies the swimmer covered the race
+distance. The report adds `confirmedDistanceMeters` (distance established by
+accepted turn/split events — at or before `sinceAtMs` when unconfirmed; never
+the finish's own distance and never the configured `distanceMeters`) and, when a
+finish exists, the note "finish time recorded (…) but the distance sequence is
+unverified: <reason>". `chronosComparePB()` returns
+`{comparable: false, reason: "distance-unconfirmed", isNewPb: false}` for such a
+report — before the no-PB branch, so it is never called a first PB, and ahead of
+event/course checks. Unfinished races still report `race-not-finished`;
+confirmed results compare as before. Finish-distance equality (a finish at 25 m of
+a 100 m race is accepted by Chronos, as before phase 2) is deliberately not
+enforced here: a separate contract decision.
+
+**Limitations.** Heuristic, unvalidated rule (above). A race can become
+unconfirmed on the first underwater turn in real footage, which is the intended
+conservative outcome: after it, only manual events can carry distance. A turn
+that is simply never seen *without* any gap (the swimmer is visible throughout
+but the reversal is not recognised) is not a gap and is not flagged; it is a
+detection miss, not a concealed one. Two ambiguous gaps keep only the first.
+
+A wall-alternation guard (consecutive turns must alternate walls, the first must
+be opposite the start) was tried earlier and **removed**: it turned a one-length
+shift into a two-length shift and dropped a genuine turn. It is not part of 2C.
 
 ## 10. Race Session Lifecycle
 
@@ -1347,7 +1476,7 @@ rules:
 | Target not selected (`UNSELECTED`) | `SwimmerTracking.observe()` returns `ok: false` — the frame is skipped for tracking/detector purposes; no candidate, no event |
 | Target lost / degraded (`TARGET_LOST`/`ANALYSIS_DEGRADED`) | `targetPoseSample` is `null` (or `observe()` itself is `ok: false` for `ANALYSIS_DEGRADED`) — nothing proceeds to the detector adapter for that frame; `status` remains available for the UI to reflect (a UI concern, not a pipeline-semantics one) |
 | Detector candidate rejected by Chronos | No `TimingEvent` is added; per §9, distance does not advance; the adapter does not retry or reinterpret |
-| Pose lost around a turn (a gap longer than `maxSampleGapMs` at the apex, or tracking lost) | No turn candidate (§7.4): an indeterminate turn is not guessed. Later turn labels may then be one pool length early (§9.1) |
+| Pose lost around a turn (a gap longer than `maxSampleGapMs` with an end in a wall zone) | No turn candidate (§7.4): an indeterminate turn is not guessed. The race's distance is marked **unconfirmed** from the last observation before the gap, permanently; later wall contacts are diagnostics only, and detector split/turn/finish events are refused (§9.1) |
 | Race distance missing, or not a whole number of pool lengths | Turn candidates are refused before Chronos with `race-distance-unknown` / `race-distance-not-multiple-of-pool-length` (§9) |
 | Wall contact beyond the race distance (clip runs past the finish) | Chronos rejects it (`turn-at-or-beyond-race-distance`); nothing advances and no finish is created (§9) |
 | Chronos event rejected for any other reason | Same as above — `recordEvent()`'s result is trusted verbatim (§8, §17 invariant 6) |
@@ -1376,12 +1505,16 @@ rules:
 8. **PB storage is never automatically mutated** (§12).
 9. **UI never performs authoritative timing math** — `ui-bindings.js` is
    presentation-only (§3).
-10. **The configured race distance bounds the turn progression** (§9):
+10. **A possibly concealed turn halts trusted distance** (§9.1): once an
+    observation gap beside a wall zone could have hidden a turn, no detector
+    assigns a distance for the rest of the race, and nothing silently restores
+    it. Manual events are unaffected.
+11. **The configured race distance bounds the turn progression** (§9):
     legal turns are the pool-length multiples strictly below it; Chronos
     refuses any event beyond it and any turn at it; the pipeline never
     clamps, relabels as a finish, or fabricates a finish at the end of the
     video.
-11. **Chase AI remains completely isolated.** No file under
+12. **Chase AI remains completely isolated.** No file under
     `src/chase-engine/*` is imported, modified, or depended upon by
     `race-pipeline`, `SwimmerTracking`, or Chronos, at any point in this
     architecture.
