@@ -1002,9 +1002,13 @@ say (phase 3).**
   frame was accepted, and a value just outside it (for example 1.1) admitted a
   swimmer near the frame edge (`|0.95 − 1.1| = 0.15`) while one far outside refused
   everything. An absent reference (`null`/`undefined`) is not an error at the
-  controller: turn detection is disabled for the race and
+  controller: the race may be analysed, but turn detection is disabled for it and
   `diagnostics.turnDetectionAvailable` is `false` with
-  `TURN_DETECTION_UNAVAILABLE_REASON`; no lane position is ever substituted.
+  `TURN_DETECTION_UNAVAILABLE_REASON`; no lane position is ever substituted. If the
+  race needs intermediate turns, its distance is marked **unconfirmed from the
+  accepted start** (phase 3B, §9.1), because with no turn detector the pipeline
+  cannot suspect a missed turn and "confirmed" would be false. A one-length race
+  (25 m in a 25 m pool, 50 m in a 50 m pool) needs no turn and is not marked.
 - **Both-or-neither coupling (§7.3).** One calibration click records the lane
   position and the pre-start frame's media time together, requires a paused video,
   and a failed click or a newly selected video clears both. The controller refuses
@@ -1372,6 +1376,41 @@ is then marked by the terminal rule); in the measured two- and three-frame
 cases tracking kept the glitch from becoming a reversal. A reversal after every
 required turn is already recorded (for example a swim-back from the finish wall)
 is not marked. Not validated on real footage.
+
+**Missing lane reference (phase 3B).** Turn detection needs a lane reference. With
+none (`referenceLaneY` `null` or omitted; the page cannot produce this, it
+refuses to start without calibration, but a direct caller of the controller can)
+the controller never runs the turn detector, so the gap, lane-gate and
+outside-zone rules above never run and no turn is ever proposed. Before this
+change such a race stayed "confirmed" ("no concealed turn suspected") with 0 of its
+required turns recorded, and a manual finish at the race distance was a comparable
+PB; the very same concealed gap that marks a race with a valid reference left it
+confirmed (measured, synthetic). Now `applyMissingLaneReferenceTreatment()`
+(`controller.js`) marks distance unconfirmed with reason
+`turn-detection-unavailable-no-lane-reference` when all of these hold: Chronos is
+running (an accepted start exists), no confidence record exists yet, the
+reference is absent, and a required turn is outstanding
+(`describeRequiredTurns()`, the same contract as the other treatments). The mark is
+made on the frame that accepts the start, so no turn can precede it; `sinceAtMs` is
+the accepted start (the estimated motion onset), `resumedAtMs` is `null`, and the
+evidence records the trigger, `turnDetectionAvailable: false`, the required-turn
+counts and `requiredTurnsKnown`. It uses the existing mark, state and
+first-record-kept behavior (an earlier gap, lane-gate, outside-zone or terminal
+record is never replaced and this one is never replaced by a later one); no new
+state, no default lane position, and no turn, split or finish is created.
+A one-length race has no required turn and is not marked; an uncountable
+configuration (unknown or non-multiple distance) is "possible", as for the other
+treatments, and is marked.
+
+Manual events are still accepted (a person supplies the distance), but they do not
+restore confidence: the state is permanent, `confirmedDistanceMeters` does not
+count events recorded after `sinceAtMs`, and `comparePB` returns
+`distance-unconfirmed`; the recorded final time itself is untouched. This does
+**not** mean that "confirmed" guarantees a complete turn history elsewhere: a race
+with a valid reference whose clip ends after some of its turns, or whose analysis
+ends while the target is still locked, remains "confirmed" (open contract
+questions, not addressed here). Verified on deterministic synthetic races only
+(`test/race-pipeline/missing-lane-reference.test.js`), not on real footage.
 
 **Limitations.** Heuristic, unvalidated rule (above). A race can become
 unconfirmed on the first underwater turn in real footage, which is the intended

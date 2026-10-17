@@ -69,7 +69,10 @@
 // detection is safely disabled for the whole race (never a fabricated/default
 // value), with the exact diagnostic reason Stage 4D.6 §9 requires; when
 // present but not a position in the frame (non-numeric, non-finite, or outside
-// [0, 1]) the analysis does not start (`invalid-reference-lane-y`).
+// [0, 1]) the analysis does not start (`invalid-reference-lane-y`). When the
+// reference is absent and the race has intermediate turns outstanding, distance
+// is marked unconfirmed from the accepted start (phase 3B,
+// applyMissingLaneReferenceTreatment).
 //
 // RACE METADATA NOTE: docs/RACE_PIPELINE_ARCHITECTURE.md §20's own Stage
 // Sequence lists "new stroke/distance/course form controls" as Stage
@@ -115,6 +118,12 @@ export const DISTANCE_LANE_GATE_REASON = "wall-reversal-refused-by-lane-gate";
 // zone), so a turn may have gone unrecorded (Chronos reliability, phase 2E). It
 // states a fact about the evidence, not that a turn occurred.
 export const DISTANCE_OUTSIDE_ZONE_REASON = "complete-reversal-outside-wall-zone";
+
+// The reason recorded when the race has intermediate turns outstanding but no
+// lane reference was supplied, so turn detection never runs (Chronos reliability,
+// phase 3B). Without it the pipeline is blind to every turn and could not
+// suspect a missed one, so "confirmed" would be a false statement.
+export const DISTANCE_NO_LANE_REFERENCE_REASON = "turn-detection-unavailable-no-lane-reference";
 
 // How many untrusted turn observations the diagnostics keep (oldest dropped).
 const MAX_UNCONFIRMED_TURN_OBSERVATIONS = 100;
@@ -355,6 +364,79 @@ function applyTerminalTrackingTreatment(controller, { streamEnded = false } = {}
         diagnostics: {
             ...controller.diagnostics,
             distanceConfidence: { state: "unconfirmed", reason: DISTANCE_ANALYSIS_ENDED_REASON, sinceAtMs, resumedAtMs: null }
+        }
+    };
+}
+
+/* MISSING LANE REFERENCE (Chronos reliability, phase 3B).
+
+   Turn detection needs a lane reference; without one runTurnDetection() returns
+   at once, so the gap, lane-gate and outside-zone safeguards never run and no
+   turn is ever proposed. That is correct for a race with no intermediate turn (a
+   one-length race), but for any other race the pipeline is simply blind to the
+   turns it requires, and reporting distance as "confirmed" ("no concealed turn
+   suspected") would be false.
+
+   So, once the race has an accepted start (Chronos is running), no distance
+   confidence record exists, there is no lane reference (null or omitted, both
+   normalised to null at start) and a required turn is outstanding, the distance
+   progression is marked UNCONFIRMED from the accepted start: the earliest point
+   at which a turn could matter, and the earliest point the session allows a mark.
+   Chronos then refuses detector-sourced turns/splits/finishes, the report shows
+   the state and the PB comparison is withheld. Manual events are still accepted
+   (a person supplies the distance) and cannot restore confidence.
+
+   The required turns are counted by describeRequiredTurns() - the same contract
+   as every other treatment - so a one-length race (25/25, 50/50) is not marked,
+   and an uncountable configuration (unknown distance) is "possible", never
+   silently "none". Idempotent, and the FIRST record of any kind is kept. Nothing
+   is fabricated: no turn, split, finish or default lane position. Not done before
+   the start (nothing has begun). */
+function applyMissingLaneReferenceTreatment(controller) {
+    const session = controller.chronosSession;
+    if (
+        !session ||
+        !controller.config ||
+        controller.config.referenceLaneY !== null ||
+        session.status !== "running" ||
+        session.distanceConfidence
+    ) {
+        return controller;
+    }
+
+    const startEvent = session.events.find((event) => event.type === "start");
+    if (!startEvent) {
+        return controller;
+    }
+
+    const { confirmedDistanceMeters, requiredTurns, requiredTurnsKnown, outstanding } = describeRequiredTurns(session, controller.eventAdapterState);
+    if (!outstanding) {
+        return controller;
+    }
+
+    const marked = ChronosEngine.markDistanceUnconfirmed(session, {
+        reason: DISTANCE_NO_LANE_REFERENCE_REASON,
+        sinceAtMs: startEvent.atMs,
+        resumedAtMs: null,
+        evidence: {
+            trigger: "no-reference-lane-y",
+            turnDetectionAvailable: false,
+            sinceBasis: "start",
+            confirmedDistanceMeters,
+            requiredTurns,
+            requiredTurnsKnown
+        }
+    });
+    if (!marked.ok) {
+        return controller;
+    }
+
+    return {
+        ...controller,
+        chronosSession: marked.session,
+        diagnostics: {
+            ...controller.diagnostics,
+            distanceConfidence: { state: "unconfirmed", reason: DISTANCE_NO_LANE_REFERENCE_REASON, sinceAtMs: startEvent.atMs, resumedAtMs: null }
         }
     };
 }
@@ -813,11 +895,11 @@ export function racePipelineProcessPoseSample(controller, poseSample, sampleGene
 
     if (!trackingResult.ok) {
         return {
-            controller: applyTerminalTrackingTreatment({
+            controller: applyTerminalTrackingTreatment(applyMissingLaneReferenceTreatment({
                 ...controller,
                 trackingSession: trackingResult.session,
                 diagnostics: { ...controller.diagnostics, lastTrackingStatus: trackingResult.session.status }
-            }),
+            })),
             processed: false,
             reason: trackingResult.reason
         };
@@ -840,10 +922,12 @@ export function racePipelineProcessPoseSample(controller, poseSample, sampleGene
         // detector, matching docs/SWIMMER_TRACKING_ARCHITECTURE.md §13
         // exactly. (If this frame left tracking terminally degraded, the
         // distance confidence is settled here: see applyTerminalTrackingTreatment.)
-        return { controller: applyTerminalTrackingTreatment(nextController), processed: true, reason: null };
+        return { controller: applyTerminalTrackingTreatment(applyMissingLaneReferenceTreatment(nextController)), processed: true, reason: null };
     }
 
     nextController = runStartDetection(nextController, targetPoseSample);
+    // Immediately after the start is accepted (phase 3B): before any turn could be proposed or accepted.
+    nextController = applyMissingLaneReferenceTreatment(nextController);
     nextController = runTurnDetection(nextController, targetPoseSample);
 
     return { controller: nextController, processed: true, reason: null };
