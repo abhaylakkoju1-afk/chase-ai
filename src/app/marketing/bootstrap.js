@@ -42,6 +42,12 @@
 
         ScrollTrigger.refresh();
 
+        /* The page scrolls inside <body>, not the window, and ScrollTrigger
+           only listens to the window. Touch scrolling therefore never
+           updated the triggers on phones (scroll-revealed sections stayed
+           hidden); forward body scrolls to ScrollTrigger. */
+        doc.body.addEventListener("scroll", ScrollTrigger.update, { passive: true });
+
     };
 
     if (document.readyState === "loading") {

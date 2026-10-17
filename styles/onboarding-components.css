@@ -1084,6 +1084,31 @@ body.light-mode .avoid-card h4 {
     color: #e63946;
 }
 
+/* Home feature section: .features-section stays #050505 in both themes,
+   but the global light rules (h2/h3 #111 !important, p .72 black, body
+   #111) turned its text dark-on-dark (~1.1:1). Keep the dark-mode text
+   values here, as the hero title does. */
+body.light-mode #homeFeatures .features-title {
+    color: #f2f7fa !important;
+}
+
+body.light-mode #homeFeatures .chase-showcase-header h2 {
+    color: #f3f7fa !important;
+}
+
+body.light-mode #homeFeatures .feature-card,
+body.light-mode #homeFeatures .feature-card h3 {
+    color: #ffffff !important;
+}
+
+body.light-mode #homeFeatures .feature-card p {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+body.light-mode #homeFeatures .chase-showcase-header p {
+    color: rgba(235, 242, 248, 0.48);
+}
+
 @media(max-width:900px) {
     .howto-grid, .howto-grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
     .req-grid { grid-template-columns: repeat(2, 1fr); }

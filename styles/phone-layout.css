@@ -1,0 +1,247 @@
+/* =========================================================
+   PHONE LAYOUT
+   Loaded last. Every rule sits inside a max-width query that reuses
+   the site's existing breakpoints (800px for the nav, which already
+   overflows below ~640px; 600px for page content), so desktop and
+   tablet-landscape layouts are untouched.
+
+   Chronos calibration: nothing here sets pointer-events, touch-action,
+   overflow, position or transforms on #raceCanvas or its wrapper. The
+   only change there is the wrapper's width on phones; the canvas still
+   fills the wrapper exactly, and the click mapping is relative to the
+   canvas's own bounds.
+   ========================================================= */
+
+/* ---------- Navigation: six buttons no longer fit in one row ---------- */
+@media (max-width: 800px) {
+    .nav,
+    body.light-mode .nav {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 8px;
+    }
+
+    .nav button,
+    body.light-mode .nav button {
+        padding: 10px 12px;
+        min-height: 40px;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 600px) {
+
+    /* ---------- Page card: reclaim width lost to 85% + 45px padding ---------- */
+    .glass {
+        width: auto;
+        margin: 16px 12px;
+        padding: 26px 18px;
+        border-radius: 22px;
+    }
+
+    /* ---------- Form fields: fixed 320px fields overflowed the card ---------- */
+    #profile input,
+    #profile select,
+    #profile textarea,
+    #dashboard input,
+    #dashboard select,
+    #race select {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .profile-right {
+        padding-left: 0;
+    }
+
+    /* Wall of Records: stack the three PB fields at full width */
+    #event,
+    #course,
+    #time {
+        width: 100%;
+        height: 56px;
+        margin-bottom: 10px;
+    }
+
+    .premium-upload {
+        max-width: 100%;
+    }
+
+    #fileName,
+    #raceFileName {
+        display: block;
+        margin: 10px 0 0;
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+        padding: 14px 22px;
+        font-size: 1rem;
+    }
+
+    /* Chronos: analysis controls full width, manual timer as a 2x2 grid */
+    #race .race-actions {
+        margin-top: 36px;
+    }
+
+    #race .race-actions .btn {
+        flex: 1 1 100%;
+    }
+
+    #race .race-manual-timer .race-actions .btn {
+        flex: 1 1 calc(50% - 6px);
+    }
+
+    /* War Room body map: the figure only fills ~half the SVG's viewBox,
+       so regions were 8–20px on phones. Scale the whole diagram uniformly
+       around the figure (same shapes, same relative layout, so no region
+       gains area at a neighbour's expense) and give it the wrapper's
+       padding. transform does not change layout height, so the wrapper's
+       vertical padding provides the room the scaled figure needs; the
+       wrapper already clips overflow, and taps hit-test through the
+       transform. Per-region tap analysis: the misses are thin regions
+       bordered by neighbours (supraspinatus, hip flexors, IT bands,
+       tibialis), so enlarging individual hit areas would steal taps from
+       those neighbours — uniform scale is the only safe lever. */
+    .body-map-wrapper {
+        padding: 72px 8px;
+    }
+
+    .body-view svg {
+        transform: scale(1.6);
+        transform-origin: 46% 42%;
+    }
+
+    /* War Room body-map view buttons were 35px tall */
+    .body-map-toggle button {
+        min-height: 40px;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    /* ---------- Chronos video: 70% of a phone card is too small to tap ----------
+       Width only. The canvas overlay (absolute, 100% x 100% of this wrapper)
+       is unchanged, so canvas and video keep the same relationship. */
+    #race .race-video-frame {
+        width: 100% !important;
+    }
+
+    /* ---------- Profile overview: the image box was squeezed to 4px ---------- */
+    .overview-card {
+        flex-direction: column;
+        align-items: center;
+        padding: 24px 18px;
+    }
+
+    .overview-card > div:first-child {
+        width: 100%;
+    }
+
+    .overview-title {
+        font-size: 24px;
+        margin-bottom: 18px;
+    }
+
+    .overview-name {
+        font-size: 30px;
+        overflow-wrap: anywhere;
+    }
+
+    .overview-info {
+        font-size: 18px;
+    }
+
+    .profile-upload-box {
+        flex-shrink: 0;
+        margin-top: 20px;
+    }
+
+    /* Profile stroke cards: "BREASTSTROKE" at 25px ran past the 220px card */
+    .stroke-name {
+        font-size: 21px;
+        letter-spacing: 0.5px;
+    }
+
+    /* ---------- Home hero title overflowed the screen ---------- */
+    .hero-title,
+    body.light-mode .hero-title {
+        font-size: clamp(2.2rem, 11vw, 5.3rem);
+        letter-spacing: 2px;
+    }
+
+    /* Home ecosystem heading: the 2.8rem floor made "ECOSYSTEM" ~400px
+       wide, which widened the page and allowed sideways scrolling */
+    .swimtics-ecosystem-intro .features-title {
+        font-size: clamp(1.6rem, 7.5vw, 2.8rem);
+        letter-spacing: -1px;
+    }
+
+    /* Entry gate: "SWIMTICS" at clamp(3rem, 15vw, 5rem) was clipped at
+       the right edge ("SWIMTIC") */
+    .entry-logo {
+        font-size: clamp(2rem, 10.5vw, 5rem);
+        letter-spacing: 2px;
+    }
+
+    /* ---------- Floating controls covered form fields ---------- */
+    #themeToggle {
+        bottom: 14px;
+        left: 12px;
+        padding: 10px 14px;
+        font-size: 0.8rem;
+        border-radius: 14px;
+    }
+
+    #aiCoachBtn {
+        right: 14px;
+        bottom: 14px;
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+
+    /* Coach ATLAS panel was a fixed 420px wide */
+    #aiCoachPanel {
+        width: 100%;
+        height: min(650px, 88vh);
+    }
+}
+
+/* ---------- Phone landscape (short screens) ----------
+   The entry gate's stacked content is taller than a ~360–390px-high
+   landscape screen, cropping its top label and bottom instruction.
+   Cap the logo by viewport height there; the Enter seal is unchanged. */
+@media (max-height: 500px) and (max-width: 950px) and (orientation: landscape) {
+    .entry-logo {
+        font-size: min(10vw, 15vh);
+    }
+
+    /* same compact floating controls and 40px map buttons as portrait */
+    #themeToggle {
+        bottom: 12px;
+        left: 12px;
+        padding: 10px 14px;
+        font-size: 0.8rem;
+        border-radius: 14px;
+    }
+
+    #aiCoachBtn {
+        right: 14px;
+        bottom: 12px;
+        width: 56px;
+        height: 56px;
+        font-size: 1.4rem;
+    }
+
+    #aiCoachPanel {
+        height: 100vh;
+    }
+
+    .body-map-toggle button {
+        min-height: 40px;
+    }
+}
