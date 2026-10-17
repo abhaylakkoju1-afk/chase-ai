@@ -1,0 +1,379 @@
+/* =========================================================
+   SITE NAV — brand (logo + SWIMTICS) left, Sign In + Tools right
+   Reuses existing site values: the cyan-tinted glass bar, Michroma
+   for the wordmark (as .hero-title), Exo 2 for nav labels (as the
+   old .nav buttons), the .btn cyan→blue gradient, and the cream glass
+   used by light mode. Loaded after phone-layout.css.
+   ========================================================= */
+
+.site-nav {
+    position: relative;
+    z-index: 9999;                 /* same stacking as the old .nav: above pages, below the entry gate */
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    min-height: 74px;              /* the old bar's height, so Home content does not move */
+    padding: 10px clamp(16px, 4vw, 48px);
+    box-sizing: border-box;
+
+    background:
+        linear-gradient(180deg,
+            rgba(4, 14, 30, 0.88),
+            rgba(2, 8, 20, 0.80));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    border-bottom: 1px solid rgba(0, 217, 255, 0.14);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* While the entry gate is up the bar sits behind it; keep it out of the
+   Tab order too (same gate-state pattern as the floating controls in
+   entry-gate-motion.css). It becomes visible the moment enterSwimtics()
+   adds .exit, so it is revealed under the fading gate as before. */
+#entryGate:not(.exit) ~ .site-nav {
+    visibility: hidden;
+}
+
+/* reset the generic button look for every nav control */
+.site-nav button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    margin: 0;
+    cursor: pointer;
+}
+
+.site-nav button:focus-visible {
+    outline: 2px solid #00d9ff;
+    outline-offset: 3px;
+}
+
+/* ---------- Brand ---------- */
+.site-nav-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    padding: 4px 6px 4px 0;
+    border-radius: 12px;
+    min-width: 0;
+}
+
+/* favicon.png is a 1254×1254 square with the artwork in its middle band:
+   crop to it rather than shrinking the whole square */
+.site-nav-logo {
+    display: block;
+    width: 62px;
+    height: 34px;
+    object-fit: cover;
+    object-position: 50% 52%;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 8px rgba(0, 170, 255, 0.35));
+}
+
+.site-nav-name {
+    font-family: 'Michroma', sans-serif;
+    font-size: 1.15rem;
+    letter-spacing: 4px;
+    color: #f4f8fb;
+    text-shadow:
+        0 0 10px rgba(0, 191, 255, 0.35),
+        0 0 22px rgba(0, 140, 255, 0.2);
+    white-space: nowrap;
+}
+
+/* ---------- Right-hand actions ---------- */
+.site-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.site-nav-signin,
+.site-nav-tools-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 14px;
+
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+/* Sign In: the site's primary .btn gradient, compact */
+.site-nav .site-nav-signin {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.25), rgba(0, 120, 255, 0.35));
+    border: 1px solid rgba(0, 217, 255, 0.35);
+}
+
+.site-nav .site-nav-signin:hover {
+    box-shadow: 0 0 18px rgba(0, 217, 255, 0.3);
+}
+
+/* Tools: quiet glass button */
+.site-nav .site-nav-tools-toggle {
+    color: rgba(243, 247, 250, 0.92);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.site-nav .site-nav-tools-toggle:hover,
+.site-nav .site-nav-tools-toggle[aria-expanded="true"] {
+    color: #fff;
+    border-color: rgba(0, 217, 255, 0.45);
+    background: rgba(0, 217, 255, 0.08);
+}
+
+.site-nav-chevron {
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.25s ease;
+}
+
+.site-nav-tools-toggle[aria-expanded="true"] .site-nav-chevron {
+    transform: translateY(2px) rotate(-135deg);
+}
+
+/* ---------- Tools menu ---------- */
+.site-nav-tools {
+    position: relative;
+}
+
+.site-nav-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+
+    width: 240px;
+    max-width: calc(100vw - 24px);
+    margin: 0;
+    padding: 8px;
+    list-style: none;
+    box-sizing: border-box;
+
+    background: linear-gradient(135deg, rgba(10, 18, 45, 0.97), rgba(5, 10, 30, 0.98));
+    border: 1px solid rgba(0, 217, 255, 0.18);
+    border-radius: 16px;
+    box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.45),
+        0 0 30px rgba(0, 217, 255, 0.08);
+}
+
+.site-nav-menu[hidden] {
+    display: none;
+}
+
+.site-nav-menu button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 10px;
+    text-align: left;
+
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.98rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: rgba(243, 247, 250, 0.9);
+
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.site-nav-menu button:hover,
+.site-nav-menu button:focus-visible {
+    background: rgba(0, 217, 255, 0.1);
+    color: #fff;
+}
+
+/* the generic light-mode button hover lift would make menu items jump */
+.site-nav button:hover {
+    transform: none;
+}
+
+/* ---------- Light mode: the existing cream glass ---------- */
+body.light-mode .site-nav {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 244, 232, 0.86));
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.06);
+}
+
+body.light-mode .site-nav-name {
+    color: #111;
+    text-shadow: none;
+}
+
+body.light-mode .site-nav .site-nav-signin {
+    color: #fff;
+    background: linear-gradient(135deg, #0aa7e6, #0062d6);
+    border-color: transparent;
+}
+
+body.light-mode .site-nav .site-nav-signin:hover {
+    box-shadow: 0 8px 20px rgba(0, 98, 214, 0.25);
+}
+
+body.light-mode .site-nav .site-nav-tools-toggle {
+    color: #111;
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-mode .site-nav .site-nav-tools-toggle:hover,
+body.light-mode .site-nav .site-nav-tools-toggle[aria-expanded="true"] {
+    color: #0062d6;
+    border-color: rgba(0, 98, 214, 0.35);
+    background: #fff;
+}
+
+body.light-mode .site-nav-menu {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 244, 232, 0.97));
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
+}
+
+body.light-mode .site-nav-menu button {
+    color: #111;
+}
+
+body.light-mode .site-nav-menu button:hover,
+body.light-mode .site-nav-menu button:focus-visible {
+    background: rgba(0, 98, 214, 0.08);
+    color: #0062d6;
+}
+
+body.light-mode .site-nav button:hover {
+    box-shadow: none;
+}
+
+body.light-mode .site-nav .site-nav-signin:hover {
+    box-shadow: 0 8px 20px rgba(0, 98, 214, 0.25);
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 600px) {
+    .site-nav {
+        min-height: 64px;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    .site-nav-brand {
+        gap: 8px;
+    }
+
+    .site-nav-logo {
+        width: 40px;
+        height: 22px;
+    }
+
+    .site-nav-name {
+        font-size: 0.82rem;
+        letter-spacing: 2px;
+    }
+
+    .site-nav-actions {
+        gap: 6px;
+    }
+
+    .site-nav-signin,
+    .site-nav-tools-toggle {
+        padding: 0 12px;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+    }
+
+    /* the Tools button sits 12px from the right edge, so a right-aligned
+       menu of at most 100vw - 24px always stays inside the viewport */
+    .site-nav-menu {
+        width: min(260px, calc(100vw - 24px));
+    }
+
+    /* Keep page content where it was. The previous phone bar wrapped to
+       two rows (107px); this one-row bar is 65px. Give back the 42px below
+       it so content positions are unchanged:
+       - Home: as a black top border on #home, continuing the hero video's
+         own black letterbox (a margin would show a blank strip of page
+         background in light mode). content-box keeps the hero's 100vh.
+       - Other pages: on the first .glass card (16px phone margin + 42px).
+         The #analyzer/#profile margin-top: 0 !important rules rule out
+         putting it on the page itself. */
+    .site-nav ~ #home.page {
+        border-top: 42px solid #000;
+        box-sizing: content-box !important;
+    }
+
+    .site-nav ~ .page > .glass:first-child {
+        margin-top: 58px;
+    }
+}
+
+/* narrow phones (~360px): keep logo, name and both actions on one row */
+@media (max-width: 380px) {
+    .site-nav-brand {
+        gap: 6px;
+    }
+
+    .site-nav-logo {
+        width: 36px;
+        height: 20px;
+    }
+
+    .site-nav-name {
+        font-size: 0.74rem;
+        letter-spacing: 1px;
+    }
+
+    .site-nav-signin,
+    .site-nav-tools-toggle {
+        padding: 0 10px;
+    }
+}
+
+/* very narrow phones (~320px) */
+@media (max-width: 340px) {
+    .site-nav {
+        padding: 8px 10px;
+    }
+
+    .site-nav-logo {
+        width: 32px;
+        height: 18px;
+    }
+
+    .site-nav-name {
+        font-size: 0.64rem;
+        letter-spacing: 1px;
+    }
+
+    .site-nav-actions {
+        gap: 4px;
+    }
+
+    .site-nav-signin,
+    .site-nav-tools-toggle {
+        padding: 0 6px;
+        font-size: 0.74rem;
+        gap: 6px;
+    }
+}

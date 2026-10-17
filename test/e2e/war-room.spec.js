@@ -20,10 +20,23 @@ async function dismissEntryGate(page) {
   await entryGate.waitFor({ state: "hidden" });
 }
 
+/*
+ * Navigate the way a user does with the site nav: Home is the brand
+ * (logo + SWIMTICS) button; every other page is in the Tools menu.
+ */
+async function navigateTo(page, id) {
+  if (id === "home") {
+    await page.locator(".site-nav-brand").click();
+    return;
+  }
+  await page.locator("#siteNavToolsButton").click();
+  await page.locator(`#siteNavToolsMenu button[onclick="showPage('${id}')"]`).click();
+}
+
 async function openWarRoom(page) {
   await page.goto("/");
   await dismissEntryGate(page);
-  await page.locator("button[onclick=\"showPage('dashboard')\"]").click();
+  await navigateTo(page, "dashboard");
   await expect(page.locator("#dashboard")).toBeVisible();
 }
 

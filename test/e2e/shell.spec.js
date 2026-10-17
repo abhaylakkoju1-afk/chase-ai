@@ -26,6 +26,19 @@ async function dismissEntryGate(page) {
   await entryGate.waitFor({ state: "hidden" });
 }
 
+/*
+ * Navigate the way a user does with the site nav: Home is the brand
+ * (logo + SWIMTICS) button; every other page is in the Tools menu.
+ */
+async function navigateTo(page, id) {
+  if (id === "home") {
+    await page.locator(".site-nav-brand").click();
+    return;
+  }
+  await page.locator("#siteNavToolsButton").click();
+  await page.locator(`#siteNavToolsMenu button[onclick="showPage('${id}')"]`).click();
+}
+
 test.describe("Entry gate", () => {
   test("clicking Enter dismisses the gate and unblocks the shell", async ({ page }) => {
     await page.goto("/");
@@ -43,12 +56,12 @@ test.describe("Entry gate", () => {
 
 test.describe("Navigation", () => {
   const destinations = [
-    { id: "analyzer", label: "Chase AI" },
+    { id: "analyzer", label: "Chase" },
     { id: "pb", label: "Wall of Records" },
-    { id: "race", label: "Chronos Engine" },
-    { id: "profile", label: "Profile" },
+    { id: "race", label: "Chronos" },
     { id: "dashboard", label: "War Room" },
-    { id: "home", label: "Home" },
+    { id: "profile", label: "Profile" },
+    { id: "home", label: "SWIMTICS (Home)" },
   ];
 
   for (const { id, label } of destinations) {
@@ -56,7 +69,7 @@ test.describe("Navigation", () => {
       await page.goto("/");
       await dismissEntryGate(page);
 
-      await page.locator(`button[onclick="showPage('${id}')"]`).click();
+      await navigateTo(page, id);
 
       await expect(page.locator(`#${id}`)).toBeVisible();
 
@@ -77,11 +90,63 @@ test.describe("Navigation", () => {
   }
 });
 
+test.describe("Site nav Tools menu", () => {
+  test("lists the five tools in order and is collapsed by default", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+
+    const toggle = page.locator("#siteNavToolsButton");
+    const menu = page.locator("#siteNavToolsMenu");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(menu).toBeHidden();
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(menu.locator("button")).toHaveText([
+      "Chase", "Wall of Records", "Chronos", "War Room", "Profile",
+    ]);
+  });
+
+  test("closes on Escape (returning focus), on outside click and after choosing a page", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+
+    const toggle = page.locator("#siteNavToolsButton");
+    const menu = page.locator("#siteNavToolsMenu");
+
+    await toggle.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(menu).toBeVisible();
+    await expect(menu.locator("button").first()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    await expect(toggle).toBeFocused();
+
+    await toggle.click();
+    await page.locator("#home").click({ position: { x: 20, y: 300 } });
+    await expect(menu).toBeHidden();
+
+    await navigateTo(page, "race");
+    await expect(menu).toBeHidden();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator("#race")).toBeVisible();
+  });
+
+  test("Sign In opens the Profile page (no authentication yet)", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+
+    await page.locator(".site-nav-signin").click();
+    await expect(page.locator("#profile")).toBeVisible();
+    await expect(page.locator("#home")).toBeHidden();
+  });
+});
+
 test.describe("PB tracker", () => {
   test("adding a PB shows it in the list and persists it to localStorage", async ({ page }) => {
     await page.goto("/");
     await dismissEntryGate(page);
-    await page.locator("button[onclick=\"showPage('pb')\"]").click();
+    await navigateTo(page, "pb");
 
     await page.locator("#event").selectOption("Freestyle 50m");
     await page.locator("#course").selectOption("Short Course");
@@ -115,7 +180,7 @@ test.describe("PB tracker", () => {
 
     await page.goto("/");
     await dismissEntryGate(page);
-    await page.locator("button[onclick=\"showPage('pb')\"]").click();
+    await navigateTo(page, "pb");
 
     const items = page.locator("#pbList .pb-item");
     await expect(items).toHaveCount(1);
@@ -145,7 +210,7 @@ test.describe("Profile", () => {
 
     await page.goto("/");
     await dismissEntryGate(page);
-    await page.locator("button[onclick=\"showPage('profile')\"]").click();
+    await navigateTo(page, "profile");
 
     await expect(page.locator("#name")).toHaveValue(seededProfile.name);
 

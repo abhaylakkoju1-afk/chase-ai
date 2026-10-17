@@ -51,6 +51,7 @@ gtag('config', 'G-VSLDBW2PYM');
     <link rel="stylesheet" href="styles/ecosystem-showcase.css">
     <link rel="stylesheet" href="styles/onboarding-components.css">
     <link rel="stylesheet" href="styles/phone-layout.css">
+    <link rel="stylesheet" href="styles/site-nav.css">
 
 </head>
 
@@ -158,15 +159,34 @@ gtag('config', 'G-VSLDBW2PYM');
 
 
 
-    <!-- NAV -->
-    <div class="nav">
-        <button onclick="showPage('home')">Home</button>
-        <button onclick="showPage('analyzer')">Chase AI</button>
-        <button onclick="showPage('pb')">Wall of Records</button>
-        <button onclick="showPage('race')">Chronos Engine</button>
-        <button onclick="showPage('profile')">Profile</button>
-        <button onclick="showPage('dashboard')">War Room</button>
-    </div>
+    <!-- NAV (behaviour: src/app/ui/site-nav.js; styles: styles/site-nav.css) -->
+    <nav class="site-nav" aria-label="Main">
+        <button type="button" class="site-nav-brand" onclick="showPage('home')" aria-label="SWIMTICS — Home">
+            <img class="site-nav-logo" src="favicon.png?v=2" alt="" width="48" height="26">
+            <span class="site-nav-name">SWIMTICS</span>
+        </button>
+
+        <div class="site-nav-actions">
+            <!-- Sign-in is the next phase; no working login exists yet, so this opens Profile -->
+            <button type="button" class="site-nav-signin" data-page="profile">Sign In</button>
+
+            <div class="site-nav-tools">
+                <button type="button" class="site-nav-tools-toggle" id="siteNavToolsButton"
+                    aria-haspopup="true" aria-expanded="false" aria-controls="siteNavToolsMenu">
+                    Tools
+                    <span class="site-nav-chevron" aria-hidden="true"></span>
+                </button>
+
+                <ul class="site-nav-menu" id="siteNavToolsMenu" aria-labelledby="siteNavToolsButton" hidden>
+                    <li><button type="button" onclick="showPage('analyzer')">Chase</button></li>
+                    <li><button type="button" onclick="showPage('pb')">Wall of Records</button></li>
+                    <li><button type="button" onclick="showPage('race')">Chronos</button></li>
+                    <li><button type="button" onclick="showPage('dashboard')">War Room</button></li>
+                    <li><button type="button" onclick="showPage('profile')">Profile</button></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
     <div id="authModal" class="auth-modal">
         <div class="auth-box">
@@ -3126,6 +3146,7 @@ window.addEventListener(
     <script src="src/app/pages/war-room.js"></script>
     <script src="src/app/pages/theme.js"></script>
     <script src="src/app/ui/home-parallax.js"></script>
+    <script src="src/app/ui/site-nav.js"></script>
 
     <!-- =========================================================
          RACE PIPELINE — Stage 4D.6/4D.7 integration.
