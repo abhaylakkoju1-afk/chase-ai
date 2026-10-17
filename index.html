@@ -3392,11 +3392,19 @@ window.addEventListener(
 
                 const referenceMs = racePipelineStartReferenceMsFromMediaTime(video.currentTime);
                 const rect = canvas.getBoundingClientRect();
+                /* The click is mapped against the VIDEO element's own box, not the
+                   overlay canvas's: the canvas fills its wrapper, which is a few
+                   pixels taller than the inline <video> (line-box gap), and that
+                   strip is not video content. Mapping against the canvas box would
+                   treat it as symmetric letterboxing and shift the lane reference
+                   by about half the strip (up to ~0.02 of the frame height on a
+                   narrow screen). */
+                const videoRect = video.getBoundingClientRect();
                 const point = racePipelineMapClickToNormalizedPoint({
-                    clickX: event.clientX - rect.left,
-                    clickY: event.clientY - rect.top,
-                    containerWidth: rect.width,
-                    containerHeight: rect.height,
+                    clickX: event.clientX - videoRect.left,
+                    clickY: event.clientY - videoRect.top,
+                    containerWidth: videoRect.width,
+                    containerHeight: videoRect.height,
                     videoNativeWidth: video.videoWidth,
                     videoNativeHeight: video.videoHeight
                 });

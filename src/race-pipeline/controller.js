@@ -64,10 +64,12 @@
 // this value anywhere in the codebase (the only prior art, index.html's
 // dead laneCenterY-from-first-frame heuristic, is explicitly flagged as
 // a limitation to avoid, not a pattern to copy). This controller treats
-// referenceLaneY as caller-supplied, optional configuration: when finite,
-// turn detection runs; when absent, turn detection is safely disabled for
-// the whole race (never a fabricated/default value), with the exact
-// diagnostic reason Stage 4D.6 §9 requires.
+// referenceLaneY as caller-supplied, optional configuration: when finite and
+// inside the normalized frame ([0, 1]), turn detection runs; when absent, turn
+// detection is safely disabled for the whole race (never a fabricated/default
+// value), with the exact diagnostic reason Stage 4D.6 §9 requires; when
+// present but not a position in the frame (non-numeric, non-finite, or outside
+// [0, 1]) the analysis does not start (`invalid-reference-lane-y`).
 //
 // RACE METADATA NOTE: docs/RACE_PIPELINE_ARCHITECTURE.md §20's own Stage
 // Sequence lists "new stroke/distance/course form controls" as Stage
@@ -217,10 +219,16 @@ function validateConfig(config) {
     ) {
         return "invalid-distance-meters";
     }
+    // referenceLaneY is a normalized frame position (fraction of the frame
+    // height, 0 = top edge, 1 = bottom edge): anything finite but outside [0, 1]
+    // is not a position in the frame. It is refused rather than used, because
+    // the lane gate only measures distance from the reference: a value just
+    // outside the frame (say 1.1) would still admit a swimmer near the frame
+    // edge, silently turning a bad calibration into a permissive gate.
     if (
         config.referenceLaneY !== null &&
         config.referenceLaneY !== undefined &&
-        !isFiniteNumber(config.referenceLaneY)
+        (!isFiniteNumber(config.referenceLaneY) || config.referenceLaneY < 0 || config.referenceLaneY > 1)
     ) {
         return "invalid-reference-lane-y";
     }
