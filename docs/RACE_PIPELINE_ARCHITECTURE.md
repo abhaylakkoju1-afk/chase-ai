@@ -766,10 +766,10 @@ candidate.
 
 | State | Reasons | Meaning |
 |---|---|---|
-| `none` | `insufficient-history`, `no-wall-reversal` | no wall interaction to report (including a rest-then-departure at a wall: no approach; and reversals in mid-pool) |
+| `none` | `insufficient-history`, `no-wall-reversal` | no wall interaction to report (including a rest-then-departure at a wall: no approach; and reversals in mid-pool). A COMPLETE reversal whose apex is outside the wall zone also reads `none` here; it is reported separately by `chronosAssessReversalOutsideWallZone()` (§9.1, phase 2E) |
 | `plausible` | `awaiting-recovery`, `recovery-not-sustained` | an approach to a wall zone is under way, or a recovery has begun, and is not yet confirmed |
 | `confirmed` | `wall-reversal` | approach + apex + sustained recovery |
-| `rejected` | `invalid-sample`, `low-visibility-sample`, `missing-reference-lane-y`, `invalid-earliest-apex`, `lane-deviation`, and (from the adapter) `non-monotonic-timestamp` | a hard gate failed |
+| `rejected` | `invalid-sample`, `low-visibility-sample`, `missing-reference-lane-y`, `invalid-earliest-apex`, `lane-deviation`, and (from the adapter) `non-monotonic-timestamp` | a hard gate failed. `lane-deviation` is returned only for a COMPLETE reversal (apex, approach and sustained recovery all observed) whose apex is outside the lane; the controller marks distance unconfirmed for it (§9.1, phase 2D) |
 
 **Two timestamps, never conflated.** `candidate.atMs` is the **apex**: the first
 sample of the plateau at the turning point, an estimate of the wall-contact
@@ -1186,12 +1186,84 @@ confirmed results compare as before. Finish-distance equality (a finish at 25 m 
 a 100 m race is accepted by Chronos, as before phase 2) is deliberately not
 enforced here: a separate contract decision.
 
+**Lane-gate refusal (phase 2D).** The turn assessment refuses a COMPLETE wall
+reversal — apex inside a wall zone, approach and sustained recovery all observed
+— when the apex is outside the lane (`|nose.y − referenceLaneY| > 0.20`),
+returning `rejected` / `lane-deviation`; it never becomes a candidate. A real
+turn nonetheless happened, so before this change the next wall was recorded one
+pool length too early with confidence "confirmed" (synthetic 100 m race, y drifted
+gradually to +0.21 or +0.25 before wall 1: trusted `25 m @ 36,720 ms` and
+`50 m @ 52,320 ms` for what are really the 50 m and 75 m walls; drift 0.19 stayed
+correct). The controller (`runTurnDetection`) now marks distance unconfirmed with
+reason `wall-reversal-refused-by-lane-gate`, `sinceAtMs` the reversal's apex time
+from the assessment evidence (the accepted start if no valid apex is available),
+`resumedAtMs` `null`, and the evidence (wall side, lane deviation, evaluated
+instant, required-turn counts). It fires only for `lane-deviation`: an approach
+without a completed reversal is `none`/`plausible` and never reaches it; other
+rejection reasons (for example duplicate frames, `non-monotonic-timestamp`) keep
+their behavior; and, like the terminal-tracking rule, it is skipped when no
+required turn is outstanding (a refused push-off from the finish wall cannot
+mislabel anything). The assessment repeats on every later frame while the
+reversal stands; the first record of any kind is kept. No turn, split or finish is
+created and no threshold changed. It adds no wall-parity or alternation heuristic
+and does not address a wall apex outside the wall zone (next paragraph).
+
+**Complete reversal outside the wall zone (phase 2E).** The turn assessment
+accepts a reversal only when its apex is inside a wall zone (`x < 0.25` or
+`x > 0.75`, strict), and for any other reversal it reads `none` / `no-wall-reversal`:
+no turn, no gap, no refusal. A wall touch whose apex falls just outside the zone
+(a camera that frames more than the pool) was therefore invisible: confidence
+stayed "confirmed" and the next wall was recorded one pool length too early.
+Measured on the synthetic 100 m race (right-hand wall 1; the left-hand mirror is
+identical): apex 0.76 is detected correctly (25 m, 50 m, 75 m), while apex 0.75,
+0.7499, 0.74, 0.72 and 0.60 each produced a single trusted turn labelled 25 m,
+timed at what is really the 50 m wall, with confidence "confirmed"; likewise left
+apex 0.24 correct, 0.2501 … 0.40 mislabelled.
+
+What the observations can and cannot say. A **complete, sustained reversal**
+(travel ≥ `reversalDisplacement` toward an extreme, an apex, travel ≥
+`reversalDisplacement` back, held by the last `confirmationSamples` samples) is
+produced by no ordinary motion (monotone swimming, stroke oscillation, jitter,
+single-sample outliers, an incomplete approach or recovery). It does **not** say
+whether the reversal was a wall the zone missed or a stop-and-return that is not a
+wall at all: where the wall is in the frame is exactly what the observations
+lack (it would come from calibration), and the public assessment gave the same
+`none` for a wall touch at x = 0.74 and a stop-and-return at x = 0.50. So nothing is
+classified and no turn is inferred. `chronosAssessReversalOutsideWallZone()`
+(`turn-detector.js`, same history, floor and thresholds as the turn assessment; the
+turn assessment itself is unchanged) reports the plain fact — a complete reversal
+whose apex is outside its wall zone — with the apex time, the wall side it was
+approaching and how far outside the zone it fell. The detector adapter carries it as
+`outsideZone`; the controller (`runTurnDetection`) marks distance unconfirmed with
+reason `complete-reversal-outside-wall-zone` (`sinceAtMs` the apex; the accepted
+start if no valid apex), under the same rules as the lane-gate refusal: first
+record kept, idempotent across the repeated assessment, skipped when no required
+turn is outstanding, nothing fabricated. The two cannot overlap: a complete
+reversal is exactly one of confirmed/lane-refused (apex in its zone) or reported here
+(apex outside it); a seeded test checks that partition against an independent
+oracle. Later walls are then refused by the existing safeguards.
+
+Limitations of this rule. It is a conservative integrity safeguard, **not** proof
+that a turn occurred. A mid-pool stop-and-return is marked too (measured: a
+reversal at 0.50 is marked), because it cannot be told from a missed wall touch;
+a swimmer who genuinely reverses mid-pool therefore loses trusted distance for
+that race. Any reversal that is complete under the existing evidence counts,
+however far from the zone: no proximity bound is used, because the available
+evidence offers no principled one. Single-frame displacements of 0.05–0.079
+frame-widths degrade tracking terminally (a pre-existing tracking behavior that
+is then marked by the terminal rule); in the measured two- and three-frame
+cases tracking kept the glitch from becoming a reversal. A reversal after every
+required turn is already recorded (for example a swim-back from the finish wall)
+is not marked. Not validated on real footage.
+
 **Limitations.** Heuristic, unvalidated rule (above). A race can become
 unconfirmed on the first underwater turn in real footage, which is the intended
 conservative outcome: after it, only manual events can carry distance. A turn
 that is simply never seen *without* any gap (the swimmer is visible throughout
-but the reversal is not recognised) is not a gap and is not flagged; it is a
-detection miss, not a concealed one. Two ambiguous gaps keep only the first.
+but no complete reversal is observed at all) is not a gap and is not flagged; it
+is a detection miss, not a concealed one. (A complete reversal that IS observed
+but not accepted — refused by the lane gate, or with its apex outside the wall
+zone — is flagged: see above.) Two ambiguous gaps keep only the first.
 
 A wall-alternation guard (consecutive turns must alternate walls, the first must
 be opposite the start) was tried earlier and **removed**: it turned a one-length

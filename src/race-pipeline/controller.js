@@ -103,6 +103,17 @@ export const DISTANCE_AMBIGUITY_REASON = "possible-missed-turn-during-tracking-g
 // all recorded (Chronos reliability, phase 2C follow-up).
 export const DISTANCE_ANALYSIS_ENDED_REASON = "analysis-ended-before-distance-confirmed";
 
+// The reason recorded when the turn assessment saw a COMPLETE wall reversal
+// (approach, apex in a wall zone, sustained recovery) and refused it only
+// because the apex was outside the lane (Chronos reliability, phase 2D).
+export const DISTANCE_LANE_GATE_REASON = "wall-reversal-refused-by-lane-gate";
+
+// The reason recorded when the observations contain a COMPLETE, sustained wall-
+// style reversal that the wall-zone gate did not accept (its apex is outside the
+// zone), so a turn may have gone unrecorded (Chronos reliability, phase 2E). It
+// states a fact about the evidence, not that a turn occurred.
+export const DISTANCE_OUTSIDE_ZONE_REASON = "complete-reversal-outside-wall-zone";
+
 // How many untrusted turn observations the diagnostics keep (oldest dropped).
 const MAX_UNCONFIRMED_TURN_OBSERVATIONS = 100;
 
@@ -236,6 +247,30 @@ function validateConfig(config) {
     return null;
 }
 
+// Which turns the race still requires, from the session's OWN configuration and
+// the trusted counter — never guessed (the same contract the event adapter and
+// the terminal-tracking treatment use). The required turns are the pool-length
+// multiples strictly below the race distance, so `outstanding` is false only
+// when pool length and race distance are both valid, the distance is a whole
+// number of pool lengths, and the trusted counter has reached
+// `distance - pool` (or the race has no turn at all). When the configuration
+// cannot be counted, `outstanding` is true ("possible") and
+// `requiredTurnsKnown` is false. Shared by applyTerminalTrackingTreatment()
+// and the lane-gate treatment in runTurnDetection() (phase 2D) so the two cannot
+// disagree about "nothing is outstanding".
+function describeRequiredTurns(session, eventAdapterState) {
+    const confirmedDistanceMeters = eventAdapterState ? eventAdapterState.confirmedDistanceMeters : 0;
+    const poolLengthMeters = session.poolLengthMeters;
+    const raceDistanceMeters = session.distanceMeters;
+    const poolLengths = isPositiveFiniteNumber(poolLengthMeters) && isPositiveFiniteNumber(raceDistanceMeters)
+        ? raceDistanceMeters / poolLengthMeters
+        : null;
+    const requiredTurnsKnown = poolLengths !== null && Math.abs(poolLengths - Math.round(poolLengths)) <= 1e-9;
+    const requiredTurns = requiredTurnsKnown ? Math.max(0, Math.round(poolLengths) - 1) : null;
+    const outstanding = !(requiredTurnsKnown && confirmedDistanceMeters >= raceDistanceMeters - poolLengthMeters);
+    return { confirmedDistanceMeters, requiredTurns, requiredTurnsKnown, outstanding };
+}
+
 /* TERMINAL TRACKING (Chronos reliability, phase 2C follow-up).
 
    SwimmerTracking's ANALYSIS_DEGRADED is terminal: afterwards no sample ever
@@ -279,16 +314,8 @@ function applyTerminalTrackingTreatment(controller, { streamEnded = false } = {}
         return controller;
     }
 
-    const confirmedDistanceMeters = controller.eventAdapterState ? controller.eventAdapterState.confirmedDistanceMeters : 0;
-    const poolLengthMeters = session.poolLengthMeters;
-    const raceDistanceMeters = session.distanceMeters;
-    const poolLengths = isPositiveFiniteNumber(poolLengthMeters) && isPositiveFiniteNumber(raceDistanceMeters)
-        ? raceDistanceMeters / poolLengthMeters
-        : null;
-    const requiredTurnsKnown = poolLengths !== null && Math.abs(poolLengths - Math.round(poolLengths)) <= 1e-9;
-    const requiredTurns = requiredTurnsKnown ? Math.max(0, Math.round(poolLengths) - 1) : null;
-
-    if (requiredTurnsKnown && confirmedDistanceMeters >= raceDistanceMeters - poolLengthMeters) {
+    const { confirmedDistanceMeters, requiredTurns, requiredTurnsKnown, outstanding } = describeRequiredTurns(session, controller.eventAdapterState);
+    if (!outstanding) {
         return controller;
     }
 
@@ -503,7 +530,7 @@ function runTurnDetection(controller, targetPoseSample) {
 
     const startEvent = controller.chronosSession.events.find((event) => event.type === "start") || null;
 
-    const { candidate, detectorState, assessment, gap } = racePipelineDetectTurnCandidate(
+    const { candidate, detectorState, assessment, gap, outsideZone } = racePipelineDetectTurnCandidate(
         targetPoseSample,
         controller.detectorState,
         {
@@ -545,6 +572,121 @@ function runTurnDetection(controller, targetPoseSample) {
                     }
                 }
             };
+        }
+    }
+
+    /* DISTANCE CONFIDENCE (Chronos reliability, phase 2D). The turn assessment
+       returns `rejected` / `lane-deviation` ONLY for a COMPLETE wall reversal
+       (apex inside a wall zone, approach and sustained recovery all observed)
+       whose apex was outside the lane; an incomplete approach is `none` or
+       `plausible` and never reaches this. Such a reversal is refused and so
+       never becomes a candidate, yet a real turn happened: left alone, the next
+       wall would be recorded with a distance one pool length too early. So the
+       race's distance is marked UNCONFIRMED from the reversal's apex (the
+       earliest point the missing turn could affect distance), exactly as for a
+       concealed turn: Chronos then refuses detector-sourced turns/splits/
+       finishes and the adapter refuses turn candidates. Nothing is fabricated
+       and no threshold is touched. Idempotent: the assessment repeats on every
+       later frame while the reversal stands, and the FIRST record (this one, a
+       gap's, or a terminal-tracking one) is kept. Not done when no required turn
+       is outstanding (nothing left that a label could be wrong about). If the
+       evidence has no valid apex time, the accepted start is used (everything
+       after it unverified), never an invented instant. */
+    if (
+        assessment &&
+        assessment.state === "rejected" &&
+        assessment.reason === "lane-deviation" &&
+        startEvent &&
+        !nextController.chronosSession.distanceConfidence
+    ) {
+        const required = describeRequiredTurns(nextController.chronosSession, nextController.eventAdapterState);
+        if (required.outstanding) {
+            const evidence = assessment.evidence || {};
+            const apexAtMs = isFiniteNumber(evidence.apexAtMs) && evidence.apexAtMs >= startEvent.atMs ? evidence.apexAtMs : null;
+            const sinceAtMs = apexAtMs !== null ? apexAtMs : startEvent.atMs;
+            const marked = ChronosEngine.markDistanceUnconfirmed(nextController.chronosSession, {
+                reason: DISTANCE_LANE_GATE_REASON,
+                sinceAtMs,
+                resumedAtMs: null,
+                evidence: {
+                    trigger: "lane-gate-refusal",
+                    wallSide: evidence.wallSide ?? null,
+                    apexAtMs,
+                    sinceBasis: apexAtMs !== null ? "apex" : "start",
+                    laneDeviation: isFiniteNumber(evidence.laneDeviation) ? evidence.laneDeviation : null,
+                    evaluatedAtMs: targetPoseSample.atMs,
+                    confirmedDistanceMeters: required.confirmedDistanceMeters,
+                    requiredTurns: required.requiredTurns,
+                    requiredTurnsKnown: required.requiredTurnsKnown
+                }
+            });
+            if (marked.ok) {
+                nextController = {
+                    ...nextController,
+                    chronosSession: marked.session,
+                    diagnostics: {
+                        ...nextController.diagnostics,
+                        distanceConfidence: { state: "unconfirmed", reason: DISTANCE_LANE_GATE_REASON, sinceAtMs, resumedAtMs: null }
+                    }
+                };
+            }
+        }
+    }
+
+    /* DISTANCE CONFIDENCE (Chronos reliability, phase 2E). The turn assessment
+       accepts a reversal only when its apex is inside a wall zone, and says
+       nothing about one that is not: it reads "none". But the observations may
+       contain a COMPLETE, sustained reversal (approach, apex and recovery all
+       observed) whose apex falls outside the zone. The data cannot say whether
+       that was a wall touch the zone missed (the camera frames more than the
+       pool) or a stop-and-return that is not a wall at all — where the wall is in
+       the frame is exactly what is not known — so nothing is classified and no
+       turn is inferred. The conservative conclusion is the same as for a
+       concealed or lane-refused turn: the race's distance progression is marked
+       UNCONFIRMED from the reversal's apex (the earliest point it could affect a
+       label), so the NEXT wall cannot be recorded one pool length too early.
+       Chronos then refuses detector turns/splits/finishes. Idempotent (the
+       assessment repeats on every later frame while the reversal stands); the
+       FIRST record of any kind is kept; skipped when no required turn is
+       outstanding. Ordinary motion — monotone swimming, stroke oscillation,
+       jitter, outliers, an incomplete approach or recovery, a harmless gap — never
+       forms a complete reversal and never reaches this. Nothing is fabricated and
+       no threshold changed. */
+    if (outsideZone && outsideZone.outside && startEvent && !nextController.chronosSession.distanceConfidence) {
+        const required = describeRequiredTurns(nextController.chronosSession, nextController.eventAdapterState);
+        if (required.outstanding) {
+            const evidence = outsideZone.evidence || {};
+            const apexAtMs = isFiniteNumber(evidence.apexAtMs) && evidence.apexAtMs >= startEvent.atMs ? evidence.apexAtMs : null;
+            const sinceAtMs = apexAtMs !== null ? apexAtMs : startEvent.atMs;
+            const marked = ChronosEngine.markDistanceUnconfirmed(nextController.chronosSession, {
+                reason: DISTANCE_OUTSIDE_ZONE_REASON,
+                sinceAtMs,
+                resumedAtMs: null,
+                evidence: {
+                    trigger: "reversal-outside-wall-zone",
+                    apexAtMs,
+                    sinceBasis: apexAtMs !== null ? "apex" : "start",
+                    apexHipX: isFiniteNumber(evidence.apexHipX) ? evidence.apexHipX : null,
+                    approachedWallSide: evidence.approachedWallSide ?? null,
+                    distanceOutsideZone: isFiniteNumber(evidence.distanceOutsideZone) ? evidence.distanceOutsideZone : null,
+                    approachSwing: isFiniteNumber(evidence.approachSwing) ? evidence.approachSwing : null,
+                    recoverySwing: isFiniteNumber(evidence.recoverySwing) ? evidence.recoverySwing : null,
+                    evaluatedAtMs: targetPoseSample.atMs,
+                    confirmedDistanceMeters: required.confirmedDistanceMeters,
+                    requiredTurns: required.requiredTurns,
+                    requiredTurnsKnown: required.requiredTurnsKnown
+                }
+            });
+            if (marked.ok) {
+                nextController = {
+                    ...nextController,
+                    chronosSession: marked.session,
+                    diagnostics: {
+                        ...nextController.diagnostics,
+                        distanceConfidence: { state: "unconfirmed", reason: DISTANCE_OUTSIDE_ZONE_REASON, sinceAtMs, resumedAtMs: null }
+                    }
+                };
+            }
         }
     }
 
