@@ -52,6 +52,7 @@ gtag('config', 'G-VSLDBW2PYM');
     <link rel="stylesheet" href="styles/onboarding-components.css">
     <link rel="stylesheet" href="styles/phone-layout.css">
     <link rel="stylesheet" href="styles/site-nav.css">
+    <link rel="stylesheet" href="styles/account.css">
 
 </head>
 
@@ -189,23 +190,27 @@ gtag('config', 'G-VSLDBW2PYM');
     </nav>
 
     <div id="authModal" class="auth-modal">
-        <div class="auth-box">
+        <div class="auth-box" role="dialog" aria-modal="true" aria-labelledby="authTitle">
 
-            <span class="close-auth" onclick="closeLoginModal()">×</span>
+            <button type="button" class="close-auth" onclick="closeLoginModal()" aria-label="Close">×</button>
 
             <!-- LOGIN VIEW -->
             <div id="loginView">
 
-                <h2>Login to SWIMTICS</h2>
+                <h2 id="authTitle">Login to SWIMTICS</h2>
 
-                <input type="email" id="authEmail" placeholder="Email">
-                <input type="password" id="authPassword" placeholder="Password">
+                <input type="email" id="authEmail" placeholder="Email" autocomplete="email" aria-label="Email">
+                <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" aria-label="Password">
 
-                <button onclick="loginUser()">Login</button>
+                <button type="button" onclick="loginUser()">Login</button>
+
+                <p class="auth-switch">
+                    <button type="button" class="auth-link" onclick="resetPassword()">Forgot password?</button>
+                </p>
 
                 <p class="auth-switch">
                     Don’t have an account?
-                    <span onclick="showSignup()">Sign Up</span>
+                    <button type="button" class="auth-link" onclick="showSignup()">Sign Up</button>
                 </p>
 
             </div>
@@ -215,24 +220,26 @@ gtag('config', 'G-VSLDBW2PYM');
 
                 <h2>Create Your Account</h2>
 
-                <input type="text" id="signupFullName" placeholder="Full Name">
-                <input type="text" id="signupGender" placeholder="Gender">
-                <input type="text" id="signupClub" placeholder="Club">
-                <input type="text" id="signupNationality" placeholder="Nationality">
+                <input type="text" id="signupFullName" placeholder="Full Name" autocomplete="name" aria-label="Full Name (optional)">
+                <input type="text" id="signupGender" placeholder="Gender" aria-label="Gender (optional)">
+                <input type="text" id="signupClub" placeholder="Club" aria-label="Club (optional)">
+                <input type="text" id="signupNationality" placeholder="Nationality" aria-label="Nationality (optional)">
 
-                <input type="email" id="signupEmail" placeholder="Email">
-                <input type="password" id="signupPassword" placeholder="Password">
+                <input type="email" id="signupEmail" placeholder="Email" autocomplete="email" aria-label="Email">
+                <input type="password" id="signupPassword" placeholder="Password (at least 8 characters)" autocomplete="new-password" aria-label="Password">
 
-                <button onclick="signupUser()">Create Account</button>
+                <button type="button" onclick="signupUser()">Create Account</button>
 
                 <p class="auth-switch">
                     Already have an account?
-                    <span onclick="showLogin()">Login</span>
+                    <button type="button" class="auth-link" onclick="showLogin()">Login</button>
                 </p>
 
             </div>
 
-            <p id="authMessage"></p>
+            <p class="auth-note">You'll stay signed in on this browser until you log out. On a shared device, log out when you're done.</p>
+
+            <p id="authMessage" role="status" aria-live="polite"></p>
 
         </div>
     </div>
@@ -638,6 +645,7 @@ gtag('config', 'G-VSLDBW2PYM');
 
             <h3>Your PBs</h3>
             <div id="pbList"></div>
+            <p id="pbSyncStatus" class="sync-status" role="status" aria-live="polite"></p>
 
             <div class="st-section">
                 <div class="st-section-title">How to Use Your PB Tracker</div>
@@ -966,6 +974,7 @@ gtag('config', 'G-VSLDBW2PYM');
             <button class="btn" onclick="saveProfile()">
                 Save Profile
             </button>
+            <p id="profileSaveStatus" class="sync-status" role="status" aria-live="polite"></p>
 
             <div id="accountDetails" class="account-details-section"></div>
 
@@ -1474,24 +1483,33 @@ gtag('config', 'G-VSLDBW2PYM');
     </div>
 
     <script type="module">
+        /* Firebase bootstrap. Account features (src/app/data/account.js) use
+           window.swimticsFirebase; pb.js still checks window.auth. */
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
         import {
-            getAuth,
+            initializeAuth,
+            connectAuthEmulator,
             createUserWithEmailAndPassword,
             signInWithEmailAndPassword,
             signOut,
             onAuthStateChanged,
-            setPersistence,
+            sendEmailVerification,
+            sendPasswordResetEmail,
+            reload,
             browserLocalPersistence
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         import {
             getDatabase,
+            connectDatabaseEmulator,
             ref,
             set,
             get,
-            child
+            child,
+            update,
+            remove,
+            runTransaction
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
         const firebaseConfig = {
@@ -1503,19 +1521,30 @@ gtag('config', 'G-VSLDBW2PYM');
             appId: "1:705942596918:web:031e1728d387c1fee55797"
         };
 
-        const app = initializeApp(firebaseConfig);
+        /* Local testing only: on localhost with ?emulator, use the Firebase
+           Emulator Suite under a demo- project ID (demo projects cannot reach
+           any real Firebase resources). Production is never affected. */
+        const useEmulator =
+            ["localhost", "127.0.0.1"].includes(location.hostname) &&
+            new URLSearchParams(location.search).has("emulator");
 
-        const auth = getAuth(app);
+        const emulatorConfig = {
+            apiKey: "demo-api-key",
+            projectId: "demo-swimtics",
+            databaseURL: "http://127.0.0.1:9000/?ns=demo-swimtics-default-rtdb"
+        };
 
-        setPersistence(auth, browserLocalPersistence)
-            .then(() => {
-                console.log("Persistent login enabled.");
-            })
-            .catch((error) => {
-                console.error("Persistence Error:", error);
-            });
+        const app = initializeApp(useEmulator ? emulatorConfig : firebaseConfig);
+
+        /* Persistent login in localStorage, set at initialisation. (Calling
+           setPersistence() after getAuth() moved the stored session between
+           storage areas on every page load, which other open tabs saw as a
+           brief sign-out.) */
+        const auth = initializeAuth(app, { persistence: browserLocalPersistence });
+        if (useEmulator) connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
 
         const db = getDatabase(app);
+        if (useEmulator) connectDatabaseEmulator(db, "127.0.0.1", 9000);
 
         window.auth = auth;
         window.db = db;
@@ -1529,8 +1558,23 @@ gtag('config', 'G-VSLDBW2PYM');
             set,
             get,
             child
+        };
 
+        /* Accounts need a Realtime Database: production has none configured
+           yet (no databaseURL), so account features stay off there until the
+           console setup in docs/ACCOUNTS.md is done. */
+        const accountsAvailable = useEmulator || !!firebaseConfig.databaseURL;
 
+        window.swimticsFirebase = {
+            available: accountsAvailable,
+            mode: useEmulator ? "emulator" : "production",
+            auth,
+            db,
+            authFns: {
+                createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+                onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail, reload
+            },
+            dbFns: { ref, get, set, update, remove, runTransaction }
         };
     </script>
 
@@ -3147,6 +3191,7 @@ window.addEventListener(
     <script src="src/app/pages/theme.js"></script>
     <script src="src/app/ui/home-parallax.js"></script>
     <script src="src/app/ui/site-nav.js"></script>
+    <script type="module" src="src/app/data/account.js"></script>
 
     <!-- =========================================================
          RACE PIPELINE — Stage 4D.6/4D.7 integration.

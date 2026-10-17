@@ -194,6 +194,30 @@ test.describe("PB tracker", () => {
 });
 
 test.describe("Profile", () => {
+  test("without a configured database, accounts show as unavailable and Save Profile saves on this device", async ({ page }) => {
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto("/");
+    await dismissEntryGate(page);
+    await navigateTo(page, "profile");
+
+    await expect(page.locator("#accountDetails")).toContainText("Accounts aren't available yet");
+    await expect(page.locator(".login-btn")).toBeHidden();
+    await expect(page.locator("button[onclick='logoutUser()']")).toBeHidden();
+
+    await page.locator("#name").fill("Device Only");
+    await page.locator("#club").fill("Local Club");
+    await page.locator("button[onclick='saveProfile()']").click();
+    await expect(page.locator("#profileSaveStatus")).toHaveText("Saved on this device.");
+    const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("profile")));
+    expect(stored.name).toBe("Device Only");
+    expect(stored.club).toBe("Local Club");
+    await expect(page.locator("#displayName")).toHaveText("Device Only");
+
+    // the long-standing startup ReferenceError (updateProfileAccountSection) is gone
+    expect(errors.filter((m) => /is not defined/.test(m))).toEqual([]);
+  });
+
   test("a previously saved profile is displayed on load", async ({ page }) => {
     const seededProfile = {
       name: "Test Swimmer",

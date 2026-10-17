@@ -64,10 +64,14 @@
         if (!event.target.closest(".site-nav-tools")) closeMenu();
     });
 
+    /* account.js sets window.swimticsAccountAction when accounts are
+       available (signed out: open the sign-in dialog; signed in: Profile).
+       Without accounts, Sign In opens Profile as before. */
     if (signIn) {
         signIn.addEventListener("click", () => {
             closeMenu();
-            window.showPage(signIn.dataset.page);
+            if (typeof window.swimticsAccountAction === "function") window.swimticsAccountAction();
+            else window.showPage(signIn.dataset.page);
         });
     }
 

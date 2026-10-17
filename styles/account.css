@@ -1,0 +1,217 @@
+/* =========================================================
+   ACCOUNT UI — save/sync status, Profile account card, import
+   dialog, and text-link buttons in the existing auth modal.
+   Reuses the auth-modal look from home-hero.css.
+   ========================================================= */
+
+/* status lines under Save Profile and the PB list */
+.sync-status {
+    min-height: 1.4em;
+    margin: 12px 0 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.sync-status[data-kind="ok"] { color: #34d399; }
+.sync-status[data-kind="error"] { color: #ff6b81; }
+
+body.light-mode .sync-status { color: rgba(0, 0, 0, 0.7); }
+body.light-mode .sync-status[data-kind="ok"] { color: #087f5b; }
+body.light-mode .sync-status[data-kind="error"] { color: #c92a3a; }
+
+#authMessage[data-kind="error"] { color: #ff6b81; }
+#authMessage[data-kind="ok"] { color: #34d399; }
+
+/* text-style buttons (were clickable <span>s; now real buttons) */
+.auth-box .auth-link,
+.account-card .auth-link,
+.account-details-section .auth-link {
+    display: inline;
+    width: auto;
+    margin: 0;
+    padding: 2px 2px;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    color: #00d9ff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.auth-box .auth-link:hover,
+.account-card .auth-link:hover {
+    transform: none;
+    box-shadow: none;
+    color: #7fefff;
+}
+
+body.light-mode .auth-box .auth-link,
+body.light-mode .account-card .auth-link {
+    color: #0062d6;
+}
+
+/* close button (was a <span>) */
+.auth-box .close-auth {
+    width: auto;
+    padding: 4px 10px;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.auth-box button:focus-visible,
+.account-card button:focus-visible {
+    outline: 2px solid #00d9ff;
+    outline-offset: 3px;
+}
+
+/* Profile page account card */
+.account-card {
+    margin-top: 18px;
+    padding: 18px 22px;
+    border-radius: 18px;
+    background: rgba(0, 217, 255, 0.06);
+    border: 1px solid rgba(0, 217, 255, 0.18);
+}
+
+.account-line {
+    margin: 0 0 8px;
+    line-height: 1.6;
+}
+
+.account-line.ok { color: #34d399; }
+.account-line.warn { color: #ffd166; }
+.account-line.muted,
+.account-note { color: rgba(255, 255, 255, 0.6); }
+
+/* "stay signed in until you log out" reminder */
+.account-line.notice {
+    padding: 10px 14px;
+    border-radius: 12px;
+    border-left: 3px solid #ffd166;
+    background: rgba(255, 209, 102, 0.08);
+}
+
+.auth-box .auth-note {
+    margin: 14px 0 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+body.light-mode .account-card {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+body.light-mode .account-line { color: #111; }
+body.light-mode .account-line.ok { color: #087f5b; }
+body.light-mode .account-line.warn { color: #9a6700; }
+body.light-mode .account-line.muted,
+body.light-mode .account-note { color: rgba(0, 0, 0, 0.6); }
+body.light-mode .account-line.notice {
+    border-left-color: #9a6700;
+    background: rgba(154, 103, 0, 0.08);
+}
+body.light-mode .auth-box .auth-note { color: rgba(0, 0, 0, 0.65); }
+
+/* import dialog */
+.import-box {
+    text-align: left;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.import-box h2 {
+    font-size: 1.3rem;
+    margin-bottom: 14px;
+}
+
+.import-box h3 {
+    margin: 18px 0 6px;
+    font-size: 1rem;
+    color: #00d9ff;
+}
+
+.import-box p,
+.import-box li {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.6;
+}
+
+.import-box .import-note {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.import-box ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.import-box button {
+    margin-top: 14px;
+}
+
+.import-box button.secondary {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: none;
+}
+
+.import-box button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+body.light-mode .import-box p,
+body.light-mode .import-box li { color: rgba(0, 0, 0, 0.75); }
+body.light-mode .import-box h3 { color: #0062d6; }
+body.light-mode .import-box .import-note { color: rgba(0, 0, 0, 0.6); }
+body.light-mode .import-box button.secondary {
+    color: #111;
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 600px) {
+    .auth-box { padding: 36px 20px; }
+}
+
+/* Log Out (its Tailwind classes have no stylesheet on this site); uses the
+   site's existing red from the Avoid card / light-mode chart titles */
+#profile button[onclick="logoutUser()"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin-top: 16px;
+    padding: 0 22px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 92, 122, 0.45);
+    background: rgba(255, 92, 122, 0.12);
+    color: #ff8fa3;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+}
+
+#profile button[onclick="logoutUser()"][hidden] {
+    display: none;
+}
+
+#profile button[onclick="logoutUser()"]:hover {
+    background: rgba(255, 92, 122, 0.2);
+}
+
+body.light-mode #profile button[onclick="logoutUser()"] {
+    color: #c92a3a;
+    border-color: rgba(201, 42, 58, 0.35);
+    background: rgba(230, 57, 70, 0.06);
+}

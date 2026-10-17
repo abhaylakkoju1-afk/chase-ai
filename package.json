@@ -4,9 +4,14 @@
   "type": "module",
   "scripts": {
     "test": "node --test \"test/**/*.test.js\"",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:emulator": "firebase emulators:exec --only auth,database --project demo-swimtics \"node --test --test-concurrency=1 test/firebase/*.test.mjs\"",
+    "test:e2e:emulator": "firebase emulators:exec --only auth,database --project demo-swimtics \"playwright test -c playwright.emulator.config.js\""
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0"
+    "@firebase/rules-unit-testing": "6.0.0",
+    "@playwright/test": "^1.63.0",
+    "firebase": "13.0.0",
+    "firebase-tools": "15.34.0"
   }
 }

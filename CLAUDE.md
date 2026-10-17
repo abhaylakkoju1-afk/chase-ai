@@ -35,9 +35,11 @@ constraint in this codebase.
 - Chase's actual "AI" today is MediaPipe Pose running **entirely
   client-side in the browser** — there is no backend, no server-side
   inference, and no LLM anywhere in the codebase.
-- Firebase (Auth + Realtime Database) is configured but not wired to any
-  working UI path — see `docs/DECISIONS.md` and the known-issues note
-  below. Real user data currently lives only in `localStorage`.
+- Firebase Auth + Realtime Database back the Stage 1 account feature
+  (profile and PB sync per user — `docs/ACCOUNTS.md`, D10). It is **off
+  in production** until the reviewed rules deployment and `databaseURL`
+  change are done, so real user data currently lives only in
+  `localStorage`.
 - Full detail: `docs/ARCHITECTURE.md`.
 
 ## 3. Target architecture
@@ -270,10 +272,12 @@ implementation or architectural change.
 These are documented, not yet fixed (fixing them is a future task,
 scoped explicitly before work begins — see `docs/ROADMAP.md`):
 
-- The login/sign-up UI calls `loginUser()`, `signupUser()`,
-  `showLogin()`, `showSignup()`, `closeLoginModal()`, and
-  `saveUserData()` — none of these functions exist in the codebase.
-  The auth flow is currently non-functional.
-- Firebase Auth/Database is initialized but not connected to any
-  working data path.
+- Accounts (sign up/in/out, verification, reset, profile + PB sync) are
+  implemented (`docs/ACCOUNTS.md`) but **disabled in production**: the
+  live Realtime Database's temporary rules expired and deny all access,
+  and the production config has no `databaseURL`. Enabling needs a
+  reviewed rules deployment and a reviewed `databaseURL` change.
+- The Analyzer's "Save Analysis Report" / "View Previous Reports"
+  buttons call `saveAnalysisReport()` / `loadSavedReports()`, which
+  don't exist; analysis results are not saved anywhere.
 - `Chart.js` is loaded unpinned (`@latest`).

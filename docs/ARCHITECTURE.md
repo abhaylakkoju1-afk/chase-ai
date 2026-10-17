@@ -71,11 +71,16 @@ analysis output. Wiring it into the pipeline is future work (see
 - **Video/pose/metrics**: in-memory only, per page load; nothing is
   uploaded to a server or persisted. Reloading the page discards it.
 - **Personal bests, profile, stroke data, soreness map, theme**:
-  `localStorage` only, per-browser, per-device, never synced.
-- **Firebase (Auth + Realtime Database)**: initialized on load
-  (`window.auth`, `window.db`) but not on the critical path of any
-  working feature — see `docs/DECISIONS.md` for why this is treated as
-  a known issue rather than fixed silently.
+  `localStorage` on the device (the working copy the UI reads).
+- **Accounts (Stage 1, D10)**: Firebase Auth (email/password) +
+  Realtime Database under `/users/{uid}` with deny-by-default rules
+  (`database.rules.json`). When signed in, profile text fields and PBs
+  sync to the account (`src/app/data/user-data.js`,
+  `src/app/data/account.js`); photos, Analyzer/Chronos/War Room output
+  and videos do not. Accounts are **off in production** until the
+  console setup in `docs/ACCOUNTS.md` is done (no `databaseURL` yet);
+  they are exercised with the Firebase Emulator Suite (`?emulator` on
+  localhost, project `demo-swimtics`). Full detail: `docs/ACCOUNTS.md`.
 
 ### 1.3 Current deployment
 

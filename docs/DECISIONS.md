@@ -176,3 +176,42 @@ later, not in anything a user can see today.
 **Consequence:** Refactor PRs must show before/after parity (tests
 where they exist, manual in-browser verification otherwise) rather than
 just "the new structure works."
+
+---
+
+## D10 — Firebase is the initial provider for accounts and user data
+
+**Decision:** Stage 1 of account access uses the Firebase project already
+initialised in the app: Firebase Auth (email/password) and the Realtime
+Database. Only profile text fields and personal bests are stored, under
+`/users/{uid}`, protected by deny-by-default security rules
+(`database.rules.json`). Photos, analysis/race reports, War Room plans and
+videos are not stored in this stage. No other provider is added.
+
+**Why:** Firebase Auth and the Realtime Database were already initialised
+and loaded from the CDN, so this is the shortest path to working accounts
+without a new external service. The data model is small and per-user.
+
+**Consequences:**
+- Rules are tested only in the Firebase Emulator Suite (project ID
+  `demo-swimtics`); nothing is deployed from this repository.
+- Production accounts stay off until the remaining steps in
+  `docs/ACCOUNTS.md` §4 are done. Email/Password sign-in is already
+  enabled and the (Singapore) Realtime Database already exists, but its
+  temporary rules have expired and deny all access; a reviewed deployment
+  of these rules and a reviewed production `databaseURL` change are still
+  required.
+- The project is on the Spark plan: Storage (photos) and automatic
+  database backups need Blaze, so photos stay on the device and backups
+  need a separate plan before launch.
+- Backups and a rehearsed restore (`docs/ACCOUNTS.md` §5) are required
+  before accounts are announced; until then user data must not be
+  described as backed up.
+- Sessions persist until the user logs out (`browserLocalPersistence`,
+  no "keep me signed in" choice); the UI reminds users to log out on shared
+  devices. After sign-out, that account's local-only photos and unsynced
+  changes stay on the device for its next sign-in — device-local, not a
+  backup (`docs/ACCOUNTS.md` §2).
+- Data minimisation, analytics masking/consent and the minimum-age
+  question (`docs/ACCOUNTS.md` §7) remain open and must be decided before
+  launch.
