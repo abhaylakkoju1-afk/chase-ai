@@ -215,3 +215,27 @@ without a new external service. The data model is small and per-user.
 - Data minimisation, analytics masking/consent and the minimum-age
   question (`docs/ACCOUNTS.md` §7) remain open and must be decided before
   launch.
+
+---
+
+## D11 — Stay on the Spark plan for now; manual backups
+
+**Decision:** The Firebase project stays on the free Spark plan for now.
+Blaze is kept as a future option (automatic Realtime Database backups and
+Firebase Storage) and reconsidered as database usage grows. Not upgraded.
+
+**Why:** Stage 1 stores only profile text fields and personal bests, and
+production accounts aren't enabled yet, so expected usage is small. The
+owner chose to defer billing until usage justifies it.
+
+**Consequences:**
+- Spark's Realtime Database limit is 100 *simultaneous connections* (each
+  connected tab/device), not 100 accounts. We review the plan when the
+  peak reaches about 80 connections — our own review point, not a Firebase
+  limit (`docs/ACCOUNTS.md` §4).
+- Backups are manual: a full JSON export from the Realtime Database
+  console, stored securely outside the repository (it contains user
+  data), plus a restore rehearsal away from production
+  (`docs/ACCOUNTS.md` §5). D10's backup requirement before launch still
+  applies.
+- Photos stay device-only while there is no Storage.

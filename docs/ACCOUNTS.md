@@ -138,7 +138,7 @@ history entries, bounded key lengths, and only the `profile`, `pbs` and
 
 Known limit: rules can't cap how many PBs or history entries an account
 stores; the Spark plan's database storage/download quotas are the
-backstop.
+backstop (§4, "Spark capacity").
 
 ## 3. Testing locally (no real Firebase project is ever used)
 
@@ -170,6 +170,8 @@ Confirmed by the project owner (not changed from this repository):
 - Cloud Firestore exists but is empty and deny-all (not used by SWIMTICS).
 - Firebase Storage and automatic Realtime Database backups require
   upgrading to **Blaze**.
+- **Plan decision: stay on Spark for now**, and reconsider Blaze as
+  database usage grows (see "Spark capacity" below). Not upgraded.
 - Authorized domains: `localhost`, `chase-ai-2bef7.firebaseapp.com`,
   `chase-ai-2bef7.web.app` — **`swimtics.com` is not listed.**
 
@@ -192,20 +194,92 @@ Still to do, each as a separate reviewed step (none done here):
 4. Optional: enable App Check / Auth abuse protection.
 5. Backups (§5) before accounts are announced.
 
+### Spark capacity: simultaneous connections, not accounts
+
+- Spark's Realtime Database limit is **100 simultaneous connections**. It
+  is **not** a limit on registered accounts: any number of people can
+  have accounts; what's limited is how many are connected to the database
+  at the same moment.
+- Each connected browser tab or device counts as one connection. The same
+  person with SWIMTICS open in two tabs and on a phone uses three. In
+  SWIMTICS a page connects once it reads or writes account data (i.e.
+  while signed in) and stays connected while it's open; signed-out
+  visitors don't connect.
+- When the limit is reached, further connections are refused until others
+  close, so additional signed-in pages can't load or save account data.
+- **Review point (our own threshold, not a Firebase limit): 80
+  simultaneous connections.** When the peak in the Realtime Database
+  console's **Usage** tab (connections graph) reaches about 80, start
+  planning — upgrade to Blaze or otherwise reduce connections — so there
+  is time to act before the 100-connection limit. Check the peak
+  regularly once accounts launch.
+- Spark also has storage and download quotas for the database; the same
+  Usage tab shows them.
+
 ## 5. Backup, export and restore (required before launch)
 
 User data is **not** guaranteed safe until this exists and a restore has
 been rehearsed.
 
-- **On Spark (current plan)** there are no automatic Realtime Database
-  backups. Option: a scheduled export of `/users` (e.g. a GitHub Action
+### Spark backup plan (current plan — manual)
+
+Spark has **no automatic backups**. Until that changes, backups are a
+**manual** task done by a person with access to the Firebase console.
+Nothing in this repository creates, stores or schedules them.
+
+1. **Export**: in the Firebase console, open Realtime Database → **Data**,
+   select the root of the database, open the ⋮ menu and choose **Export
+   JSON**. This downloads the whole database as one JSON file. (If the
+   database grows too large for the console export, the alternative is
+   `firebase database:get / --project chase-ai-2bef7` run by the same
+   person.)
+2. **Store securely, outside the repository**: the export **contains user
+   data** (emails aren't in it, but names, dates of birth, clubs and other
+   profile fields and PBs are, keyed by user id; athletes may be minors).
+   - Never commit it, attach it to an issue/PR, or put it in a shared
+     folder.
+   - Keep it in private, access-controlled storage with encryption (e.g.
+     an encrypted drive or a private, encrypted cloud folder only the
+     owner can open).
+   - Name files by date, keep a small number of recent copies, and delete
+     older ones on a schedule (e.g. keep the last 4 weekly and 3 monthly
+     exports). Write down where they are and who can access them.
+   - A user's data deleted from the live database remains in older exports
+     until those exports are deleted — keep that in mind for deletion
+     requests and the privacy policy.
+3. **Frequency**: before accounts are announced, then on a fixed schedule
+   (e.g. weekly) and before any risky change such as a rules deployment.
+   Each export counts against Spark's download quota.
+4. **Restore rehearsal** (at least once before launch, then occasionally):
+   restore an export somewhere that is **not** the production database —
+   the local Database Emulator under the `demo-swimtics` project (start it
+   with `firebase emulators:start --only database --project demo-swimtics`,
+   then load the file with an HTTP `PUT` of the JSON to
+   `http://127.0.0.1:9000/.json?ns=demo-swimtics-default-rtdb` with the
+   emulator-only admin header `Authorization: Bearer owner`) or a
+   separate test Firebase project — and check the number of users, a
+   sample of profiles and PBs, and that the rules still allow each owner
+   to read their data. Record the steps and how
+   long it took. Treat the restored copy as user data too and delete it
+   afterwards. (Spark allows only one database per project, so a test
+   copy can't live alongside production.)
+5. **Real restore**: the console's **Import JSON** *replaces* the data at
+   the chosen location. Use it on production only to recover from data
+   loss, after taking a fresh export of the current state first.
+
+Until the first export and rehearsal are done, user data must not be
+described as backed up.
+
+### Later options
+
+- **Blaze (future option, not adopted)**: automatic daily Realtime
+  Database backups, and Firebase Storage (needed for cloud photos, §6).
+  Reconsider as database usage grows — in particular at the 80-connection
+  review point above.
+- **Scheduled export** (possible on either plan): e.g. a GitHub Action
   using a service account stored only as a CI secret — never in client
-  code) written to private storage with retention (e.g. 30 daily + 12
-  monthly). Exports count against the plan's download quota.
-- **On Blaze**: Realtime Database automated daily backups (written to a
-  Cloud Storage bucket).
-- **Restore rehearsal**: restore into a separate test instance, check
-  record counts and a sample of users, and document the steps and time.
+  code — writing to private storage with retention. Not set up; needs its
+  own approval because it adds a credential and copies user data.
 - **Per-user export / deletion**: "Download my data" (JSON of
   `/users/{uid}`) and "Delete my account and data" — not built yet.
 - **Device copies** (`swimtics:guest:*`, `swimtics:pendingData:*`) are a
@@ -257,4 +331,5 @@ been rehearsed.
    in by default, no checkbox (§2, "Staying signed in").
 5. Minimum age / parental consent; privacy policy and terms.
 6. Account deletion and data export before launch?
-7. Photos: upgrade to Blaze for Storage, or keep photos device-only?
+7. Photos: upgrade to Blaze for Storage, or keep photos device-only? (For
+   now the project stays on Spark, so photos stay device-only.)
