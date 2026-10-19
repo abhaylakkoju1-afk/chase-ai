@@ -281,3 +281,32 @@ owner chose to pause it and make the remaining analytics opt-in.
   masking review.
 - No privacy policy is published yet; its commitments need owner review
   (`docs/ACCOUNTS.md` §7).
+
+---
+
+## D14 — Test-only Supabase account prototype (not a migration)
+
+**Decision:** Build a test-only Supabase account flow against the hosted
+`swimtics-test` project (Mumbai) to try sign-up, email confirmation,
+login/logout, session persistence, password reset and owner-only data
+access. Firebase stays the production account provider (D10) and is not
+changed.
+
+**Why:** To learn what Supabase Auth and Row Level Security need in this
+codebase before any decision to move providers.
+
+**Consequences:**
+- Test mode runs only with `?supabase`, on `localhost`/`127.0.0.1` or a
+  login-protected Vercel preview URL of `swimtics-web`
+  (`swimtics-web-…-swim-tics.vercel.app`); never on swimtics.com or
+  `swimtics-web.vercel.app`.
+- Only the project URL and publishable key are used: locally from
+  git-ignored files; on previews from Vercel environment variables scoped
+  to Preview only, served by `api/supabase-test-config.js`, which answers
+  only on Preview deployments. Secret / `service_role` keys are refused in
+  code.
+- SQL in `supabase/sql/` is applied to the test project only by the
+  owner, after review.
+- Pushing a preview branch, the Vercel/Supabase dashboard settings,
+  custom SMTP and any production use each need separate approval. See
+  `docs/SUPABASE_TEST.md`.

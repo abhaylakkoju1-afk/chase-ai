@@ -5,3 +5,6 @@ playwright-report/
 database-debug.log
 firebase-debug.log
 firebase-debug.*.log
+# Supabase test project: local connection details (never commit)
+.env*.local
+src/app/data/supabase-config.local.js

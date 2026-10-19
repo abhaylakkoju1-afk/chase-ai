@@ -94,6 +94,15 @@ analysis output. Wiring it into the pipeline is future work (see
   and removes the analytics cookies the site can reach; without a current
   "accept", startup removes them too. Microsoft Clarity is paused and not
   loaded anywhere.
+- **Supabase test mode (D14, test-only)**: `src/app/data/supabase-test-account.js`
+  runs only with `?supabase` on `localhost`/`127.0.0.1` or a
+  login-protected Vercel preview URL of `swimtics-web`, against the hosted
+  `swimtics-test` project, using the project URL and publishable key from
+  git-ignored local files (locally) or Preview-only Vercel environment
+  variables served by `api/supabase-test-config.js` (previews). It covers sign-up/confirmation,
+  login/logout, password reset and the user's own `profiles` row (RLS:
+  `supabase/sql/001_profiles.sql`). Firebase remains the production
+  provider. Full detail: `docs/SUPABASE_TEST.md`.
 
 ### 1.3 Current deployment
 
