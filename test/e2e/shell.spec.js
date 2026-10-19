@@ -91,7 +91,7 @@ test.describe("Navigation", () => {
 });
 
 test.describe("Site nav Tools menu", () => {
-  test("lists the five tools in order and is collapsed by default", async ({ page }) => {
+  test("lists the five tools in order, then Privacy & cookies, and is collapsed by default", async ({ page }) => {
     await page.goto("/");
     await dismissEntryGate(page);
 
@@ -103,7 +103,7 @@ test.describe("Site nav Tools menu", () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expect(menu.locator("button")).toHaveText([
-      "Chase", "Wall of Records", "Chronos", "War Room", "Profile",
+      "Chase", "Wall of Records", "Chronos", "War Room", "Profile", "Privacy & cookies",
     ]);
   });
 

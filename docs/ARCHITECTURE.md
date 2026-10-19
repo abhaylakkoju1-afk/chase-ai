@@ -15,7 +15,8 @@ served as-is by GitHub Pages with no build step. There is no backend.
 ```
 index.html
 ├── <head>
-│   ├── third-party <script> tags (GSAP, MediaPipe, Chart.js, GA, Clarity)
+│   ├── third-party <script> tags (GSAP, MediaPipe, Chart.js) — no analytics
+│   │   tags: Google Analytics is loaded later, only after consent
 │   └── <style> — GLOBAL block (~2,700 lines)
 ├── <style id="swimticsPremiumMergedCSS"> (~3,300 lines)
 ├── <body>
@@ -81,6 +82,18 @@ analysis output. Wiring it into the pipeline is future work (see
   console setup in `docs/ACCOUNTS.md` is done (no `databaseURL` yet);
   they are exercised with the Firebase Emulator Suite (`?emulator` on
   localhost, project `demo-swimtics`). Full detail: `docs/ACCOUNTS.md`.
+- **Analytics (D12)**: Google Analytics (`G-VSLDBW2PYM`) is optional and
+  loaded only by `src/app/privacy/consent.js`, after the visitor accepts
+  in the consent notice (shown after the entry gate) or from a saved,
+  current-version "accept" less than 12 months old
+  (`localStorage["swimtics:analyticsConsent"]`: `{ choice, version, at }`;
+  pure logic in
+  `src/app/privacy/consent-store.js`). Tools → Privacy & cookies reviews
+  or changes the choice; withdrawing sets gtag's `ga-disable` flag,
+  refuses further requests to Google's analytics hosts from that page,
+  and removes the analytics cookies the site can reach; without a current
+  "accept", startup removes them too. Microsoft Clarity is paused and not
+  loaded anywhere.
 
 ### 1.3 Current deployment
 

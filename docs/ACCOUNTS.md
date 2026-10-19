@@ -315,17 +315,14 @@ described as backed up.
    soreness/body-map information (health-related; not synced). The sign-up
    form asks for name, gender, club and nationality — all optional; they go
    into the account profile. Athletes may be minors.
-2. **Analytics**: Google Analytics (gtag, default config) and Microsoft
-   Clarity session recording run on every page with no consent gate.
-   Clarity masks password and other sensitive input fields; how much other
-   typed input it masks depends on the project's masking setting in the
-   Clarity dashboard, which can't be checked from this repository. Either
-   way, **text rendered on the page can be recorded**: the Profile overview
-   card (name, stroke, level, height, weight, goal), the PB list, the
-   signed-in email in the account card and the import preview.
-   Recommended (needs approval — analytics configuration): mark those
-   containers `data-clarity-mask="true"` or switch Clarity to strict
-   masking, and add consent before accounts launch.
+2. **Analytics** (D12): Microsoft Clarity session recording is paused and
+   not loaded. Google Analytics (gtag, default config) is optional and loads
+   only after the visitor accepts in the consent notice; the choice can be
+   changed in Tools → Privacy & cookies. If Clarity is ever re-enabled it
+   needs its own consent and masking review first: page text such as the
+   Profile overview card, the PB list, the signed-in email and the import
+   preview would otherwise be recordable. Still open: the privacy policy
+   (not written yet) and Google Analytics' own settings.
 3. Should cloud reads/writes require a verified email?
 4. ~~"Keep me signed in" choice for shared devices?~~ Decided: stay signed
    in by default, no checkbox (§2, "Staying signed in").

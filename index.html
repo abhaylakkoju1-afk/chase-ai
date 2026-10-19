@@ -17,24 +17,8 @@
 <!-- FAVICON -->
     <link rel="icon" type="image/png" href="favicon.png?v=2">
 
-    <!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-VSLDBW2PYM"></script>
-
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-
-gtag('config', 'G-VSLDBW2PYM');
-</script>
-
-<script type="text/javascript">
-    (function(c,l,a,r,i,t,y){
-        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-    })(window, document, "clarity", "script", "wypspzqn7v");
-</script>
+    <!-- Analytics: Google Analytics loads only after the visitor accepts
+         (src/app/privacy/consent.js). Microsoft Clarity is paused. -->
     <title>Swimtics | Engineered for Champions</title>
     <meta name="description"
         content="Swimtics - Precision. Power. Progress. Elite AI-powered swimming analytics platform.">
@@ -53,6 +37,7 @@ gtag('config', 'G-VSLDBW2PYM');
     <link rel="stylesheet" href="styles/phone-layout.css">
     <link rel="stylesheet" href="styles/site-nav.css">
     <link rel="stylesheet" href="styles/account.css">
+    <link rel="stylesheet" href="styles/consent.css">
 
 </head>
 
@@ -184,10 +169,50 @@ gtag('config', 'G-VSLDBW2PYM');
                     <li><button type="button" onclick="showPage('race')">Chronos</button></li>
                     <li><button type="button" onclick="showPage('dashboard')">War Room</button></li>
                     <li><button type="button" onclick="showPage('profile')">Profile</button></li>
+                    <li><button type="button" data-privacy-settings>Privacy &amp; cookies</button></li>
                 </ul>
             </div>
         </div>
     </nav>
+
+    <!-- ANALYTICS CONSENT (behaviour: src/app/privacy/consent.js; styles: styles/consent.css).
+         Shown after the entry gate until the visitor chooses. -->
+    <section id="consentBanner" class="consent-banner" aria-labelledby="consentBannerTitle" hidden>
+        <div class="consent-inner">
+            <div class="consent-text">
+                <h2 id="consentBannerTitle">Optional analytics</h2>
+                <p id="consentBannerBody">
+                    SWIMTICS can use Google Analytics to see how the site is used. It's optional:
+                    it only runs if you accept, and the site works the same either way.
+                    Microsoft Clarity session recording is currently turned off.
+                    You can change your choice any time in Tools &rarr; Privacy &amp; cookies.
+                </p>
+            </div>
+            <div class="consent-actions">
+                <button type="button" class="consent-btn" data-consent-choice="accept">Accept analytics</button>
+                <button type="button" class="consent-btn" data-consent-choice="decline">Decline</button>
+            </div>
+        </div>
+    </section>
+
+    <dialog id="privacyDialog" class="privacy-dialog" aria-labelledby="privacyDialogTitle" aria-describedby="privacyStatus">
+        <h2 id="privacyDialogTitle">Privacy &amp; cookies</h2>
+        <p id="privacyStatus" class="privacy-status"></p>
+        <p>
+            Google Analytics is optional. If you accept, it loads on this browser and sets its own
+            cookies to count visits and see how the site is used. If you decline or withdraw, it
+            isn't loaded, and its cookies on this site are removed where the browser allows.
+        </p>
+        <p>Microsoft Clarity session recording is currently turned off and isn't loaded.</p>
+        <p>Your choice is saved in this browser only. Clearing this site's data resets it.</p>
+        <p>Your choice lasts 12 months; after that we'll ask again.</p>
+        <div class="consent-actions">
+            <button type="button" class="consent-btn" data-consent-choice="accept">Accept analytics</button>
+            <button type="button" class="consent-btn" data-consent-choice="decline">Decline</button>
+        </div>
+        <p id="privacyResult" class="privacy-result" role="status" aria-live="polite"></p>
+        <button type="button" class="privacy-close" data-privacy-close>Close</button>
+    </dialog>
 
     <div id="authModal" class="auth-modal">
         <div class="auth-box" role="dialog" aria-modal="true" aria-labelledby="authTitle">
@@ -3191,6 +3216,7 @@ window.addEventListener(
     <script src="src/app/pages/theme.js"></script>
     <script src="src/app/ui/home-parallax.js"></script>
     <script src="src/app/ui/site-nav.js"></script>
+    <script type="module" src="src/app/privacy/consent.js"></script>
     <script type="module" src="src/app/data/account.js"></script>
 
     <!-- =========================================================
