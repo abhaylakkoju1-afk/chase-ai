@@ -239,3 +239,45 @@ owner chose to defer billing until usage justifies it.
   (`docs/ACCOUNTS.md` §5). D10's backup requirement before launch still
   applies.
 - Photos stay device-only while there is no Storage.
+
+---
+
+## D12 — Optional analytics only after consent; Clarity paused
+
+**Decision:** Microsoft Clarity session recording is paused and not
+loaded anywhere. Google Analytics is optional: it loads only after a
+visitor explicitly accepts it, for every visitor on every device. Accept
+and Decline are presented equally. The choice is saved in the browser
+with a consent version and timestamp, and can be reviewed or withdrawn
+from Tools → Privacy & cookies.
+
+**Why:** Both tools previously loaded on every page before any choice.
+Session recording on a site that minors may use, showing profile and PB
+data, was the largest privacy risk found in the pre-launch review; the
+owner chose to pause it and make the remaining analytics opt-in.
+
+**Consequences:**
+- `src/app/privacy/consent.js` is the only place Google Analytics may be
+  loaded. Analytics tags must not be added to `index.html` directly.
+- A saved choice lasts 12 calendar months; after that it counts as no
+  choice, so nothing loads and the visitor is asked again. The notice and
+  dialog wording was approved by the owner.
+- Changing the notice's wording or what it covers means bumping
+  `CONSENT_VERSION` (`src/app/privacy/consent-store.js`), so every visitor
+  is asked again.
+- Withdrawal sets gtag's `ga-disable` flag and, because gtag's automatic
+  events can still be sent after that flag is set, also refuses requests
+  to Google's analytics hosts from that page made through `sendBeacon`,
+  `fetch`, `XMLHttpRequest` (checked again at `send()`, so a request opened
+  before the withdrawal can't go out after it), or the `src` of `<img>`/`<script>` elements
+  (refused sends report success, so gtag doesn't fall back). Not covered:
+  `setAttribute("src")`, iframes, CSS and `<link>` hints — gtag wasn't
+  seen using them. Analytics cookies the site can reach are removed;
+  cookies on Google's own domains can't be removed by this site.
+- Without a current "accept" (no choice, a corrupt or outdated record,
+  or "decline"), startup loads nothing and removes first-party Google
+  Analytics and Clarity cookies left from earlier visits.
+- Re-enabling Clarity needs a new decision, its own consent and a
+  masking review.
+- No privacy policy is published yet; its commitments need owner review
+  (`docs/ACCOUNTS.md` §7).

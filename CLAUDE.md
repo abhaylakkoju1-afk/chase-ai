@@ -203,10 +203,12 @@ present and future, including Coach ATLAS:
   Treat it accordingly by default: minimize collection, minimize
   retention, and never assume storage is fine just because Firebase is
   configured.
-- Analytics/session-recording tools already present (Google Analytics,
-  Microsoft Clarity) run without a visible consent gate today — treat
-  this as an open compliance question, not a settled state, when
-  expanding data collection.
+- Google Analytics is optional and loads only after a visitor accepts
+  it in the consent notice (D12, `src/app/privacy/consent.js`); Microsoft
+  Clarity session recording is paused and must not be loaded. There is
+  no privacy policy yet — its commitments still need owner review — so
+  treat privacy as an open question, not a settled state, when expanding
+  data collection.
 - Do not add new data collection, telemetry, or third-party tracking
   without explicit human approval.
 
