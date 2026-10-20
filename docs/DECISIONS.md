@@ -306,7 +306,9 @@ codebase before any decision to move providers.
   only on Preview deployments. Secret / `service_role` keys are refused in
   code.
 - SQL in `supabase/sql/` is applied to the test project only by the
-  owner, after review.
+  owner, after review (`001_profiles.sql`, then `002_personal_bests.sql`
+  for personal bests and the first-sign-in import, which reuse the
+  existing pure logic in `user-data.js`).
 - Pushing a preview branch, the Vercel/Supabase dashboard settings,
   custom SMTP and any production use each need separate approval. See
   `docs/SUPABASE_TEST.md`.

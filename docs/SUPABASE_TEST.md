@@ -11,11 +11,14 @@ never on swimtics.com or the public Vercel alias `swimtics-web.vercel.app`
 ## What it covers
 Sign up with email confirmation, log in, log out, staying signed in across
 reloads (and a logout in one tab clearing the others), password reset via
-an emailed link, and the signed-in user's own `profiles` row (the 24
-profile text fields; no photos), protected by Row Level Security.
+an emailed link, the signed-in user's own `profiles` row (the 24
+profile text fields; no photos) and **personal bests** (every recorded
+swim, synced as it is saved or deleted), and a **first-sign-in import**
+of this device's own profile and PBs (previewed, never overwriting the
+account, never offered or imported twice), all protected by Row Level
+Security.
 
-Not covered yet: personal bests, importing this device's data, custom
-SMTP, backups, production.
+Not covered yet: photos, custom SMTP, backups, production.
 
 ## Files
 | File | Role |
@@ -24,6 +27,9 @@ SMTP, backups, production.
 | `src/app/data/supabase-test-account.js` | The browser side (supabase-js 2.117.2 from jsDelivr, PKCE flow) |
 | `supabase/sql/001_profiles.sql` | The `profiles` table and RLS policies — **for review; not applied** |
 | `supabase/sql/check_profiles_rls.sql` | Optional read-only RLS checks (rolled back) |
+| `supabase/sql/002_personal_bests.sql` | `personal_bests`, `pb_entries`, `device_imports`, `add_pb_entries()` and their RLS — **for review; not applied** |
+| `supabase/sql/check_pbs_rls.sql` | Optional read-only RLS checks for the PB tables and function (rolled back) |
+| `src/app/data/supabase-test-pbs.js` | PB mapping, sync plan and import, reusing `user-data.js` (`pbKey`, `cleanLocalPb`, `deviceEntryId`, `planImport`) |
 | `scripts/supabase-test-config.mjs` | Writes the local browser config from `.env.supabase.local` |
 | `api/supabase-test-config.js` | Vercel Function: hands the config to **Preview** deployments only, from Preview-only environment variables |
 | `.env.supabase.example` | Template for the local, git-ignored `.env.supabase.local` |
@@ -43,7 +49,9 @@ be used in the website.
 
 ## Setting up the test project (owner, in the Supabase dashboard)
 1. **Review** `supabase/sql/001_profiles.sql`, then paste it into the
-   swimtics-test **SQL editor** and run it. (Not done by Claude.)
+   swimtics-test **SQL editor** and run it. Then the same for
+   `supabase/sql/002_personal_bests.sql` (it needs 001 first). (Not done
+   by Claude.)
 2. **Authentication → URL Configuration**: Site URL
    `http://127.0.0.1:4173`; Redirect URLs `http://127.0.0.1:4173/**` and
    `http://localhost:4173/**`.
@@ -120,8 +128,10 @@ checks the key type again before using it.
 7. Forgot password → open the email in the same browser → "Set a new
    password" → new password works, old one doesn't.
 8. Profile isolation (see below).
-9. Optional, only after both test users have saved a profile row: run
-   `check_profiles_rls.sql` with their two user ids.
+9. Personal bests and import (see below).
+10. Optional, only after both test users have saved a profile row: run
+    `check_profiles_rls.sql` with their two user ids; after both have
+    saved at least one PB: run `check_pbs_rls.sql` with the same ids.
 
 ### Profile isolation (two users, one browser)
 While a test account is signed in, the Profile form shows **that
@@ -140,6 +150,23 @@ the page reloads so nothing of the previous account stays on screen.
 5. Log Out → "Device Owner" again.
 6. Sign in as A → "Alpha Test" comes back from A's row.
 
+### Personal bests and import
+1. Signed out: add a PB (e.g. Butterfly 100m, 1:10.00) — it stays on this
+   device only.
+2. Sign up / in as A → the PB list is **empty** (the device's PB isn't
+   shown as A's). The Profile card offers to import this device's data,
+   listing the PB times and empty profile fields it would add.
+3. Choose **Not now** → the offer goes and doesn't come back for A on this
+   device. (Or **Import** → "Imported into your test account: …"; the PB
+   appears in A's list and in Table Editor → personal_bests / pb_entries;
+   the offer doesn't come back.)
+4. Add a PB as A → "Saved to your test account." Reload → it's still
+   there. Sign in as A in another browser → it's there too; add a faster
+   time there → both browsers show the faster time after a reload.
+5. Delete a PB → it's gone from the account (and its swims).
+6. Log Out → the device's own PBs (step 1) are back; A's are nowhere.
+7. Sign in as B → B sees only B's PBs, never A's or the device's.
+
 ## Known limits
 - Email links must be opened in the browser that requested them (PKCE).
 - Free projects pause after about 7 days of low activity and have no
@@ -147,9 +174,20 @@ the page reloads so nothing of the previous account stays on screen.
 - Profile rows are last-write-wins. While signed in, the form shows only
   the account's own profile; if a save to the account fails, that change
   is lost when you log out (the message says so).
-- Only the profile text fields are per account in test mode. The
-  **profile photo** is part of this device's profile: it is hidden while a
-  test account is signed in (the account's row has no photo), comes back
-  after logout, and a photo added while signed in is not kept after
-  logout. **Stroke-card photos and personal bests** are still this
-  device's data and are shown whoever is signed in.
+- The profile text fields and personal bests are per account in test
+  mode. The **profile photo** is part of this device's profile: it is
+  hidden while a test account is signed in (the account's row has no
+  photo), comes back after logout, and a photo added while signed in is
+  not kept after logout. **Stroke-card photos** are still this device's
+  data and are shown whoever is signed in. Photos are not synced.
+- A PB change that fails to reach the account (offline, error) says so
+  and is lost on logout; there is no offline queue in test mode.
+- Swim times are stored and compared at millisecond precision (the app's
+  own time parsing leaves float noise, e.g. 68.03999999999999 for
+  "1:08.04"); a best time shown as a typed string such as "1:08.04" is
+  kept as typed. Times that aren't `ss.xx` or `m:ss.xx` (e.g. "31.2s")
+  are treated as unknown, so the fastest swim's seconds are shown instead.
+  `002_personal_bests.sql` needs PostgreSQL 13+ (`trim_scale`).
+- Deleting a PB deletes that event/course (with all its swims) for the
+  account on every device. Recorded swims can't be edited, only added or
+  deleted with their PB.

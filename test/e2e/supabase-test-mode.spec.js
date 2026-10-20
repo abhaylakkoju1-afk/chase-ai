@@ -166,6 +166,7 @@ test("sign up, confirm the email, stay signed in across reloads, save own profil
 });
 
 test("a second user can't see the first user's saved profile, and loads only their own", async ({ browser }) => {
+  test.setTimeout(90_000);                               // two full sign-ups plus a fresh device (~40 s here, on main too)
   const fake = createFakeSupabase();
   const ctxA = await browser.newContext();
   const ctxB = await browser.newContext();

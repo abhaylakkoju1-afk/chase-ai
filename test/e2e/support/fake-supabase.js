@@ -6,6 +6,7 @@
 // `fake.mailbox` instead of being sent.
 
 import { createHash, randomUUID } from "node:crypto";
+import { bestTimeAfterMerge } from "../../../src/app/data/supabase-test-pbs.js";
 
 export const FAKE_URL = "https://fake-swimtics-test.supabase.co";
 export const FAKE_KEY = "sb_publishable_fakeTestKey123";
@@ -22,6 +23,9 @@ export function createFakeSupabase() {
     const refresh = new Map();        // refresh token -> user id
     const codes = new Map();          // auth code -> { userId, challenge, type }
     const profiles = new Map();       // user id -> row
+    const personalBests = new Map();  // pb id -> { id, user_id, pb_key, event, course, best_time }
+    const pbEntries = [];             // { pb_id, user_id, entry_id, seconds, ord }
+    const deviceImports = [];         // { user_id, fingerprint, pb_entries, profile_fields }
     const mailbox = [];
     const requests = [];
 
@@ -171,11 +175,89 @@ export function createFakeSupabase() {
                 return json(route, 201, saved);
             }
         }
+        /* ----- REST: personal bests (mirrors supabase/sql/002_personal_bests.sql) ----- */
+        const rlsDenied = (table) => json(route, 401, { code: "42501", message: `permission denied for table ${table}` });
+        const eqParam = (name) => { const v = url.searchParams.get(name); return v && v.startsWith("eq.") ? v.slice(3) : null; };
+        const withEntries = (pb) => ({
+            pb_key: pb.pb_key, event: pb.event, course: pb.course, best_time: pb.best_time,
+            pb_entries: pbEntries.filter((e) => e.pb_id === pb.id).map(({ entry_id, seconds, ord }) => ({ entry_id, seconds, ord })),
+        });
+
+        if (path === "/rest/v1/personal_bests") {
+            const u = tokenUser(headers);
+            if (method === "GET") {
+                if (!u) return json(route, 200, []);                       // RLS: signed out sees nothing
+                const wantUser = eqParam("user_id");
+                const rows = [...personalBests.values()]
+                    .filter((pb) => pb.user_id === u.id && (!wantUser || pb.user_id === wantUser));
+                return json(route, 200, rows.map(withEntries));
+            }
+            if (method === "DELETE") {
+                if (!u) return rlsDenied("personal_bests");
+                const wantUser = eqParam("user_id");
+                const wantKey = eqParam("pb_key");
+                for (const pb of [...personalBests.values()]) {
+                    if (pb.user_id !== u.id) continue;                        // RLS: only your own rows
+                    if (wantUser && pb.user_id !== wantUser) continue;
+                    if (wantKey && pb.pb_key !== wantKey) continue;
+                    personalBests.delete(pb.id);
+                    for (let i = pbEntries.length - 1; i >= 0; i--) if (pbEntries[i].pb_id === pb.id) pbEntries.splice(i, 1);
+                }
+                return route.fulfill({ status: 204, headers: { "access-control-allow-origin": "*" } });
+            }
+        }
+
+        if (path === "/rest/v1/rpc/add_pb_entries" && method === "POST") {
+            const u = tokenUser(headers);
+            if (!u) return json(route, 401, { code: "42501", message: "not signed in" });
+            if (!Array.isArray(body.p_entries) || body.p_entries.length > 500) {
+                return json(route, 400, { code: "22023", message: "p_entries must be a JSON array of at most 500 entries" });
+            }
+            let pb = [...personalBests.values()].find((x) => x.user_id === u.id && x.pb_key === body.p_pb_key);
+            if (!pb) {
+                pb = { id: randomUUID(), user_id: u.id, pb_key: body.p_pb_key, event: body.p_event, course: body.p_course, best_time: body.p_time };
+                personalBests.set(pb.id, pb);
+            }
+            for (const e of body.p_entries) {
+                if (!pbEntries.some((x) => x.pb_id === pb.id && x.entry_id === e.entry_id)) {
+                    pbEntries.push({ pb_id: pb.id, user_id: u.id, entry_id: e.entry_id, seconds: Number(e.seconds), ord: Number(e.ord) });
+                }
+            }
+            pb.best_time = bestTimeAfterMerge(pb.best_time, body.p_time,
+                pbEntries.filter((x) => x.pb_id === pb.id).map((x) => x.seconds));
+            const out = withEntries(pb);
+            out.pb_entries.sort((a, b) => (a.ord - b.ord) || a.entry_id.localeCompare(b.entry_id));
+            return json(route, 200, out);
+        }
+
+        if (path === "/rest/v1/device_imports") {
+            const u = tokenUser(headers);
+            if (method === "GET") {
+                if (!u) return json(route, 200, []);
+                return json(route, 200, deviceImports.filter((r) => r.user_id === u.id).map((r) => ({ fingerprint: r.fingerprint })));
+            }
+            if (method === "POST") {
+                const rows = Array.isArray(body) ? body : [body];
+                if (!u || rows.some((r) => r.user_id !== u.id)) {
+                    return json(route, u ? 403 : 401, { code: "42501", message: "new row violates row-level security policy for table \"device_imports\"" });
+                }
+                for (const r of rows) {
+                    if (!deviceImports.some((x) => x.user_id === r.user_id && x.fingerprint === r.fingerprint)) deviceImports.push({ ...r });
+                }
+                return json(route, 201, []);
+            }
+        }
+
         return json(route, 404, { message: `fake Supabase: no handler for ${method} ${path}` });
     }
 
     return {
-        users, profiles, mailbox, requests,
+        users, profiles, mailbox, requests, personalBests, pbEntries, deviceImports,
+        /* a user's PBs as { event, course, best_time, seconds[] } for assertions */
+        pbsOf: (userId) => [...personalBests.values()].filter((pb) => pb.user_id === userId).map((pb) => ({
+            event: pb.event, course: pb.course, best_time: pb.best_time,
+            seconds: pbEntries.filter((e) => e.pb_id === pb.id).sort((a, b) => a.ord - b.ord).map((e) => e.seconds),
+        })),
         tokenOwner: (authorization) => sessions.get(String(authorization || "").replace(/^Bearer\s+/i, "")) || null,
         lastMail: (to, kind) => [...mailbox].reverse().find((m) => m.to === to.toLowerCase() && m.kind === kind),
         async install(context, { config = { url: FAKE_URL, publishableKey: FAKE_KEY } } = {}) {

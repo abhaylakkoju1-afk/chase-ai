@@ -100,8 +100,10 @@ analysis output. Wiring it into the pipeline is future work (see
   `swimtics-test` project, using the project URL and publishable key from
   git-ignored local files (locally) or Preview-only Vercel environment
   variables served by `api/supabase-test-config.js` (previews). It covers sign-up/confirmation,
-  login/logout, password reset and the user's own `profiles` row (RLS:
-  `supabase/sql/001_profiles.sql`). Firebase remains the production
+  login/logout, password reset, the user's own `profiles` row, personal
+  bests (`src/app/data/supabase-test-pbs.js`) and a first-sign-in import
+  of the device's data (RLS: `supabase/sql/001_profiles.sql`,
+  `002_personal_bests.sql`). Firebase remains the production
   provider. Full detail: `docs/SUPABASE_TEST.md`.
 
 ### 1.3 Current deployment
