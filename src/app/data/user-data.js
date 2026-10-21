@@ -67,7 +67,7 @@ export function sanitizeProfile(profile) {
 }
 
 /* A valid local PB entry from the working copy, or null. */
-function cleanLocalPb(pb) {
+export function cleanLocalPb(pb) {
     if (!pb || typeof pb.event !== "string" || typeof pb.course !== "string") return null;
     if (!pb.event || !pb.course) return null;
     const history = Array.isArray(pb.history)
