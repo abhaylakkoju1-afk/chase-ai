@@ -287,6 +287,12 @@ described as backed up.
 
 ## 6. Later stages (not implemented)
 
+- **Supabase for production accounts** (D15, proposed): the code path
+  exists behind `PRODUCTION_SUPABASE_ACCOUNTS`, which is off; while off,
+  this Firebase path keeps the account card. Launch steps, and the
+  conditions for public sign-ups and photos (under-18 legal advice, a
+  published privacy policy): `docs/SUPABASE_PRODUCTION.md`.
+
 - **Photos**: Firebase Storage needs the **Blaze** plan for this project.
   Until a decision is made, photos stay on each device (per account while
   signed in). Plan if adopted: resize client-side, upload to

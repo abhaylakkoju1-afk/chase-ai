@@ -312,3 +312,39 @@ codebase before any decision to move providers.
 - Pushing a preview branch, the Vercel/Supabase dashboard settings,
   custom SMTP and any production use each need separate approval. See
   `docs/SUPABASE_TEST.md`.
+
+---
+
+## D15 — Migrate production accounts to Supabase; proposed, flag off
+
+**Status:** proposed. The code path exists behind
+`PRODUCTION_SUPABASE_ACCOUNTS` (`src/app/data/accounts-flags.js`), which
+is **false**; swimtics.com is unchanged and Firebase (D10) still owns the
+account card until the flag is turned on in its own approved PR.
+
+**Decision (proposed):** Production accounts, profiles and personal bests
+move to the Supabase project `swimtics-production`, reusing the account
+controller proven in test mode (D14) and the same SQL and RLS.
+
+**Why:** The test prototype covers sign-up, sessions, password reset,
+owner-only profile and PB data and the device import, with RLS checked on
+the hosted test project; Firebase accounts were never switched on.
+
+**Consequences:**
+- One controller (`supabase-accounts-core.js`), two environments
+  (`supabase-env.js`): a host is test, production or neither, never both.
+  Each has its own auth session key and browser keys, and its config must
+  name its own project — test refuses the production project; production
+  accepts only `PRODUCTION_PROJECT_REF` (unset, so it refuses everything)
+  and never the test project. Project reference ids are public and may be
+  committed; keys other than publishable keys never are.
+- `PRODUCTION_PUBLIC_SIGNUPS` stays **false** (and sign-ups stay off in
+  the dashboard) until the under-18 consent approach has qualified Indian
+  legal advice and the privacy policy is reviewed and published. Until
+  then production would be invite-only.
+- Production profile photos stay off until the same legal and privacy
+  review; photo storage is built and tested against `swimtics-test` first.
+- Each step — production config, applying SQL to production, turning a
+  flag on, Supabase / Vercel settings — needs separate owner approval.
+  `swimtics-production` is never used for testing. See
+  `docs/SUPABASE_PRODUCTION.md`.

@@ -24,7 +24,9 @@ Not covered yet: photos, custom SMTP, backups, production.
 | File | Role |
 |---|---|
 | `src/app/data/supabase-test-core.js` | Pure helpers: the test-mode gate, key checks, redirect URLs, row mapping |
-| `src/app/data/supabase-test-account.js` | The browser side (supabase-js 2.117.2 from jsDelivr, PKCE flow) |
+| `src/app/data/supabase-test-account.js` | Test-mode entry point: the gate and where the config comes from; loads the controller only when test mode applies |
+| `src/app/data/supabase-accounts-core.js` | The account controller shared with production mode (supabase-js 2.117.2 from jsDelivr, PKCE flow) |
+| `src/app/data/supabase-env.js` | The test and production environments: hosts, browser keys, and the project check (test mode refuses the production project) |
 | `supabase/sql/001_profiles.sql` | The `profiles` table and RLS policies — **for review; not applied** |
 | `supabase/sql/check_profiles_rls.sql` | Optional read-only RLS checks (rolled back) |
 | `supabase/sql/002_personal_bests.sql` | `personal_bests`, `pb_entries`, `device_imports`, `add_pb_entries()` and their RLS — **for review; not applied** |

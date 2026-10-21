@@ -104,7 +104,17 @@ analysis output. Wiring it into the pipeline is future work (see
   bests (`src/app/data/supabase-test-pbs.js`) and a first-sign-in import
   of the device's data (RLS: `supabase/sql/001_profiles.sql`,
   `002_personal_bests.sql`). Firebase remains the production
-  provider. Full detail: `docs/SUPABASE_TEST.md`.
+  provider. Full detail: `docs/SUPABASE_TEST.md`. The account controller
+  itself is `src/app/data/supabase-accounts-core.js`, shared with
+  production mode; `src/app/data/supabase-env.js` keeps the two
+  environments apart (hosts, browser keys, project check).
+- **Production Supabase accounts (D15, proposed, OFF)**:
+  `src/app/data/production-accounts.js` does nothing while
+  `PRODUCTION_SUPABASE_ACCOUNTS` (`src/app/data/accounts-flags.js`) is
+  false. When on, it runs only on swimtics.com / www.swimtics.com, only
+  with a config for the production project (none exists yet), and offers
+  Sign Up only if `PRODUCTION_PUBLIC_SIGNUPS` (false). Full detail:
+  `docs/SUPABASE_PRODUCTION.md`.
 
 ### 1.3 Current deployment
 
