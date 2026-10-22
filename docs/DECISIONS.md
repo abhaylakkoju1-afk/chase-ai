@@ -335,9 +335,12 @@ the hosted test project; Firebase accounts were never switched on.
   (`supabase-env.js`): a host is test, production or neither, never both.
   Each has its own auth session key and browser keys, and its config must
   name its own project — test refuses the production project; production
-  accepts only `PRODUCTION_PROJECT_REF` (unset, so it refuses everything)
-  and never the test project. Project reference ids are public and may be
-  committed; keys other than publishable keys never are.
+  accepts only `PRODUCTION_PROJECT_REF` (`jqyctrbzwxrpscieldif`,
+  swimtics-production) and never the test project. Project reference ids
+  are public and may be committed; keys other than publishable keys never
+  are. The production public config (URL + publishable key,
+  `src/app/data/supabase-production-config.js`) is committed but not
+  fetched while the flag is off.
 - `PRODUCTION_PUBLIC_SIGNUPS` stays **false** (and sign-ups stay off in
   the dashboard) until the under-18 consent approach has qualified Indian
   legal advice and the privacy policy is reviewed and published. Until
