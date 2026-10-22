@@ -199,6 +199,36 @@ test("flag on (stand-in project): sign-ups are closed; an existing account logs 
   expect(keys.filter((k) => k.startsWith("swimtics-test"))).toEqual([]);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("swimtics:sb:guestProfile")))).toEqual({ name: "Device Owner" });
 });
+
+test("flag on (stand-in project): production photo sync stays off — no photo module, no Storage request", async ({ page, context, baseURL }) => {
+  const fake = createFakeSupabase();
+  await fake.install(context);
+  const now = new Date().toISOString();
+  fake.users.set("invited@example.com", { id: "11111111-1111-4111-8111-111111111111", email: "invited@example.com", password: PASSWORD, confirmedAt: now, createdAt: now });
+  await serveAs(context, baseURL, ["swimtics.com"], {
+    overrides: { ...flagOn, ...fakeProductionRef },
+    productionConfig: { url: FAKE_URL, publishableKey: FAKE_KEY },
+  });
+  const photoModule = [];
+  page.on("request", (r) => { if (/supabase-test-photos\.js/.test(r.url())) photoModule.push(r.url()); });
+  await page.goto("https://swimtics.com/");
+  await expect(page.locator("html")).toHaveAttribute("data-supabase-accounts", "ready");
+  await enter(page);
+  await page.locator(".site-nav-signin").click();
+  await page.locator("#authEmail").fill("invited@example.com");
+  await page.locator("#authPassword").fill(PASSWORD);
+  await page.locator("#loginView").getByRole("button", { name: "Login" }).click();
+  await expect(page.locator("#authModal")).toBeHidden();
+  expect(await cardText(page)).toContain("Signed in as invited@example.com");
+  await expect(page.locator("#testAccountPhoto")).toHaveCount(0);
+
+  await page.evaluate(() => window.showPage("profile"));
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.locator("#profileImageBox").click()]);
+  await chooser.setFiles({ name: "me.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64") });
+  await expect(page.locator("#profileImageBox img")).toHaveAttribute("src", /^data:image\/png/);   // unchanged local behaviour
+  expect(photoModule).toEqual([]);
+  expect(fake.requests.filter((r) => r.path.startsWith("/storage/"))).toEqual([]);
+});
 /* ---- flag off, with a production account's data still on the device ---- */
 
 /* What an earlier flag-on period would have left: the account's profile

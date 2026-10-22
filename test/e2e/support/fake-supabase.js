@@ -1,9 +1,10 @@
-// A small in-memory stand-in for a Supabase project (Auth + the `profiles`
-// REST endpoint), installed with Playwright routes so Supabase test mode
-// can be exercised with the real supabase-js client without contacting any
-// real project or using real credentials. It mimics the owner-only Row
-// Level Security policies in supabase/sql/001_profiles.sql. Mail is kept in
-// `fake.mailbox` instead of being sent.
+// A small in-memory stand-in for a Supabase project (Auth, the REST
+// endpoints and Storage for the profile-photos bucket), installed with
+// Playwright routes so Supabase test mode can be exercised with the real
+// supabase-js client without contacting any real project or using real
+// credentials. It mimics the owner-only Row Level Security policies and
+// limits in supabase/sql/001–003. Mail is kept in `fake.mailbox` instead
+// of being sent.
 
 import { createHash, randomUUID } from "node:crypto";
 import { bestTimeAfterMerge } from "../../../src/app/data/supabase-test-pbs.js";
@@ -26,6 +27,8 @@ export function createFakeSupabase() {
     const personalBests = new Map();  // pb id -> { id, user_id, pb_key, event, course, best_time }
     const pbEntries = [];             // { pb_id, user_id, entry_id, seconds, ord }
     const deviceImports = [];         // { user_id, fingerprint, pb_entries, profile_fields }
+    const storageObjects = new Map(); // "bucket/name" -> { bytes: Buffer, contentType, cacheControl }
+    const signTokens = new Map();     // token -> { key, expiresAt }
     const mailbox = [];
     const requests = [];
 
@@ -78,10 +81,73 @@ export function createFakeSupabase() {
                 "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
             } });
         }
-        requests.push({ method, path: url.pathname, search: url.search, apikey: headers["apikey"], authorization: headers["authorization"] || "", body: req.postData() || "" });
-        if (headers["apikey"] !== FAKE_KEY) return json(route, 401, { message: "Invalid API key" });
-        const body = req.postData() ? JSON.parse(req.postData()) : {};
+        const isJson = /json/.test(headers["content-type"] || "");
+        const raw = req.postDataBuffer();
+        requests.push({
+            method, path: url.pathname, search: url.search, apikey: headers["apikey"], authorization: headers["authorization"] || "",
+            body: raw && isJson ? raw.toString("utf8") : "", bytes: raw && !isJson ? raw : null,
+            contentType: headers["content-type"] || "", upsert: headers["x-upsert"] || "", cacheControl: headers["cache-control"] || "",
+        });
         const path = url.pathname;
+
+        /* ----- Storage: a signed URL needs no API key or session, only its token ----- */
+        const signed = path.match(/^\/storage\/v1\/object\/sign\/([^/]+)\/(.+)$/);
+        if (signed && method === "GET") {
+            const t = signTokens.get(url.searchParams.get("token") || "");
+            const key = `${signed[1]}/${decodeURIComponent(signed[2])}`;
+            const obj = storageObjects.get(key);
+            if (!t || t.key !== key || t.expiresAt < Date.now() || !obj) {
+                return json(route, 400, { statusCode: "400", error: "InvalidJWT", message: "invalid signature" });
+            }
+            return route.fulfill({ status: 200, headers: { "access-control-allow-origin": "*", "content-type": obj.contentType, "cache-control": obj.cacheControl }, body: obj.bytes });
+        }
+
+        if (headers["apikey"] !== FAKE_KEY) return json(route, 401, { message: "Invalid API key" });
+        const body = raw && isJson ? JSON.parse(raw.toString("utf8")) : {};
+
+        /* ----- Storage: bucket profile-photos with the limits and owner-only
+           policies of supabase/sql/003_profile_photos.sql ----- */
+        const PHOTO_BUCKET = "profile-photos";
+        const storageDenied = () => json(route, 403, { statusCode: "403", error: "Unauthorized", message: "new row violates row-level security policy" });
+        const notFound = () => json(route, 400, { statusCode: "404", error: "not_found", message: "Object not found" });
+        const ownsPhoto = (u, name) => !!u && name === `${u.id}/profile.jpg`;
+        const upload = path.match(/^\/storage\/v1\/object\/([^/]+)\/(.+)$/);
+        if (upload && !path.startsWith("/storage/v1/object/sign/") && (method === "POST" || method === "PUT")) {
+            const [, bucket, encoded] = upload;
+            const name = decodeURIComponent(encoded);
+            const u = tokenUser(headers);
+            if (bucket !== PHOTO_BUCKET) return json(route, 400, { statusCode: "404", error: "Bucket not found", message: "Bucket not found" });
+            if (!ownsPhoto(u, name)) return storageDenied();
+            const type = String(headers["content-type"] || "").split(";")[0].trim();
+            if (type !== "image/jpeg") return json(route, 400, { statusCode: "415", error: "invalid_mime_type", message: `mime type ${type} is not supported` });
+            if (!raw || raw.length > 1048576) return json(route, 400, { statusCode: "413", error: "Payload too large", message: "The object exceeded the maximum allowed size" });
+            const key = `${bucket}/${name}`;
+            if (storageObjects.has(key) && method === "POST" && headers["x-upsert"] !== "true") {
+                return json(route, 400, { statusCode: "409", error: "Duplicate", message: "The resource already exists" });
+            }
+            storageObjects.set(key, { bytes: Buffer.from(raw), contentType: type, cacheControl: headers["cache-control"] || "" });
+            return json(route, 200, { Id: randomUUID(), Key: key });
+        }
+        const sign = path.match(/^\/storage\/v1\/object\/sign\/([^/]+)\/(.+)$/);
+        if (sign && method === "POST") {
+            const [, bucket, encoded] = sign;
+            const name = decodeURIComponent(encoded);
+            const key = `${bucket}/${name}`;
+            if (bucket !== PHOTO_BUCKET || !ownsPhoto(tokenUser(headers), name) || !storageObjects.has(key)) return notFound();   // RLS hides others' objects
+            const token = randomUUID();
+            signTokens.set(token, { key, expiresAt: Date.now() + Number(body.expiresIn) * 1000 });
+            return json(route, 200, { signedURL: `/object/sign/${bucket}/${encoded}?token=${token}` });
+        }
+        const removeObjects = path.match(/^\/storage\/v1\/object\/([^/]+)$/);
+        if (removeObjects && method === "DELETE") {
+            const u = tokenUser(headers);
+            const removed = [];
+            for (const name of body.prefixes || []) {
+                const key = `${removeObjects[1]}/${name}`;
+                if (removeObjects[1] === PHOTO_BUCKET && ownsPhoto(u, name) && storageObjects.delete(key)) removed.push({ name });
+            }
+            return json(route, 200, removed);
+        }
 
         /* ----- Auth ----- */
         if (path === "/auth/v1/signup" && method === "POST") {
@@ -252,7 +318,9 @@ export function createFakeSupabase() {
     }
 
     return {
-        users, profiles, mailbox, requests, personalBests, pbEntries, deviceImports,
+        users, profiles, mailbox, requests, personalBests, pbEntries, deviceImports, storageObjects, signTokens,
+        /* a user's stored profile photo (Buffer) or null */
+        photoOf: (userId) => (storageObjects.get(`profile-photos/${userId}/profile.jpg`) || {}).bytes || null,
         /* a user's PBs as { event, course, best_time, seconds[] } for assertions */
         pbsOf: (userId) => [...personalBests.values()].filter((pb) => pb.user_id === userId).map((pb) => ({
             event: pb.event, course: pb.course, best_time: pb.best_time,

@@ -19,7 +19,7 @@ One account controller, two environments:
 | Auth session key | `swimtics-test-auth` | `swimtics-auth` |
 | Other browser keys | `swimtics-test:*` | `swimtics:sb:*` |
 | Sign Up | offered | only if `PRODUCTION_PUBLIC_SIGNUPS` (**false**): otherwise hidden, and "invite-only" if called |
-| Photos | not synced (test photo sync is the next PR) | not synced; stays off until the legal / privacy review |
+| Profile photo | per account in the private `profile-photos` bucket (`photoSync: true`; `003_profile_photos.sql`) | `photoSync: false` — the photo module isn't loaded; stays off until the legal / privacy review |
 
 - `src/app/data/supabase-env.js` (pure, unit-tested) holds the two
   environments, the host resolver (`resolveSupabaseEnv`: a host is test,
