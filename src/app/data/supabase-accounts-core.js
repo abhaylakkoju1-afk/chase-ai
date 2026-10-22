@@ -14,8 +14,10 @@
    Covers: sign up with email confirmation (only where sign-ups are open),
    log in / out, session kept across reloads, password reset, the user's
    own `profiles` row and personal bests, and a first-sign-in import of this
-   device's data (protected by Row Level Security — supabase/sql/). Photos
-   are not synced. Uses only a project URL and a publishable key.
+   device's data (protected by Row Level Security — supabase/sql/). Where
+   env.photoSync is on (test only), the profile photo too, in a private
+   bucket (supabase-test-photos.js); stroke-card photos are not synced.
+   Uses only a project URL and a publishable key.
    Firebase (account.js) is untouched: without ?emulator or a databaseURL
    it runs its "accounts not available" branch, and this controller then
    takes over the sign-in modal and the Profile account card.
@@ -185,11 +187,15 @@ export async function startSupabaseAccounts(env) {
         return;
     }
 
-    let createClient, pbModule;
+    let createClient, pbModule, photoModule = null;
     try {
-        /* the PB module is loaded only once an environment is active, so
-           other pages never fetch it; in parallel with the library */
-        [{ createClient }, pbModule] = await Promise.all([import(SUPABASE_JS), import("./supabase-test-pbs.js")]);
+        /* the PB (and, where enabled, photo) modules are loaded only once
+           an environment is active, so other pages never fetch them; in
+           parallel with the library */
+        [{ createClient }, pbModule, photoModule] = await Promise.all([
+            import(SUPABASE_JS), import("./supabase-test-pbs.js"),
+            env.photoSync === true ? import("./supabase-test-photos.js") : null,
+        ]);
     } catch {
         state("no-library");
         notice("couldn't load the Supabase library. Check your connection.");
@@ -202,7 +208,9 @@ export async function startSupabaseAccounts(env) {
 
     const { createTestPbRepository, rowsToLocalPbs, rowsToCloudPbs } = pbModule;
     const pbRepo = createTestPbRepository(supabase);
+    const photoRepo = photoModule ? photoModule.createTestPhotoRepository(supabase) : null;
     let currentUser = null;
+    let accountPhoto = undefined;    // with photoSync: undefined = not loaded, null = none, else an in-memory blob: URL
     let cloudRow = undefined;        // undefined = not loaded yet, null = no row
     let accountPbsLoaded = false;
     let lastSyncedKeys = [];         // the account's PB keys at the last load / sync
@@ -370,7 +378,92 @@ export async function startSupabaseAccounts(env) {
 
     async function loadAccount(uid) {
         await loadRow(uid);
-        if (stillUser(uid) && cloudRow !== undefined) await loadPbsAndOffer(uid);
+        if (stillUser(uid) && cloudRow !== undefined) await Promise.all([loadPbsAndOffer(uid), loadPhoto(uid)]);
+    }
+
+    /* ----- profile photo (only where env.photoSync): kept in the account,
+       shown from memory, never written to this device ----- */
+    let photoVersion = 0;            // bumped on every change, so a slower earlier load can't overwrite a newer photo
+    let photoLoadFailed = false;
+    async function loadPhoto(uid) {
+        if (!photoRepo || accountPhoto !== undefined) return;
+        const version = photoVersion;
+        let url;
+        try {
+            url = await photoRepo.load(uid);
+        } catch {
+            if (stillUser(uid) && version === photoVersion) {
+                photoLoadFailed = true;
+                setStatus("profileSaveStatus", `Couldn't load your ${A}'s photo.`, "error");
+                render();
+            }
+            return;
+        }
+        if (!stillUser(uid) || version !== photoVersion) { if (url) URL.revokeObjectURL(url); return; }
+        setAccountPhoto(url);
+    }
+
+    function setAccountPhoto(url) {
+        if (accountPhoto && accountPhoto !== url) URL.revokeObjectURL(accountPhoto);
+        accountPhoto = url;
+        photoVersion += 1;
+        photoLoadFailed = false;
+        render();
+    }
+
+    /* the overview card's image while signed in: the account's photo or none
+       (loadProfile() has drawn the working copy, which holds no photo) */
+    function showAccountPhoto() {
+        if (!photoRepo || !currentUser) return;
+        const box = el("profileImageBox");
+        if (box) box.innerHTML = accountPhoto ? `<img src="${accountPhoto}" alt="Profile">` : "Upload Image";
+    }
+
+    async function saveAccountPhoto(uid, file) {
+        if (!file || !stillUser(uid)) return;
+        setStatus("profileSaveStatus", `Saving your photo to your ${A}…`);
+        let photo;
+        try {
+            photo = await photoModule.processPhoto(file);          // resized, re-encoded: no EXIF / location
+        } catch (e) {
+            if (stillUser(uid)) setStatus("profileSaveStatus", e.message, "error");
+            return;
+        }
+        try {
+            await photoRepo.upload(uid, photo.bytes);
+        } catch {
+            if (stillUser(uid)) setStatus("profileSaveStatus", `Your photo wasn't saved to your ${A}. Please try again.`, "error");
+            return;
+        }
+        if (!stillUser(uid)) return;
+        setAccountPhoto(URL.createObjectURL(new Blob([photo.bytes], { type: "image/jpeg" })));
+        setStatus("profileSaveStatus", `Photo saved to your ${A}. It isn't kept on this device after you log out.`, "ok");
+    }
+
+    if (photoRepo) {
+        const uploadLocally = window.uploadProfileImage;          // profile.js: signed out, the photo stays on this device
+        window.uploadProfileImage = function () {
+            if (!currentUser) return typeof uploadLocally === "function" ? uploadLocally() : undefined;
+            const uid = currentUser.id;
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = photoModule.PHOTO_SOURCE_TYPES.join(",");
+            input.onchange = () => saveAccountPhoto(uid, input.files && input.files[0]);
+            input.click();
+        };
+        window.removeAccountPhoto = async function () {
+            if (!currentUser || !accountPhoto) return;
+            const uid = currentUser.id;
+            try {
+                await photoRepo.remove(uid);
+            } catch {
+                if (stillUser(uid)) setStatus("profileSaveStatus", `Couldn't remove the photo from your ${A}. Please try again.`, "error");
+                return;
+            }
+            if (!stillUser(uid)) return;
+            setAccountPhoto(null);
+            setStatus("profileSaveStatus", `Photo removed from your ${A}.`, "ok");
+        };
     }
 
     /* ----- personal bests: sync each change made in pb.js ----- */
@@ -479,6 +572,8 @@ export async function startSupabaseAccounts(env) {
         leaving = true;
         currentUser = null;
         cloudRow = undefined;
+        if (accountPhoto) URL.revokeObjectURL(accountPhoto);
+        accountPhoto = null;
         store.restoreDeviceData();
         location.reload();
     }
@@ -489,6 +584,7 @@ export async function startSupabaseAccounts(env) {
         document.querySelectorAll("button[onclick='logoutUser()']").forEach((b) => { b.hidden = !currentUser; });
         const nav = document.querySelector(".site-nav-signin");
         if (nav) nav.textContent = currentUser ? "Account" : "Sign In";
+        showAccountPhoto();
         const card = el("accountDetails");
         if (!card) return;
         const banner = env.showProjectBanner
@@ -506,9 +602,21 @@ export async function startSupabaseAccounts(env) {
                 ${banner}
                 <p class="account-line">Signed in as <strong>${escapeHtml(currentUser.email || "")}</strong></p>
                 <p class="account-line" id="testAccountRow">${rowLine}</p>
+                ${photoLine()}
                 ${importOffer()}
                 <p class="account-line notice"><strong>You stay signed in on this browser until you log out.</strong> On a shared device, use Log Out below when you're done.</p>
             </div>`;
+    }
+
+    function photoLine() {
+        if (!photoRepo) return "";
+        if (accountPhoto === undefined && photoLoadFailed) return `<p class="account-line" id="testAccountPhoto">Your ${A}'s photo couldn't be loaded. Reload the page to try again.</p>`;
+        if (accountPhoto === undefined) return `<p class="account-line" id="testAccountPhoto">Loading your ${A}'s photo…</p>`;
+        if (!accountPhoto) {
+            return `<p class="account-line" id="testAccountPhoto">No photo in your ${A}. Choose the image on the overview card to add one; it's resized and its location / camera details are removed before upload.</p>`;
+        }
+        return `<p class="account-line" id="testAccountPhoto">Your photo is saved privately in your ${A} and isn't kept on this device after you log out.
+            <button type="button" class="auth-link" onclick="removeAccountPhoto()">Remove photo</button></p>`;
     }
 
     /* loadProfile() (profile.js) redraws the account card through this hook */
@@ -529,6 +637,8 @@ export async function startSupabaseAccounts(env) {
             cloudRow = undefined;
             accountPbsLoaded = false;
             importPlan = null;
+            accountPhoto = undefined;
+            photoLoadFailed = false;
             store.showAccountProfile(user.id, {});          // nothing shown until this account's own data loads
             store.showAccountPbs(user.id, []);
             setTimeout(() => loadAccount(user.id), 0);      // not inside the callback

@@ -16,9 +16,11 @@ profile text fields; no photos) and **personal bests** (every recorded
 swim, synced as it is saved or deleted), and a **first-sign-in import**
 of this device's own profile and PBs (previewed, never overwriting the
 account, never offered or imported twice), all protected by Row Level
-Security.
+Security. The **profile photo** on the overview card is kept per account
+in a private Storage bucket (see "Profile photo" below).
 
-Not covered yet: photos, custom SMTP, backups, production.
+Not covered yet: stroke-card photos, custom SMTP, backups, production
+(production photos stay off — D15).
 
 ## Files
 | File | Role |
@@ -32,6 +34,10 @@ Not covered yet: photos, custom SMTP, backups, production.
 | `supabase/sql/002_personal_bests.sql` | `personal_bests`, `pb_entries`, `device_imports`, `add_pb_entries()` and their RLS — **for review; not applied** |
 | `supabase/sql/check_pbs_rls.sql` | Optional read-only RLS checks for the PB tables and function (rolled back) |
 | `src/app/data/supabase-test-pbs.js` | PB mapping, sync plan and import, reusing `user-data.js` (`pbKey`, `cleanLocalPb`, `deviceEntryId`, `planImport`) |
+| `supabase/sql/003_profile_photos.sql` | The private `profile-photos` bucket (1 MiB, JPEG only), `swimtics_is_own_profile_photo()` and owner-only `storage.objects` policies — **for review; not applied** |
+| `supabase/sql/check_photos_rls.sql` | Optional read-only checks of the bucket, its policies and photo isolation (rolled back) |
+| `src/app/data/supabase-test-photos.js` | Profile photo: resize + re-encode (drops EXIF), metadata check, upload, short-lived signed URL, remove |
+| `test/e2e/supabase-test-photos.spec.js`, `test/app/supabase-test-photos.test.js` | Photo browser tests (EXIF removed, owner-only, nothing left on the device) and unit tests |
 | `scripts/supabase-test-config.mjs` | Writes the local browser config from `.env.supabase.local` |
 | `api/supabase-test-config.js` | Vercel Function: hands the config to **Preview** deployments only, from Preview-only environment variables |
 | `.env.supabase.example` | Template for the local, git-ignored `.env.supabase.local` |
@@ -52,8 +58,10 @@ be used in the website.
 ## Setting up the test project (owner, in the Supabase dashboard)
 1. **Review** `supabase/sql/001_profiles.sql`, then paste it into the
    swimtics-test **SQL editor** and run it. Then the same for
-   `supabase/sql/002_personal_bests.sql` (it needs 001 first). (Not done
-   by Claude.)
+   `supabase/sql/002_personal_bests.sql` (it needs 001 first), and for
+   `supabase/sql/003_profile_photos.sql` (creates the private bucket and
+   its policies; check Storage → profile-photos shows it as private). (Not
+   done by Claude.)
 2. **Authentication → URL Configuration**: Site URL
    `http://127.0.0.1:4173`; Redirect URLs `http://127.0.0.1:4173/**` and
    `http://localhost:4173/**`.
@@ -131,9 +139,11 @@ checks the key type again before using it.
    password" → new password works, old one doesn't.
 8. Profile isolation (see below).
 9. Personal bests and import (see below).
-10. Optional, only after both test users have saved a profile row: run
+10. Profile photo (see below).
+11. Optional, only after both test users have saved a profile row: run
     `check_profiles_rls.sql` with their two user ids; after both have
-    saved at least one PB: run `check_pbs_rls.sql` with the same ids.
+    saved at least one PB: run `check_pbs_rls.sql` with the same ids;
+    after both have chosen a photo: run `check_photos_rls.sql`.
 
 ### Profile isolation (two users, one browser)
 While a test account is signed in, the Profile form shows **that
@@ -169,6 +179,29 @@ the page reloads so nothing of the previous account stays on screen.
 6. Log Out → the device's own PBs (step 1) are back; A's are nowhere.
 7. Sign in as B → B sees only B's PBs, never A's or the device's.
 
+### Profile photo
+How it works: while signed in, choosing the overview card's image resizes
+the picture in the browser to at most 512 px and re-encodes it as JPEG,
+which drops EXIF and other metadata (GPS location, camera, time); the
+result is checked for metadata before upload. It is stored at
+`profile-photos/<user id>/profile.jpg` (private bucket, owner-only
+policies) and shown through a signed URL valid for 60 seconds, fetched
+without caching into an in-memory `blob:` URL — nothing of it is written
+to this device's storage. Signed out, the photo stays on this device as
+before and is never uploaded.
+1. Signed out: choose a photo → it shows, and stays on this device only.
+2. Sign in as A → the card shows "Upload Image" (not the device's photo);
+   the account card says "No photo in your test account".
+3. Choose a phone photo that has a location (if available) → "Photo saved
+   to your test account". In Storage → profile-photos there is one object,
+   `<A's id>/profile.jpg`, at most 512 px on its longest side. Download it
+   from the dashboard and check its properties / an EXIF viewer: no
+   location or camera details.
+4. Reload → A's photo comes back. Log Out → the device's photo (step 1) is
+   back; A's photo is nowhere.
+5. Sign in as B → "Upload Image"; never A's photo. Choose a photo for B.
+6. As A: **Remove photo** → it's gone from the card and from Storage.
+
 ## Known limits
 - Email links must be opened in the browser that requested them (PKCE).
 - Free projects pause after about 7 days of low activity and have no
@@ -176,12 +209,19 @@ the page reloads so nothing of the previous account stays on screen.
 - Profile rows are last-write-wins. While signed in, the form shows only
   the account's own profile; if a save to the account fails, that change
   is lost when you log out (the message says so).
-- The profile text fields and personal bests are per account in test
-  mode. The **profile photo** is part of this device's profile: it is
-  hidden while a test account is signed in (the account's row has no
-  photo), comes back after logout, and a photo added while signed in is
-  not kept after logout. **Stroke-card photos** are still this device's
-  data and are shown whoever is signed in. Photos are not synced.
+- The profile text fields, personal bests and the profile photo are per
+  account in test mode. The device's own (signed-out) profile photo is
+  hidden while a test account is signed in, comes back after logout, and
+  is never uploaded or offered for import — it stays exactly as before,
+  including whatever metadata the original file had. **Stroke-card
+  photos** are still this device's data and are shown whoever is signed in.
+- The account photo is downloaded again on each page load (one signed URL
+  per load; nothing is cached). One photo per account; choosing another
+  replaces it. File size (1 MiB) and type (JPEG) are enforced by the
+  Storage API; the browser keeps uploads well under that.
+- HEIC photos (some iPhones) can't be decoded by most browsers: the page
+  asks for JPEG, PNG or WebP. EXIF orientation is applied before
+  re-encoding, so the photo keeps its correct rotation without the tag.
 - A PB change that fails to reach the account (offline, error) says so
   and is lost on logout; there is no offline queue in test mode.
 - Swim times are stored and compared at millisecond precision (the app's

@@ -101,9 +101,13 @@ analysis output. Wiring it into the pipeline is future work (see
   git-ignored local files (locally) or Preview-only Vercel environment
   variables served by `api/supabase-test-config.js` (previews). It covers sign-up/confirmation,
   login/logout, password reset, the user's own `profiles` row, personal
-  bests (`src/app/data/supabase-test-pbs.js`) and a first-sign-in import
+  bests (`src/app/data/supabase-test-pbs.js`), a first-sign-in import
   of the device's data (RLS: `supabase/sql/001_profiles.sql`,
-  `002_personal_bests.sql`). Firebase remains the production
+  `002_personal_bests.sql`) and the profile photo
+  (`src/app/data/supabase-test-photos.js`: resized and re-encoded in the
+  browser to drop EXIF, stored in the private `profile-photos` bucket with
+  owner-only policies from `003_profile_photos.sql`, shown via a
+  short-lived signed URL as an in-memory `blob:` URL). Firebase remains the production
   provider. Full detail: `docs/SUPABASE_TEST.md`. The account controller
   itself is `src/app/data/supabase-accounts-core.js`, shared with
   production mode; `src/app/data/supabase-env.js` keeps the two

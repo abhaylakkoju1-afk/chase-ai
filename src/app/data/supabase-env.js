@@ -30,6 +30,7 @@ export const ENVIRONMENTS = Object.freeze({
         notSignedIn: "You're not signed in to a test account.",
         noticeLabel: "Supabase test mode",
         showProjectBanner: true,
+        photoSync: true,                        // profile photo in the private bucket (003_profile_photos.sql)
         importAction: "testImportDeviceData",   // global onclick names of the import offer
         dismissAction: "testDismissImport",
         debugGlobal: "swimticsSupabaseTest",
@@ -43,6 +44,7 @@ export const ENVIRONMENTS = Object.freeze({
         notSignedIn: "You're not signed in.",
         noticeLabel: "Accounts",
         showProjectBanner: false,
+        photoSync: false,                       // production photos stay off until the legal / privacy review (D15)
         importAction: "importDeviceData",
         dismissAction: "dismissImport",
         debugGlobal: "swimticsAccounts",
