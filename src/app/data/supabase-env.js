@@ -18,7 +18,7 @@ import { PRODUCTION_HOSTS } from "./accounts-flags.js";
 export { PRODUCTION_HOSTS };
 
 export const TEST_PROJECT_REF = "kcnedhhrjlyuxwapjojv";          // swimtics-test
-export const PRODUCTION_PROJECT_REF = null;                      // swimtics-production: set in the production-config PR
+export const PRODUCTION_PROJECT_REF = "jqyctrbzwxrpscieldif";    // swimtics-production
 
 export const ENVIRONMENTS = Object.freeze({
     test: Object.freeze({

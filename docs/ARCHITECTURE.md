@@ -116,7 +116,9 @@ analysis output. Wiring it into the pipeline is future work (see
   `src/app/data/production-accounts.js` does nothing while
   `PRODUCTION_SUPABASE_ACCOUNTS` (`src/app/data/accounts-flags.js`) is
   false. When on, it runs only on swimtics.com / www.swimtics.com, only
-  with a config for the production project (none exists yet), and offers
+  with the committed public config for the production project
+  (`src/app/data/supabase-production-config.js`, never fetched while the
+  flag is off), and offers
   Sign Up only if `PRODUCTION_PUBLIC_SIGNUPS` (false). Full detail:
   `docs/SUPABASE_PRODUCTION.md`.
 

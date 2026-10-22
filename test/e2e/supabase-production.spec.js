@@ -3,10 +3,11 @@
 // route, as in supabase-preview.spec.js. With the flag off (as shipped)
 // production pages load nothing about Supabase. To check the gates behind
 // the flag, some tests serve a copy of accounts-flags.js with the flag
-// turned on (and one serves supabase-env.js with a stand-in production
+// turned on (and some serve supabase-env.js with a stand-in production
 // project ref) — in the browser only; the files on disk stay as shipped.
 // Supabase is the in-memory stand-in from support/fake-supabase.js; nothing
-// real is contacted.
+// real is contacted: every request to the real swimtics-production project
+// is aborted and recorded, and the tests expect none.
 
 import { test, expect } from "@playwright/test";
 import { createFakeSupabase, FAKE_URL, FAKE_KEY } from "./support/fake-supabase.js";
@@ -18,14 +19,19 @@ const PASSWORD = "swim-fast-123";
 /* everything production mode could load beyond its tiny entry files */
 const SUPABASE_LOADS = /supabase-accounts-core\.js|supabase-env\.js|supabase-production-config\.js|supabase-test-pbs\.js|@supabase\/supabase-js|\.supabase\.co/;
 
+const PRODUCTION_PROJECT = "https://jqyctrbzwxrpscieldif.supabase.co";
+let productionHits = [];          // requests that tried to reach the real production project (all aborted)
+
 /* Serve this checkout for `hosts`; `overrides` maps a path to a function
-   that edits that file's text before it is served. */
+   that edits that file's text before it is served. productionConfig:
+   null = no config file (404), "real" = the committed file as shipped,
+   or an object served in its place. */
 async function serveAs(context, baseURL, hosts, { overrides = {}, productionConfig = null } = {}) {
   const hostPattern = new RegExp(`^https://(${hosts.map((h) => h.replace(/\./g, "\\.")).join("|")})/`);
   await context.route(ANALYTICS, (r) => r.abort());
   await context.route(hostPattern, async (route) => {
     const u = new URL(route.request().url());
-    if (u.pathname === "/src/app/data/supabase-production-config.js") {
+    if (u.pathname === "/src/app/data/supabase-production-config.js" && productionConfig !== "real") {
       if (!productionConfig) return route.fulfill({ status: 404, body: "" });
       return route.fulfill({ status: 200, contentType: "text/javascript", body: `export default ${JSON.stringify(productionConfig)};` });
     }
@@ -50,7 +56,7 @@ const flagOn = {
 /* production project = the stand-in's project (only in this browser) */
 const fakeProductionRef = {
   "/src/app/data/supabase-env.js": (s) => {
-    const out = s.replace("PRODUCTION_PROJECT_REF = null", `PRODUCTION_PROJECT_REF = "${new URL(FAKE_URL).hostname.split(".")[0]}"`);
+    const out = s.replace(/PRODUCTION_PROJECT_REF = (null|"[a-z0-9]+")/, `PRODUCTION_PROJECT_REF = "${new URL(FAKE_URL).hostname.split(".")[0]}"`);
     if (out === s) throw new Error("ref line not found");
     return out;
   },
@@ -74,14 +80,20 @@ async function cardText(page) {
 
 test.beforeEach(async ({ context }) => {
   await context.route(ANALYTICS, (r) => r.abort());
+  productionHits = [];
+  await context.route(`${PRODUCTION_PROJECT}/**`, (r) => { productionHits.push(`${r.request().method()} ${new URL(r.request().url()).pathname}`); return r.abort(); });
+});
+
+test.afterEach(async () => {
+  expect(productionHits, "the real swimtics-production project is never contacted").toEqual([]);
 });
 
 for (const host of PRODUCTION_HOSTS) {
   for (const search of ["", "?supabase"]) {
-    test(`flag off (as shipped): https://${host}/${search} loads nothing about Supabase and keeps Firebase's notice`, async ({ page, context, baseURL }) => {
+    test(`flag off (as shipped, real production config): https://${host}/${search} loads nothing about Supabase and keeps Firebase's notice`, async ({ page, context, baseURL }) => {
       const fake = createFakeSupabase();
       await fake.install(context);
-      await serveAs(context, baseURL, [host], { productionConfig: { url: FAKE_URL, publishableKey: FAKE_KEY } });
+      await serveAs(context, baseURL, [host], { productionConfig: "real" });
       const seen = recordLoads(page);
       await page.goto(`https://${host}/${search}`);
       await enter(page);
@@ -109,8 +121,9 @@ test("flag on but no production config: says so, loads no library and contacts n
 });
 
 for (const [label, config, reason] of [
-  ["the test project (while no production project is set)", { url: "https://kcnedhhrjlyuxwapjojv.supabase.co", publishableKey: FAKE_KEY }, "PRODUCTION_PROJECT_REF"],
-  ["any project (while no production project is set)", { url: FAKE_URL, publishableKey: FAKE_KEY }, "PRODUCTION_PROJECT_REF"],
+  ["the test project", { url: "https://kcnedhhrjlyuxwapjojv.supabase.co", publishableKey: FAKE_KEY }, "TEST project"],
+  ["another project", { url: FAKE_URL, publishableKey: FAKE_KEY }, "isn't the production project"],
+  ["a look-alike of the production project", { url: "https://jqyctrbzwxrpscieldiff.supabase.co", publishableKey: FAKE_KEY }, "isn't the production project"],
   ["a secret key", { url: FAKE_URL, publishableKey: "sb_secret_abc123" }, "must never be used in the website"],
 ]) {
   test(`flag on with a config for ${label}: refused before any request`, async ({ page, context, baseURL }) => {
@@ -295,3 +308,57 @@ for (const host of PRODUCTION_HOSTS) {
     expect(await cardText(page)).toContain("Accounts aren't available yet");
   });
 }
+
+/* ---- the real production config (src/app/data/supabase-production-config.js) ---- */
+
+for (const host of PRODUCTION_HOSTS) {
+  test(`flag on (in this browser only), real production config on ${host}: accepted, and nothing is sent to the project until someone signs in`, async ({ page, context, baseURL }) => {
+    await serveAs(context, baseURL, [host], { overrides: flagOn, productionConfig: "real" });
+    const configLoads = [];
+    page.on("request", (r) => { if (/supabase-production-config\.js/.test(r.url())) configLoads.push(r.url()); });
+    await page.goto(`https://${host}/`);
+    await expect(page.locator("html")).toHaveAttribute("data-supabase-accounts", "ready");
+    expect(await page.evaluate(() => window.swimticsAccounts && window.swimticsAccounts.project)).toBe("jqyctrbzwxrpscieldif.supabase.co");
+    expect(configLoads).toEqual([`https://${host}/src/app/data/supabase-production-config.js`]);
+    await enter(page);
+    expect(await cardText(page)).toContain("You're not signed in.");
+    await page.waitForTimeout(500);
+    // productionHits is checked in afterEach: no request reached (or was even attempted to) the real project
+  });
+}
+
+const NOT_PRODUCTION = ["staging.swimtics.com", "swimtics.com.evil.test", "evilswimtics.com", "swimtics-web.vercel.app", PREVIEW];
+for (const host of NOT_PRODUCTION) {
+  test(`flag on (in this browser only), real production config, ${host}: production never starts — no config, library or project request`, async ({ page, context, baseURL }) => {
+    await serveAs(context, baseURL, [host], { overrides: flagOn, productionConfig: "real" });
+    const seen = recordLoads(page);
+    await page.goto(`https://${host}/`);
+    await enter(page);
+    await page.waitForTimeout(500);
+    expect(await page.locator("html").getAttribute("data-supabase-accounts")).toBeNull();
+    expect(seen).toEqual([]);
+    expect(await page.evaluate(() => window.__swimticsSupabaseEnv)).toBeUndefined();
+  });
+}
+
+test("locally, the flag on and the real config: production never starts; test mode refuses the production project", async ({ page, context, baseURL }) => {
+  const fake = createFakeSupabase();
+  await fake.install(context, { config: { url: PRODUCTION_PROJECT, publishableKey: FAKE_KEY } });   // a local test config pointing at production
+  await context.route("**/src/app/data/accounts-flags.js", async (route) => {
+    const r = await fetch(`${baseURL}/src/app/data/accounts-flags.js`);
+    route.fulfill({ status: 200, contentType: "text/javascript", body: flagOn["/src/app/data/accounts-flags.js"](await r.text()) });
+  });
+  const seen = recordLoads(page);
+  await page.goto("/");
+  await enter(page);
+  await page.waitForTimeout(500);
+  expect(await page.locator("html").getAttribute("data-supabase-accounts")).toBeNull();
+  expect(seen.filter((u) => /supabase-production-config|supabase-js|\.supabase\.co/.test(u))).toEqual([]);
+
+  await page.goto("/?supabase");
+  await expect(page.locator("html")).toHaveAttribute("data-supabase-test", "bad-config");
+  await enter(page);
+  expect(await cardText(page)).toContain("PRODUCTION project");
+  expect(fake.requests).toEqual([]);
+  expect(seen.filter((u) => /supabase-production-config|supabase-js|\.supabase\.co/.test(u))).toEqual([]);
+});

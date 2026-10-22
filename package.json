@@ -7,6 +7,7 @@
     "test:e2e": "playwright test",
     "test:emulator": "firebase emulators:exec --only auth,database --project demo-swimtics \"node --test --test-concurrency=1 test/firebase/*.test.mjs\"",
     "supabase:test-config": "node scripts/supabase-test-config.mjs",
+    "supabase:production-config": "node scripts/supabase-production-config.mjs",
     "test:e2e:emulator": "firebase emulators:exec --only auth,database --project demo-swimtics \"playwright test -c playwright.emulator.config.js\""
   },
   "devDependencies": {

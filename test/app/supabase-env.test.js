@@ -9,13 +9,14 @@ import { PRODUCTION_SUPABASE_ACCOUNTS, PRODUCTION_PUBLIC_SIGNUPS, PRODUCTION_HOS
 const PREVIEW = "swimtics-web-git-feat-x-swim-tics.vercel.app";
 const KEY = "sb_publishable_abc123";
 const url = (ref) => `https://${ref}.supabase.co`;
-const PROD_REF = "prodrefexample000000";                 // a stand-in: the real one isn't in the code yet
+const PROD_REF = "jqyctrbzwxrpscieldif";                 // swimtics-production (a public identifier)
 const REFS = { test: TEST_PROJECT_REF, production: PROD_REF };
 
-test("both production flags are off, and the production project isn't set yet", () => {
+test("both production flags are off; the production project is swimtics-production", () => {
     assert.equal(PRODUCTION_SUPABASE_ACCOUNTS, false);
     assert.equal(PRODUCTION_PUBLIC_SIGNUPS, false);
-    assert.equal(PRODUCTION_PROJECT_REF, null);
+    assert.equal(PRODUCTION_PROJECT_REF, "jqyctrbzwxrpscieldif");
+    assert.notEqual(PRODUCTION_PROJECT_REF, TEST_PROJECT_REF);
     assert.equal(TEST_PROJECT_REF, "kcnedhhrjlyuxwapjojv");
     assert.deepEqual([...PRODUCTION_HOSTS], ["swimtics.com", "www.swimtics.com"]);
     assert.equal(FLAG_HOSTS, PRODUCTION_HOSTS, "one host list, used by the entry point and the resolver");
@@ -85,10 +86,15 @@ test("config separation: test refuses production, production accepts only produc
         ["production", TEST_PROJECT_REF, REFS, false],
         ["production", "someotherproject0000", REFS, false],
         ["production", "fake-swimtics-test", REFS, false],
-        // as shipped: no production ref, so production refuses everything
-        ["production", PROD_REF, undefined, false],
+        // as shipped (the refs in supabase-env.js)
+        ["production", PROD_REF, undefined, true],
         ["production", TEST_PROJECT_REF, undefined, false],
+        ["production", "jqyctrbzwxrpscieldiff", undefined, false],   // look-alike
+        ["production", "jqyctrbzwxrpscield", undefined, false],
+        ["test", PROD_REF, undefined, false],
         ["test", TEST_PROJECT_REF, undefined, true],
+        // with no production ref, production refuses everything
+        ["production", PROD_REF, { test: TEST_PROJECT_REF, production: null }, false],
         ["staging", TEST_PROJECT_REF, REFS, false],
     ];
     for (const [env, ref, refs, ok] of cases) {
@@ -96,8 +102,9 @@ test("config separation: test refuses production, production accepts only produc
         assert.equal(r.ok, ok, `${env} with ${ref}: ${r.reason || "ok"}`);
         if (!ok) assert.ok(r.reason);
     }
-    assert.match(checkEnvConfig("production", { url: url(PROD_REF), publishableKey: KEY }).reason, /PRODUCTION_PROJECT_REF/);
-    assert.match(checkEnvConfig("test", { url: url(PROD_REF), publishableKey: KEY }, REFS).reason, /PRODUCTION/);
+    assert.match(checkEnvConfig("production", { url: url(PROD_REF), publishableKey: KEY }, { test: TEST_PROJECT_REF, production: null }).reason, /PRODUCTION_PROJECT_REF/);
+    assert.match(checkEnvConfig("production", { url: url(TEST_PROJECT_REF), publishableKey: KEY }).reason, /TEST project/);
+    assert.match(checkEnvConfig("test", { url: url(PROD_REF), publishableKey: KEY }).reason, /PRODUCTION/);
 });
 
 test("secret and service_role keys are refused in either environment, before the project check", () => {
