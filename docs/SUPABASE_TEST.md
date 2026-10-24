@@ -29,12 +29,13 @@ Not covered yet: stroke-card photos, custom SMTP, backups, production
 | `src/app/data/supabase-test-account.js` | Test-mode entry point: the gate and where the config comes from; loads the controller only when test mode applies |
 | `src/app/data/supabase-accounts-core.js` | The account controller shared with production mode (supabase-js 2.117.2 from jsDelivr, PKCE flow) |
 | `src/app/data/supabase-env.js` | The test and production environments: hosts, browser keys, and the project check (test mode refuses the production project) |
-| `supabase/sql/001_profiles.sql` | The `profiles` table and RLS policies — **for review; not applied** |
+| `supabase/sql/001_profiles.sql` | The `profiles` table and RLS policies — applied to swimtics-test; the same file is for production (D15) |
 | `supabase/sql/check_profiles_rls.sql` | Optional read-only RLS checks (rolled back) |
-| `supabase/sql/002_personal_bests.sql` | `personal_bests`, `pb_entries`, `device_imports`, `add_pb_entries()` and their RLS — **for review; not applied** |
+| `supabase/sql/002_personal_bests.sql` | `personal_bests`, `pb_entries`, `device_imports`, `add_pb_entries()` and their RLS — applied to swimtics-test; the same file is for production (D15) |
+| `supabase/sql/check_production_schema.sql` | Read-only schema / RLS checks that need no user ids or data — made for production; run it here first with the environment set to `'test'` (`docs/SUPABASE_PRODUCTION.md`) |
 | `supabase/sql/check_pbs_rls.sql` | Optional read-only RLS checks for the PB tables and function (rolled back) |
 | `src/app/data/supabase-test-pbs.js` | PB mapping, sync plan and import, reusing `user-data.js` (`pbKey`, `cleanLocalPb`, `deviceEntryId`, `planImport`) |
-| `supabase/sql/003_profile_photos.sql` | The private `profile-photos` bucket (1 MiB, JPEG only), `swimtics_is_own_profile_photo()` and owner-only `storage.objects` policies — **for review; not applied** |
+| `supabase/sql/003_profile_photos.sql` | The private `profile-photos` bucket (1 MiB, JPEG only), `swimtics_is_own_profile_photo()` and owner-only `storage.objects` policies — applied to swimtics-test only; never to production yet |
 | `supabase/sql/check_photos_rls.sql` | Optional read-only checks of the bucket, its policies and photo isolation (rolled back) |
 | `src/app/data/supabase-test-photos.js` | Profile photo: resize + re-encode (drops EXIF), metadata check, upload, short-lived signed URL, remove |
 | `test/e2e/supabase-test-photos.spec.js`, `test/app/supabase-test-photos.test.js` | Photo browser tests (EXIF removed, owner-only, nothing left on the device) and unit tests |
