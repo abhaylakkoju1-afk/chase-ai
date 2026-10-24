@@ -71,11 +71,12 @@ aborted in these tests, and each test fails if one was attempted.
 1. Owner: confirm `swimtics-production` settings (sign-ups **off**, email
    confirmation on, MFA on the owner account, Resend SMTP, redirect URLs
    for swimtics.com only). Not done by Claude.
-2. Owner applies `001_profiles.sql` and `002_personal_bests.sql` to
-   production after re-review, and runs both RLS checkers (all PASS).
+2. Owner applies the schema to production after re-review — see
+   "Applying the schema to production" below — and
+   `check_production_schema.sql` reports every check PASS.
 3. PR: set `PRODUCTION_PROJECT_REF` and add
-   `supabase-production-config.js` (URL + **publishable** key only) — this
-   PR (`feat/supabase-production-config`).
+   `supabase-production-config.js` (URL + **publishable** key only) —
+   done (PR #39).
 4. Backups / export and account deletion plan (`docs/ACCOUNTS.md` §5–7).
 5. PR: `PRODUCTION_SUPABASE_ACCOUNTS = true` — invite-only accounts
    (owner-created users); what happens to the unused Firebase account path
@@ -90,3 +91,66 @@ aborted in these tests, and each test fails if one was attempted.
 Never: a secret / `service_role` key in the website, testing against
 `swimtics-production`, or production SQL / settings changes without the
 owner.
+
+## Applying the schema to production (owner; not done by Claude)
+The same two files as on swimtics-test, unchanged in effect: each runs as
+one transaction (an error part-way leaves nothing behind) and is safe to
+re-run.
+1. **Rehearse on swimtics-test first**: open `check_production_schema.sql`,
+   set the environment line at the top to `'test'`, run it in the
+   swimtics-test SQL editor → every check PASS (step 49, photos, shows
+   N/A there).
+2. In the **swimtics-production** SQL editor (check the project name in
+   the dashboard header), paste and run `supabase/sql/001_profiles.sql`,
+   then `supabase/sql/002_personal_bests.sql`.
+3. Run `check_production_schema.sql` as shipped (environment
+   `'production'`) → every check PASS.
+4. Do **not** run `003_profile_photos.sql` on production (photos stay off;
+   step 49 fails if it was). Do not run `check_profiles_rls.sql`,
+   `check_pbs_rls.sql` or `check_photos_rls.sql` there either: they need
+   test users with saved data, and production is never used for testing.
+
+`check_production_schema.sql` needs no user ids and reads no user rows. It
+checks the four tables, their columns, keys and cascading foreign keys,
+RLS enabled and forced, the exact twelve owner-only policies and no
+others, the privileges of `anon` (none) and `authenticated` (exactly what
+the app needs; swims and imports not editable), the PB functions (caller's
+rights, fixed `search_path`, no overloads, no SECURITY DEFINER function in
+`public`), the triggers, that every `public` table has RLS, and that the
+photo bucket is absent. Its probes change nothing: signed out, every table
+and `add_pb_entries()` are refused; signed in as an id that is no real
+user, every table shows 0 rows; `add_pb_entries()` without a user is
+refused before it writes. Not checkable in SQL — confirm in the dashboard:
+sign-ups off, email confirmation, SMTP, redirect URLs, MFA.
+
+**The RLS auto-enable hook.** One SECURITY DEFINER function is allowed:
+Supabase's "enable RLS on new tables" hook, only as the version the owner
+verified on swimtics-test (step 54):
+- `public.rls_auto_enable()`, body (`prosrc`) md5
+  `c44fb229ea8a6b0afd04a0a33261c16c`;
+- owned by `postgres`, SECURITY DEFINER, `search_path=pg_catalog`, returns
+  `event_trigger`;
+- used only by the enabled event trigger `ensure_rls` on
+  `ddl_command_end` for `CREATE TABLE`, `CREATE TABLE AS` and
+  `SELECT INTO`.
+
+Absent is fine too. Any other version — a different body, owner,
+settings, trigger, event or tags — fails step 54, and then step 28, which
+still fails every other SECURITY DEFINER function in `public`. The hook
+**logs rather than aborts** if enabling RLS on a new table fails (reviewed
+by the owner in its definition on swimtics-test), so a table can still end
+up without RLS: step 48 keeps checking every existing `public` table
+directly. If Supabase updates the hook, step 54 fails until the new
+definition has been reviewed and its md5 updated in the checker.
+
+### Rehearsal record
+- **2026-10-24, swimtics-test** (owner, SQL editor, environment `'test'`):
+  `check_production_schema.sql` — every check PASS; step 49 (profile
+  photos) N/A, as expected on the test project. The RLS auto-enable hook
+  there was reviewed first (read-only queries): body md5
+  `c44fb229ea8a6b0afd04a0a33261c16c`, owner `postgres`, SECURITY
+  DEFINER, `search_path=pg_catalog`, returns `event_trigger`, enabled
+  event trigger `ensure_rls` on `ddl_command_end` for `CREATE TABLE`,
+  `CREATE TABLE AS`, `SELECT INTO`.
+- **swimtics-production**: not run yet — 001 / 002 not applied
+  (launch-checklist step 2).

@@ -1,10 +1,12 @@
 -- =========================================================
--- SWIMTICS — Supabase TEST project (swimtics-test) only.
--- Status: FOR REVIEW. Not applied anywhere yet. Apply only to the
--- swimtics-test project, by pasting into its SQL editor, after review,
--- and only after 001_profiles.sql (profiles are used by the import).
+-- SWIMTICS — account schema 2 of 2: personal bests.
+-- Used by both projects: swimtics-test (applied) and swimtics-production
+-- (D15: apply only after owner review), always after 001_profiles.sql
+-- (profiles are used by the import); on production, then run
+-- check_production_schema.sql. Runs as one transaction and is safe to
+-- re-run.
 --
--- Personal bests for signed-in test users, mirroring the shapes the app
+-- Personal bests for signed-in users, mirroring the shapes the app
 -- already uses (src/app/data/user-data.js):
 --   personal_bests  one row per (user, event, course); pb_key = pbKey(event, course)
 --   pb_entries      every recorded swim (history entry); entry_id is the
@@ -17,6 +19,8 @@
 -- Row Level Security: a signed-in user can read and change only their own
 -- rows; signed-out (anon) requests get nothing. No photos are stored here.
 -- =========================================================
+
+begin;
 
 -- ---------- tables ----------
 create table if not exists public.personal_bests (
@@ -56,9 +60,9 @@ create table if not exists public.device_imports (
     primary key (user_id, fingerprint)
 );
 
-comment on table public.personal_bests is 'SWIMTICS test: one row per user, event and course; owner-only via RLS.';
-comment on table public.pb_entries is 'SWIMTICS test: every recorded swim of a personal best; owner-only via RLS; not editable.';
-comment on table public.device_imports is 'SWIMTICS test: device data sets already imported into an account; owner-only via RLS.';
+comment on table public.personal_bests is 'SWIMTICS: one row per user, event and course; owner-only via RLS.';
+comment on table public.pb_entries is 'SWIMTICS: every recorded swim of a personal best; owner-only via RLS; not editable.';
+comment on table public.device_imports is 'SWIMTICS: device data sets already imported into an account; owner-only via RLS.';
 
 -- ---------- updated_at ----------
 create or replace function public.swimtics_touch_updated_at()
@@ -253,3 +257,5 @@ create policy "device_imports: insert own rows"
     on public.device_imports for insert
     to authenticated
     with check ((select auth.uid()) = user_id);
+
+commit;

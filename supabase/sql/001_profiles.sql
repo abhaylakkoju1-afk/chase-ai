@@ -1,13 +1,18 @@
 -- =========================================================
--- SWIMTICS — Supabase TEST project (swimtics-test) only.
--- Status: FOR REVIEW. Not applied anywhere yet. Apply only to the
--- swimtics-test project, by pasting into its SQL editor, after review.
+-- SWIMTICS — account schema 1 of 2: profiles.
+-- Used by both projects: swimtics-test (applied) and swimtics-production
+-- (D15: apply only after owner review, by pasting into its SQL editor;
+-- then 002_personal_bests.sql, then check_production_schema.sql).
+-- Runs as one transaction and is safe to re-run (create if not exists /
+-- create or replace / drop policy if exists).
 --
 -- One table: each signed-in user's own profile text fields (the same 24
 -- fields as src/app/data/user-data.js PROFILE_FIELDS; no photos).
 -- Row Level Security: a user can read and change only their own row;
 -- signed-out (anon) requests get nothing.
 -- =========================================================
+
+begin;
 
 create table if not exists public.profiles (
     user_id uuid primary key references auth.users (id) on delete cascade,
@@ -39,7 +44,7 @@ create table if not exists public.profiles (
 );
 
 comment on table public.profiles is
-    'SWIMTICS test: one row per user; owner-only access via RLS.';
+    'SWIMTICS: one row per user; owner-only access via RLS.';
 
 -- keep updated_at current on every change
 create or replace function public.profiles_touch_updated_at()
@@ -91,3 +96,5 @@ create policy "profiles: delete own row"
     on public.profiles for delete
     to authenticated
     using ((select auth.uid()) = user_id);
+
+commit;
