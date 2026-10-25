@@ -91,7 +91,7 @@ test.describe("Navigation", () => {
 });
 
 test.describe("Site nav Tools menu", () => {
-  test("lists the five tools in order, then Privacy & cookies, and is collapsed by default", async ({ page }) => {
+  test("lists the five tools in order, then Privacy & cookies and the theme toggle, and is collapsed by default", async ({ page }) => {
     await page.goto("/");
     await dismissEntryGate(page);
 
@@ -103,7 +103,7 @@ test.describe("Site nav Tools menu", () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expect(menu.locator("button")).toHaveText([
-      "Chase", "Wall of Records", "Chronos", "War Room", "Profile", "Privacy & cookies",
+      "Chase", "Wall of Records", "Chronos", "War Room", "Profile", "Privacy & cookies", "Switch to light mode",
     ]);
   });
 
@@ -247,20 +247,145 @@ test.describe("Profile", () => {
   });
 });
 
-test.describe("Theme toggle", () => {
-  test("clicking the toggle immediately applies light mode", async ({ page }) => {
+test.describe("Theme toggle (Tools menu)", () => {
+  test("it is a Tools menu item, not a floating button, and switches the theme in place", async ({ page }) => {
     await page.goto("/");
     await dismissEntryGate(page);
 
     const body = page.locator("body");
+    const menu = page.locator("#siteNavToolsMenu");
+    const item = menu.getByRole("button", { name: "Switch to light mode" });
     await expect(body).not.toHaveClass(/light-mode/);
+    await expect(page.locator("#themeToggle")).toBeHidden();                // only visible inside the open menu
+    expect(await page.locator("#themeToggle").evaluate((el) => !!el.closest("#siteNavToolsMenu"))).toBe(true);
 
-    await page.locator("#themeToggle").click();
+    await page.locator("#siteNavToolsButton").click();
+    await item.click();
 
     await expect(body).toHaveClass(/light-mode/);
-    await expect(page.locator("#themeToggle")).toHaveText("🌙 Dark Mode");
+    await expect(page.locator("#themeToggle")).toHaveText("Switch to dark mode");
+    await expect(menu, "the menu stays open after switching").toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("light");
 
-    const storedTheme = await page.evaluate(() => localStorage.getItem("theme"));
-    expect(storedTheme).toBe("light");
+    await page.locator("#themeToggle").click();
+    await expect(body).not.toHaveClass(/light-mode/);
+    await expect(page.locator("#themeToggle")).toHaveText("Switch to light mode");
+    expect(await page.evaluate(() => localStorage.getItem("theme"))).toBe("dark");
   });
+
+  test("it works from the keyboard and focus stays on it", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+
+    await page.locator("#siteNavToolsButton").focus();
+    await page.keyboard.press("ArrowUp");                                   // opens the menu on its last item
+    await expect(page.locator("#themeToggle")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("body")).toHaveClass(/light-mode/);
+    await expect(page.locator("#themeToggle")).toBeFocused();
+    await expect(page.locator("#themeToggle")).toHaveText("Switch to dark mode");
+    await page.keyboard.press("Space");
+    await expect(page.locator("body")).not.toHaveClass(/light-mode/);
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#siteNavToolsMenu")).toBeHidden();
+    await expect(page.locator("#siteNavToolsButton")).toBeFocused();
+  });
+
+  test("a saved light theme is restored with the matching label", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("theme", "light"));
+    await page.reload();
+    await dismissEntryGate(page);
+    await expect(page.locator("body")).toHaveClass(/light-mode/);
+    await page.locator("#siteNavToolsButton").click();
+    await expect(page.locator("#siteNavToolsMenu").getByRole("button", { name: "Switch to dark mode" })).toBeVisible();
+  });
+
+  test("choosing a page still closes the menu", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+    await navigateTo(page, "pb");
+    await expect(page.locator("#siteNavToolsMenu")).toBeHidden();
+  });
+});
+
+test.describe("Coach ATLAS mark", () => {
+  /* the approved artwork, used as is: 460x410 PNG, sha256 below */
+  const MARK = "coach-atlas-mark.png";
+  const RATIO = 460 / 410;
+  /* where the artwork sits in the image (measured): x 14–436, y 29–375 */
+  const ART = { minX: 14, minY: 29, maxX: 436, maxY: 375 };
+
+  test("the launcher and panel header show the artwork, unstretched, with accessible names", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+
+    const launcher = page.getByRole("button", { name: "Open Coach ATLAS" });
+    await expect(launcher).toBeVisible();
+    await expect(launcher).not.toContainText("🏊");
+    const mark = launcher.locator("img.coach-mark");
+    await expect(mark).toHaveAttribute("src", MARK);
+    await expect(mark).toHaveAttribute("alt", "");
+    const fit = await page.evaluate(({ ART }) => {
+      const btn = document.getElementById("aiCoachBtn").getBoundingClientRect();
+      const img = document.querySelector("#aiCoachBtn img.coach-mark");
+      const r = img.getBoundingClientRect();
+      const s = r.width / img.naturalWidth;
+      const cx = btn.left + btn.width / 2, cy = btn.top + btn.height / 2;
+      // the artwork's corners, on screen, must lie inside the round button
+      const corners = [[ART.minX, ART.minY], [ART.maxX, ART.minY], [ART.minX, ART.maxY], [ART.maxX, ART.maxY]]
+        .map(([x, y]) => Math.hypot(r.left + x * s - cx, r.top + y * s - cy));
+      return { loaded: img.complete && img.naturalWidth === 460 && img.naturalHeight === 410,
+        ratio: r.width / r.height, maxCorner: Math.max(...corners), radius: btn.width / 2 };
+    }, { ART });
+    expect(fit.loaded).toBe(true);
+    expect(Math.abs(fit.ratio - RATIO)).toBeLessThan(0.02);                   // not stretched
+    expect(fit.maxCorner).toBeLessThan(fit.radius - 1);                        // swimmer and wave not cut by the circle
+
+    await launcher.click();
+    const panel = page.locator("#aiCoachPanel");
+    await expect(panel).toBeVisible();
+    await expect(panel.locator(".coach-header h3")).toHaveText("Coach ATLAS");
+    const icon = panel.locator(".coach-header img.coach-icon");
+    await expect(icon).toHaveAttribute("src", MARK);
+    const iconBox = await icon.boundingBox();
+    expect(Math.abs(iconBox.width / iconBox.height - RATIO)).toBeLessThan(0.02);
+    await expect(panel.locator(".coach-header")).not.toContainText("🏊");
+
+    await panel.getByRole("button", { name: "Close Coach ATLAS" }).click();
+    await expect(panel).toBeHidden();
+  });
+
+  test("the served mark is exactly the approved artwork", async ({ request }) => {
+    const res = await request.get(`/${MARK}`);
+    expect(res.ok()).toBe(true);
+    expect(res.headers()["content-type"]).toContain("image/png");
+    const body = await res.body();
+    const { createHash } = await import("node:crypto");
+    expect(body.length).toBe(197877);
+    expect(createHash("sha256").update(body).digest("hex")).toBe("696d875713fdb2eb3f9cb9c9abed4a65dc77bed88d92a01f91b069ed3982285f");
+  });
+});
+
+test.describe("Entry gate heading", () => {
+  for (const size of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 375, height: 812 }, { width: 844, height: 390 }]) {
+    test(`"SWIMTICS" is centred on the gate at ${size.width}x${size.height}`, async ({ page }) => {
+      await page.setViewportSize(size);
+      await page.goto("/");
+      const logo = page.locator(".entry-logo");
+      await expect(logo).toHaveCSS("opacity", "1", { timeout: 5000 });   // after the reveal animation
+      const offset = await page.evaluate(() => {
+        const gate = document.getElementById("entryGate").getBoundingClientRect();
+        const h = document.querySelector(".entry-logo");
+        const tracking = parseFloat(getComputedStyle(h).letterSpacing);
+        const range = document.createRange();
+        range.selectNodeContents(h);
+        const rects = [...range.getClientRects()].filter((r) => r.width > 0);
+        const left = Math.min(...rects.map((r) => r.left));
+        const right = Math.max(...rects.map((r) => r.right)) - tracking;   // the spacing after the last letter isn't ink
+        return (left + right) / 2 - (gate.left + gate.right) / 2;
+      });
+      expect(Math.abs(offset)).toBeLessThan(1.5);
+    });
+  }
 });

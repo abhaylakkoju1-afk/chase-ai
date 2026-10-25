@@ -46,9 +46,12 @@
         if (event.key === "End") { event.preventDefault(); list[list.length - 1].focus(); }
     });
 
-    /* choosing a page: showPage() runs from the item's onclick, then close */
+    /* choosing a page: showPage() runs from the item's onclick, then close.
+       Items marked data-keep-open (the theme toggle) act in place: the menu
+       stays open with focus on the item, which shows its new label. */
     menu.addEventListener("click", (event) => {
-        if (event.target.closest("button")) closeMenu();
+        const item = event.target.closest("button");
+        if (item && !item.hasAttribute("data-keep-open")) closeMenu();
     });
 
     document.addEventListener("keydown", (event) => {

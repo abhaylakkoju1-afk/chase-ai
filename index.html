@@ -170,6 +170,9 @@
                     <li><button type="button" onclick="showPage('dashboard')">War Room</button></li>
                     <li><button type="button" onclick="showPage('profile')">Profile</button></li>
                     <li><button type="button" data-privacy-settings>Privacy &amp; cookies</button></li>
+                    <!-- theme: the label names the action for the current theme (src/app/pages/theme.js);
+                         choosing it keeps the menu open (data-keep-open, site-nav.js) -->
+                    <li class="site-nav-menu-separated"><button type="button" id="themeToggle" class="site-nav-theme" data-keep-open onclick="toggleTheme()">Switch to light mode</button></li>
                 </ul>
             </div>
         </div>
@@ -4155,8 +4158,8 @@ window.addEventListener(
 
     <!-- FLOATING AI COACH -->
 
-    <button id="aiCoachBtn" onclick="toggleCoach()">
-    🏊
+    <button id="aiCoachBtn" type="button" onclick="toggleCoach()" aria-label="Open Coach ATLAS">
+    <img class="coach-mark" src="coach-atlas-mark.png" alt="" width="460" height="410">
 </button>
     <div id="aiCoachPanel">
 
@@ -4164,14 +4167,14 @@ window.addEventListener(
 
     <div class="coach-header">
 
-        <span class="coach-icon">🏊</span>
+        <img class="coach-icon" src="coach-atlas-mark.png" alt="" width="460" height="410">
 
         <div>
             <h3>Coach ATLAS</h3>
         </div>
 
-        <button class="coach-close"
-           onclick="toggleCoach()">
+        <button class="coach-close" type="button"
+           onclick="toggleCoach()" aria-label="Close Coach ATLAS">
           ✕
         </button>
 
@@ -4196,10 +4199,6 @@ window.addEventListener(
     </div>
 
 </div>
-
-    <button id="themeToggle" onclick="toggleTheme()">
-        ☀️ Light Mode
-    </button>
 
 
 <!-- =========================================================

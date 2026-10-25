@@ -55,41 +55,6 @@
         }
         
 
-        /* THEME TOGGLE BUTTON */
-        #themeToggle {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-
-            padding: 14px 20px;
-
-            border: none;
-            border-radius: 16px;
-
-            background: rgba(0, 255, 255, 0.18);
-
-            color: white;
-
-            font-family: 'Orbitron', sans-serif;
-            font-weight: 700;
-            font-size: 0.95rem;
-
-            cursor: pointer;
-
-            z-index: 99999;
-
-            backdrop-filter: blur(12px);
-
-            box-shadow:
-                0 0 12px rgba(0, 255, 255, 0.25);
-
-            transition: all 0.3s ease;
-        }
-
-        #themeToggle:hover {
-            transform: scale(1.05);
-        }
-
         /* ================================
    PREMIUM LIGHT MODE MASTER THEME
 ================================ */

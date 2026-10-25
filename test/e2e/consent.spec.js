@@ -323,8 +323,10 @@ test("keyboard and screen readers: the notice is reachable by Tab, and the dialo
   }
   expect(reached, "Tab reaches the consent buttons").toBe(true);
 
-  // Tools menu by keyboard → Privacy & cookies (last item)
+  // Tools menu by keyboard → Privacy & cookies (just above the theme toggle, the last item)
   await page.locator("#siteNavToolsButton").focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("#themeToggle")).toBeFocused();
   await page.keyboard.press("ArrowUp");
   await expect(page.locator("#siteNavToolsMenu button", { hasText: "Privacy & cookies" })).toBeFocused();
   await page.keyboard.press("Enter");
@@ -373,8 +375,9 @@ test.describe("mobile", () => {
       const nav = await page.locator(".site-nav").boundingBox();
       expect(nav.y + nav.height).toBeLessThanOrEqual(box.y);
 
-      // the floating theme / Coach ATLAS buttons are lifted clear of the notice
-      for (const id of ["#themeToggle", "#aiCoachBtn"]) {
+      // the floating Coach ATLAS button is lifted clear of the notice (the
+      // theme toggle is in the Tools menu now)
+      for (const id of ["#aiCoachBtn"]) {
         await expect.poll(async () => {
           const b = await page.locator(id).boundingBox();
           return b ? b.y + b.height <= box.y + 0.5 : false;

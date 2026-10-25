@@ -206,6 +206,17 @@
     color: #fff;
 }
 
+/* the theme toggle: a setting, set apart from the page links */
+.site-nav-menu-separated {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 217, 255, 0.14);
+}
+
+body.light-mode .site-nav-menu-separated {
+    border-top-color: rgba(0, 0, 0, 0.08);
+}
+
 /* the generic light-mode button hover lift would make menu items jump */
 .site-nav button:hover {
     transform: none;
