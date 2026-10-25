@@ -1,6 +1,12 @@
         // ===============================
         // THEME TOGGLE SYSTEM
+        // The toggle is the Tools menu item #themeToggle; its label names
+        // the action for the current theme.
         // ===============================
+        function themeToggleLabel(isLight) {
+            return isLight ? "Switch to dark mode" : "Switch to light mode";
+        }
+
         function toggleTheme() {
             const body = document.body;
             const toggleBtn = document.getElementById("themeToggle");
@@ -9,11 +15,10 @@
 
             if (body.classList.contains("light-mode")) {
                 localStorage.setItem("theme", "light");
-                toggleBtn.innerHTML = "🌙 Dark Mode";
             } else {
                 localStorage.setItem("theme", "dark");
-                toggleBtn.innerHTML = "☀️ Light Mode";
             }
+            if (toggleBtn) toggleBtn.textContent = themeToggleLabel(body.classList.contains("light-mode"));
         }
 
         // ===============================
@@ -28,15 +33,8 @@
 
             if (savedTheme === "light") {
                 document.body.classList.add("light-mode");
-
-                if (toggleBtn) {
-                    toggleBtn.innerHTML = "🌙 Dark Mode";
-                }
-            } else {
-                if (toggleBtn) {
-                    toggleBtn.innerHTML = "☀️ Light Mode";
-                }
             }
+            if (toggleBtn) toggleBtn.textContent = themeToggleLabel(savedTheme === "light");
 
             loadProfile();
             renderStrokeCards();

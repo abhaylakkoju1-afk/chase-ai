@@ -104,10 +104,9 @@
 }
 
 /* While the notice is up, keep it from covering anything: lift the
-   floating theme / Coach ATLAS buttons above it (margin offsets a fixed
+   floating Coach ATLAS button above it (margin offsets a fixed
    element's `bottom` in every existing media query) and leave room at
    the end of the page and for scrolled-to focus. */
-body.consent-pending #themeToggle,
 body.consent-pending #aiCoachBtn {
     margin-bottom: var(--consent-banner-height, 0px);
 }

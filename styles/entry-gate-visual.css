@@ -647,6 +647,9 @@ body {
 
 .entry-logo {
 
+    --entry-logo-tracking:
+        clamp(5px, 1vw, 13px);
+
     margin: 0;
 
     font-family:
@@ -659,7 +662,19 @@ body {
     font-weight: 800;
 
     letter-spacing:
-        clamp(5px, 1vw, 13px);
+        var(--entry-logo-tracking);
+
+    /* Centred on the gate by its own glyphs. The word is wider than its
+       box at large sizes, and text-align alone then starts it at the left
+       edge (shifting it right); a flex row centres it, overflowing evenly.
+       Letter-spacing also follows the last letter, so the same amount on
+       the left keeps the visible letters centred. */
+    display: flex;
+
+    justify-content: center;
+
+    padding-left:
+        var(--entry-logo-tracking);
 
     line-height: .9;
 
@@ -701,7 +716,7 @@ body.light-mode .entry-logo {
         #f4f8fb;
 
     letter-spacing:
-        clamp(5px, 1vw, 13px);
+        var(--entry-logo-tracking);
 
     text-shadow:
 

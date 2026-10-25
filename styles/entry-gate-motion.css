@@ -311,33 +311,22 @@
 
 
 /* ---------------------------------------------------------
-   FLOATING CONTROLS (theme toggle, Coach ATLAS button)
-   They belong to the app, not the gate. While the gate is up
-   (no .exit yet) they are hidden — visibility: hidden also
-   makes them unclickable and unfocusable — from first paint.
-   enterSwimtics() adds .exit; the controls then fade in once
+   FLOATING CONTROL (Coach ATLAS button; the theme toggle is in
+   the Tools menu)
+   It belongs to the app, not the gate. While the gate is up
+   (no .exit yet) it is hidden — visibility: hidden also
+   makes it unclickable and unfocusable — from first paint.
+   enterSwimtics() adds .exit; the button then fades in once
    the gate's own 1.1s fade-out (#entryGate transition in
-   entry-gate-visual.css) has finished. Both are later body
-   siblings of #entryGate, so no extra state is needed.
+   entry-gate-visual.css) has finished. It is a later body
+   sibling of #entryGate, so no extra state is needed.
    --------------------------------------------------------- */
 
-#entryGate:not(.exit) ~ #themeToggle,
 #entryGate:not(.exit) ~ #aiCoachBtn {
 
     visibility: hidden;
 
     opacity: 0;
-
-}
-
-
-/* the toggle keeps its existing all .3s transition (hover, theme switch) */
-#entryGate.exit ~ #themeToggle {
-
-    transition:
-        all .3s ease,
-        opacity .4s ease 1.1s,
-        visibility 0s linear 1.1s;
 
 }
 
@@ -354,7 +343,6 @@
 /* reduced motion: the gate disappears at once, so reveal at once too */
 @media(prefers-reduced-motion: reduce) {
 
-    #entryGate.exit ~ #themeToggle,
     #entryGate.exit ~ #aiCoachBtn {
 
         transition-delay: 0s !important;

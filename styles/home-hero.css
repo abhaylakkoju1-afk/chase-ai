@@ -13,21 +13,6 @@
         }
 
 
-        /* THEME TOGGLE */
-        body.light-mode #themeToggle {
-            background:
-                linear-gradient(145deg,
-                    rgba(255, 255, 255, 0.92),
-                    rgba(248, 244, 232, 0.88));
-
-            color: #111;
-
-            border:
-                1px solid rgba(0, 0, 0, 0.06);
-
-            box-shadow:
-                0 8px 22px rgba(0, 0, 0, 0.08);
-        }
 
 .coach-header {
 
@@ -54,9 +39,30 @@
 }
 
 
+/* The Coach ATLAS mark: coach-atlas-mark.png, the approved artwork used
+   as is (460x410, its own navy #021a3b background). Always scaled with
+   its aspect ratio kept (height: auto / width: auto + object-fit:
+   contain), never stretched or cropped. In the panel header: */
 .coach-icon {
 
-    font-size: 2rem;
+    display: block;
+    height: 44px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+/* ... and in the round launcher (#aiCoachBtn below; 90px, or 60px / 56px
+   in phone-layout.css). At 72% of the button's width the artwork stays
+   inside the circle; the image's navy margin meets the launcher's own
+   navy, so only the artwork shows. */
+.coach-mark {
+    display: block;
+    width: 72%;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none;
 }
 
 .coach-header h3 {
@@ -788,7 +794,9 @@ background-size: 20px;
 #aiCoachBtn {
 
     position: fixed;
-    display: block;
+    display: grid;
+    place-items: center;
+    padding: 0;
 
     right: 30px;
     bottom: 30px;
@@ -800,12 +808,10 @@ background-size: 20px;
 
     border: 1px solid rgba(0,200,255,0.18);
 
-    background:
-        linear-gradient(
-            135deg,
-            rgba(0,180,255,0.25),
-            rgba(0,80,255,0.18)
-        );
+    /* the navy of the Coach ATLAS artwork (coach-atlas-mark.png) */
+    background: #021a3b;
+
+    overflow: hidden;
 
     backdrop-filter: blur(20px);
 

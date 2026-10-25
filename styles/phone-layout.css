@@ -185,18 +185,11 @@
     .entry-logo,
     body.light-mode .entry-logo {
         font-size: clamp(2rem, 10.5vw, 5rem);
-        letter-spacing: 2px;
+        --entry-logo-tracking: 2px;
+        letter-spacing: var(--entry-logo-tracking);
     }
 
     /* ---------- Floating controls covered form fields ---------- */
-    #themeToggle {
-        bottom: 14px;
-        left: 12px;
-        padding: 10px 14px;
-        font-size: 0.8rem;
-        border-radius: 14px;
-    }
-
     #aiCoachBtn {
         right: 14px;
         bottom: 14px;
@@ -221,15 +214,7 @@
         font-size: min(10vw, 15vh);
     }
 
-    /* same compact floating controls and 40px map buttons as portrait */
-    #themeToggle {
-        bottom: 12px;
-        left: 12px;
-        padding: 10px 14px;
-        font-size: 0.8rem;
-        border-radius: 14px;
-    }
-
+    /* same compact floating control and 40px map buttons as portrait */
     #aiCoachBtn {
         right: 14px;
         bottom: 12px;
