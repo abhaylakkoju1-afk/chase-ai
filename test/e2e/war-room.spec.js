@@ -141,6 +141,28 @@ test.describe("War Room — plan generation", () => {
     await expect(page.locator("#dashboardOutput")).toContainText("WAR ROOM REPORT");
     await expect(page.locator("#dashboardOutput")).toContainText("Meet Readiness Score");
     expect(alertMessage).toBeNull();
+    // a failure is now shown in the output itself rather than as an alert
+    await expect(page.locator("#dashboardOutput .tool-message[data-kind='error']")).toHaveCount(0);
+  });
+
+  test("a generation failure is shown in the output, not as a browser alert", async ({ page }) => {
+    let alertMessage = null;
+    page.on("dialog", async (dialog) => {
+      alertMessage = dialog.message();
+      await dialog.dismiss();
+    });
+
+    await openWarRoom(page);
+    // force the generator to fail part-way: reading the soreness map throws
+    await page.evaluate(() => {
+      sorenessMap = new Proxy({}, { ownKeys() { throw new Error("test: broken soreness map"); } });
+    });
+    await page.locator('button[onclick="generateWarRoomPlan()"]').click();
+
+    const error = page.locator("#dashboardOutput .tool-message[data-kind='error']");
+    await expect(error).toHaveText("War Room generation failed. Please try again.");
+    await expect(error).toHaveAttribute("role", "alert");
+    expect(alertMessage).toBeNull();
   });
 
   test("a selected body part's soreness reaches the generator and appears in the rendered plan", async ({ page }) => {

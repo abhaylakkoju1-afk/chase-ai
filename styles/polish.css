@@ -1,0 +1,325 @@
+/* =========================================================
+   POLISH — small, shared finishing styles, loaded last
+   - homepage hero: one-line purpose and the next step for a swimmer
+   - feature cards as links (they used to be clickable <div>s)
+   - visible keyboard focus everywhere, in the brand cyan
+   - empty / error messages in the tools
+   - readable small labels
+   - reduced motion
+   Nothing here changes what the tools do.
+   ========================================================= */
+
+/* ---------- Homepage hero: purpose + next step ---------- */
+.hero-intro {
+    max-width: 36ch;
+    margin: 18px auto 0;
+    font-family: 'Inter', sans-serif;
+    font-size: clamp(1rem, 2.2vw, 1.2rem);
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: 0.2px;
+    color: rgba(243, 247, 250, 0.86);
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    margin: 26px 0 6px;
+    pointer-events: auto;
+}
+
+.hero-actions .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    margin-top: 0;
+    text-decoration: none;
+    pointer-events: auto;
+}
+
+/* the quieter second action: the Tools button's glass */
+.hero-actions .hero-cta-secondary {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(243, 247, 250, 0.95);
+}
+
+body.light-mode .hero-intro {
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+
+body.light-mode .overlay .btn.hero-cta-secondary {
+    background: rgba(255, 255, 255, 0.62) !important;
+}
+
+/* a little more room before the quote */
+.hero-actions + .hero-quote {
+    margin-top: 22px;
+}
+
+/* Phones: the hero is a fixed-height, centred box, so the purpose line and
+   the two actions must fit in it with the existing lines — tighten the
+   spacing between them (type sizes unchanged, except the quote). */
+@media (max-width: 768px) {
+    .overlay .hero-title {
+        margin: 0 0 8px;
+    }
+
+    .overlay .hero-subtitle {
+        margin: 6px 0;
+    }
+
+    .overlay .hero-tagline {
+        margin: 6px 0 12px;
+    }
+
+    .hero-intro {
+        margin-top: 8px;
+        font-size: 0.98rem;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        width: min(100%, 320px);
+        margin: 18px auto 0;
+    }
+
+    .hero-actions .hero-cta {
+        min-height: 46px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+
+    .hero-actions + .hero-quote {
+        margin-top: 16px;
+        font-size: 0.98rem;
+        line-height: 1.55;
+    }
+}
+
+/* Short portrait phones (about 667px tall and less): centred, the hero's
+   bottom line ran under the floating Coach ATLAS button (which sits in the
+   bottom-right corner). Start the hero just under the nav instead of
+   centring it, with slightly tighter spacing, so the quote ends above it. */
+@media (max-width: 768px) and (max-height: 700px) and (orientation: portrait) {
+    /* the title itself sits 35px above its place (.hero-title top: -35px),
+       hence the 46px */
+    #home .overlay,
+    body.light-mode #home .overlay {
+        top: 46px !important;
+        transform: translateX(-50%) !important;
+        height: auto !important;
+        justify-content: flex-start !important;
+    }
+
+    .overlay .hero-title {
+        margin-bottom: 0;
+    }
+
+    .overlay .hero-tagline {
+        margin-bottom: 8px;
+    }
+
+    .hero-intro {
+        margin-top: 6px;
+        font-size: 0.94rem;
+        line-height: 1.45;
+    }
+
+    .hero-actions {
+        gap: 6px;
+        margin-top: 12px;
+    }
+
+    .hero-actions .hero-cta {
+        min-height: 44px;
+    }
+
+    .hero-actions + .hero-quote {
+        margin-top: 8px;
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+}
+
+/* very small phones (under 600px tall, e.g. 320x568): no room for the
+   decorative quote without running under the Coach ATLAS button */
+@media (max-width: 768px) and (max-height: 600px) and (orientation: portrait) {
+    .hero-actions + .hero-quote {
+        display: none;
+    }
+}
+
+/* Short landscape phones: actions side by side; the decorative quote is
+   left out, as there is no room for everything at this height. */
+@media (max-height: 500px) and (max-width: 950px) and (orientation: landscape) {
+    .overlay .hero-title {
+        margin: 0 0 4px;
+    }
+
+    .overlay .hero-subtitle,
+    .overlay .hero-tagline {
+        margin: 2px 0;
+    }
+
+    .hero-intro {
+        margin-top: 6px;
+        max-width: none;
+        font-size: 0.92rem;
+    }
+
+    .hero-actions {
+        flex-direction: row;
+        width: auto;
+        margin-top: 12px;
+    }
+
+    .hero-actions .hero-cta {
+        min-height: 42px;
+    }
+
+    .hero-actions + .hero-quote {
+        display: none;
+    }
+}
+
+/* ---------- Feature cards are links: keep their look ---------- */
+a.feature-card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+a.feature-card:hover,
+a.feature-card:visited {
+    color: inherit;
+}
+
+/* ---------- Visible keyboard focus ----------
+   :focus-visible only shows for keyboard use, not mouse clicks.
+   :where() keeps this at zero specificity, so components with their own
+   focus style (site nav, sign-in dialog, consent notice) keep theirs. */
+:where(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid #00d9ff;
+    outline-offset: 3px;
+}
+
+body.light-mode :where(a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline-color: #0062d6;
+}
+
+/* the cards' own rounded edges */
+a.feature-card:focus-visible {
+    outline: 2px solid #00d9ff;
+    outline-offset: 4px;
+    border-color: rgba(0, 217, 255, 0.55);
+}
+
+body.light-mode a.feature-card:focus-visible {
+    outline-color: #0062d6;
+}
+
+/* the round Coach ATLAS launcher clips its contents, so ring it from outside */
+#aiCoachBtn:focus-visible {
+    outline: 2px solid #00d9ff;
+    outline-offset: 4px;
+}
+
+/* ---------- Empty and error states in the tools ---------- */
+.tool-message {
+    margin: 14px 0 0;
+    padding: 14px 16px;
+    border: 1px dashed rgba(0, 217, 255, 0.28);
+    border-radius: 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: rgba(243, 247, 250, 0.78);
+    background: rgba(0, 217, 255, 0.04);
+}
+
+.tool-message[hidden] {
+    display: none;
+}
+
+/* Wall of Records: the empty-state line shows only while the list is
+   empty (pure CSS, so the PB code is untouched) */
+#pbEmpty {
+    display: none;
+}
+
+#pbList:empty + #pbEmpty {
+    display: block;
+}
+
+/* ... but not while a signed-in account's PBs are still loading
+   (supabase-accounts-core.js sets this) */
+html[data-pbs-loading] #pbList + #pbEmpty {
+    display: none;
+}
+
+.tool-message[data-kind="error"] {
+    border-style: solid;
+    border-color: rgba(255, 107, 107, 0.45);
+    background: rgba(255, 107, 107, 0.08);
+    color: #ffc2c2;
+}
+
+/* Chase's status line under the video: the same error colour (its
+   default cyan is set inline) */
+#chaseStatus[data-kind="error"] {
+    color: #ff9d9d !important;
+}
+
+body.light-mode .tool-message {
+    border-color: rgba(0, 98, 214, 0.25);
+    background: rgba(0, 98, 214, 0.04);
+    color: #3a4352;
+}
+
+body.light-mode .tool-message[data-kind="error"] {
+    border-color: rgba(200, 40, 40, 0.35);
+    background: rgba(200, 40, 40, 0.06);
+    color: #9b1c1c;
+}
+
+body.light-mode #chaseStatus[data-kind="error"] {
+    color: #b42318 !important;
+}
+
+/* ---------- Readable small labels (were 10.9px / 11.5px) ---------- */
+.st-eyebrow,
+.req-card .req-label {
+    font-size: 0.75rem;
+}
+
+/* ---------- Reduced motion ----------
+   For visitors who ask for less motion: no decorative animation, no hover
+   lift, instant transitions. (The GSAP scroll effects are handled in
+   src/app/marketing/bootstrap.js, the hero parallax in home-parallax.js.) */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        animation-delay: 0s !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
+    }
+
+    .feature-card:hover,
+    .btn:hover,
+    body.light-mode .overlay .btn:hover,
+    body.light-mode button:hover {
+        transform: none !important;
+    }
+}

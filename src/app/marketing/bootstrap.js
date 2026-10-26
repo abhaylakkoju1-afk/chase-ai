@@ -31,14 +31,23 @@
 
         const doc = document;
 
+        /* Reduced motion: every section and decoration is still built,
+           but there is no scroll-linked parallax or button movement, and
+           the reveals finish almost at once. */
+        const reduceMotion =
+            window.matchMedia &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        if (reduceMotion) gsap.globalTimeline.timeScale(20);
+
         createScrollProgress(doc);
         setupEcosystemIntro(doc);
         setupFeatureCards(doc);
         setupScrollReveals(doc);
         setupChaseAIShowcase(doc);
-        setupParallax(doc);
+        if (!reduceMotion) setupParallax(doc);
         setupPageObserver(doc);
-        setupMicroInteractions(doc);
+        if (!reduceMotion) setupMicroInteractions(doc);
 
         ScrollTrigger.refresh();
 

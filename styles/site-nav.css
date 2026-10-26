@@ -322,18 +322,10 @@ body.light-mode .site-nav .site-nav-signin:hover {
 
     /* Keep page content where it was. The previous phone bar wrapped to
        two rows (107px); this one-row bar is 65px. Give back the 42px below
-       it so content positions are unchanged:
-       - Home: as a black top border on #home, continuing the hero video's
-         own black letterbox (a margin would show a blank strip of page
-         background in light mode). content-box keeps the hero's 100vh.
-       - Other pages: on the first .glass card (16px phone margin + 42px).
-         The #analyzer/#profile margin-top: 0 !important rules rule out
-         putting it on the page itself. */
-    .site-nav ~ #home.page {
-        border-top: 42px solid #000;
-        box-sizing: content-box !important;
-    }
-
+       it on the other pages' first .glass card (16px phone margin + 42px);
+       the #analyzer/#profile margin-top: 0 !important rules rule out
+       putting it on the page itself. Home has no such gap: its hero video
+       starts right under the bar. */
     .site-nav ~ .page > .glass:first-child {
         margin-top: 58px;
     }

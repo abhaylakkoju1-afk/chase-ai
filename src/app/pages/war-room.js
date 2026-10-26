@@ -469,7 +469,13 @@
 
             } catch (error) {
                 console.error("War Room Generation Error:", error);
-                alert("War Room generation failed. Check console.");
+                // shown where the plan would appear, not as a browser alert
+                const output = document.getElementById("dashboardOutput");
+                if (output) {
+                    output.innerHTML = `<p class="tool-message" data-kind="error" role="alert">War Room generation failed. Please try again.</p>`;
+                } else {
+                    alert("War Room generation failed. Check console.");
+                }
             }
         }
 

@@ -39,8 +39,9 @@ async function logIn(page, email) {
   await page.locator("#authEmail").fill(email);
   await page.locator("#authPassword").fill(PASSWORD);
   await page.locator("#loginView").getByRole("button", { name: "Login" }).click();
-  await expect(page.locator("#authModal")).toBeHidden();
+  // the actual signed-in (and PBs-loaded) state first; the dialog closes with it
   await signedInAs(page, email);
+  await expect(page.locator("#authModal")).toBeHidden();
 }
 async function logOut(page) {
   await page.evaluate(() => window.showPage("profile"));
@@ -48,10 +49,15 @@ async function logOut(page) {
   await ready(page);
   await enter(page);
 }
+/* Signed in, with the account's profile row AND personal bests loaded. The
+   PBs arrive after the profile row, so waiting for the row alone could
+   read the PB list in between; <html data-pbs-loading> is present exactly
+   while an account's PBs are on their way. */
 async function signedInAs(page, email) {
   await page.evaluate(() => window.showPage("profile"));
   await expect(page.locator("#accountDetails")).toContainText(`Signed in as ${email}`);
   await expect(page.locator("#testAccountRow")).not.toContainText("Loading");
+  await expect(page.locator("html")).not.toHaveAttribute("data-pbs-loading");
 }
 async function addPb(page, event, course, time, { synced = true } = {}) {
   await page.evaluate(() => window.showPage("pb"));
@@ -260,4 +266,43 @@ test("signed out, PB changes stay on this device and nothing is sent", async ({ 
   await page.waitForTimeout(500);
   expect(fake.requests.filter((r) => /personal_bests|add_pb_entries|device_imports/.test(r.path))).toEqual([]);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("pbs"))[0].time)).toBe("2:30.00");
+});
+
+test("while a signed-in account's PBs are loading, the list doesn't claim there are none", async ({ page, context }) => {
+  const fake = createFakeSupabase();
+  await fake.install(context);
+  await openTestMode(page);
+  await signUp(page, fake, "loading@example.com");
+  await addPb(page, "Freestyle 50m", "Short Course", "30.00");
+
+  // hold the account's PB request on the next load
+  let release;
+  const held = new Promise((r) => { release = r; });
+  await context.route("https://fake-swimtics-test.supabase.co/rest/v1/personal_bests*", async (route) => {
+    if (route.request().method() === "GET") await held;
+    await route.fallback();
+  });
+  await page.reload();
+  await ready(page);
+  await enter(page);
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("html")).toHaveAttribute("data-pbs-loading", "true");
+  await expect(page.locator("#pbList")).toBeEmpty();
+  await expect(page.locator("#pbEmpty")).toBeHidden();               // not "No personal bests yet"
+
+  release();
+  await expect(page.locator("html")).not.toHaveAttribute("data-pbs-loading");
+  await expect(page.locator("#pbList")).toContainText("30.00");
+  await expect(page.locator("#pbEmpty")).toBeHidden();
+});
+
+test("a signed-in account with no PBs shows the empty state once its PBs have loaded", async ({ page, context }) => {
+  const fake = createFakeSupabase();
+  await fake.install(context);
+  await openTestMode(page);
+  await signUp(page, fake, "nopbs@example.com");
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("html")).not.toHaveAttribute("data-pbs-loading");
+  await expect(page.locator("#pbEmpty")).toBeVisible();
+  await expect(page.locator("#pbEmpty")).toContainText("No personal bests yet");
 });

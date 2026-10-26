@@ -117,7 +117,8 @@
 
     <button
         class="pb-action-btn chart-btn"
-        onclick="toggleChart(${i})">
+        onclick="toggleChart(${i})"
+        aria-label="Show or hide the chart for ${pb.event} (${pb.course})">
         📊
     </button>
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -14,14 +14,32 @@
 
 
 
-<!-- FAVICON -->
+<!-- FAVICON (favicon-32.png and apple-touch-icon.png are resized copies of favicon.png) -->
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
     <link rel="icon" type="image/png" href="favicon.png?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <meta name="theme-color" content="#021a3b">
 
     <!-- Analytics: Google Analytics loads only after the visitor accepts
          (src/app/privacy/consent.js). Microsoft Clarity is paused. -->
     <title>Swimtics | Engineered for Champions</title>
     <meta name="description"
         content="Swimtics - Precision. Power. Progress. Elite AI-powered swimming analytics platform.">
+
+    <!-- SOCIAL SHARING PREVIEW -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Swimtics">
+    <meta property="og:url" content="https://swimtics.com/">
+    <meta property="og:title" content="Swimtics | Engineered for Champions">
+    <meta property="og:description" content="Precision. Power. Progress. Video analysis, race timing and training tools for competitive swimmers.">
+    <meta property="og:image" content="https://swimtics.com/entry-bg.png">
+    <meta property="og:image:width" content="1672">
+    <meta property="og:image:height" content="941">
+    <meta property="og:image:alt" content="Swimtics — elite swimmers in the water">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Swimtics | Engineered for Champions">
+    <meta name="twitter:description" content="Precision. Power. Progress. Video analysis, race timing and training tools for competitive swimmers.">
+    <meta name="twitter:image" content="https://swimtics.com/entry-bg.png">
 
 
 
@@ -38,6 +56,8 @@
     <link rel="stylesheet" href="styles/site-nav.css">
     <link rel="stylesheet" href="styles/account.css">
     <link rel="stylesheet" href="styles/consent.css">
+    <!-- last: shared focus, motion, empty/error-state and small layout polish -->
+    <link rel="stylesheet" href="styles/polish.css">
 
 </head>
 
@@ -277,6 +297,19 @@
         <video autoplay muted loop playsinline id="bgVideo">
     <source src="bg.mp4" type="video/mp4">
 </video>
+        <script>
+            /* reduced motion: no autoplaying background video; it stays on
+               its first frame (this runs before the video can start) */
+            (function () {
+                var v = document.getElementById("bgVideo");
+                if (v && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                    v.removeAttribute("autoplay");
+                    v.autoplay = false;
+                    v.pause();
+                    v.addEventListener("play", function () { v.pause(); });
+                }
+            })();
+        </script>
 
         <div class="overlay">
             <h1 class="hero-title">SWIMTICS</h1>
@@ -288,6 +321,16 @@
             <p class="hero-tagline">
                 Precision. Power. Progress.
             </p>
+
+            <!-- what SWIMTICS is, and the next step for a swimmer -->
+            <p class="hero-intro">
+                Video analysis, race timing and training tools for competitive swimmers, in one place.
+            </p>
+            <div class="hero-actions">
+                <a class="btn hero-cta" href="#analyzer" onclick="showPage('analyzer'); return false;">Analyse a swim</a>
+                <a class="btn hero-cta hero-cta-secondary" href="#homeFeatures">Explore the tools</a>
+            </div>
+
             <div class="hero-quote">
                “You can’t put a limit on anything.
                The more you dream, the farther you get.”
@@ -312,13 +355,13 @@
     <div class="features-grid">
 
         <!-- CHASE AI -->
-        <div class="feature-card" onclick="showPage('analyzer')">
+        <a class="feature-card" href="#analyzer" onclick="showPage('analyzer'); return false;" aria-labelledby="feature-chase-title" aria-describedby="feature-chase-desc">
 
-            <div class="feature-icon">🏊</div>
+            <div class="feature-icon" aria-hidden="true">🏊</div>
 
-            <h3>Chase AI</h3>
+            <h3 id="feature-chase-title">Chase AI</h3>
 
-            <p>
+            <p id="feature-chase-desc">
                 Upload training videos and receive detailed and intelligent stroke analysis,
                 technique feedback, efficiency score and performance
                 insights.
@@ -328,16 +371,16 @@
                 Improve mechanics. Reduce wasted motion.
             </span>
 
-        </div>
+        </a>
 
         <!-- PB PAGE -->
-        <div class="feature-card" onclick="showPage('pb')">
+        <a class="feature-card" href="#pb" onclick="showPage('pb'); return false;" aria-labelledby="feature-pb-title" aria-describedby="feature-pb-desc">
 
-            <div class="feature-icon">🏆</div>
+            <div class="feature-icon" aria-hidden="true">🏆</div>
 
-            <h3>Wall of Records</h3>
+            <h3 id="feature-pb-title">Wall of Records</h3>
 
-            <p>
+            <p id="feature-pb-desc">
                 Store your personal bests, track progression,
                 visualize performance trends and monitor growth.
             </p>
@@ -346,16 +389,16 @@
                 Your swimming journey in one place.
             </span>
 
-        </div>
+        </a>
 
         <!-- RACE -->
-        <div class="feature-card" onclick="showPage('race')">
+        <a class="feature-card" href="#race" onclick="showPage('race'); return false;" aria-labelledby="feature-chronos-title" aria-describedby="feature-chronos-desc">
 
-            <div class="feature-icon">⏱️</div>
+            <div class="feature-icon" aria-hidden="true">⏱️</div>
 
-            <h3>Chronos Engine</h3>
+            <h3 id="feature-chronos-title">Chronos Engine</h3>
 
-            <p>
+            <p id="feature-chronos-desc">
                 Analyze race videos to evaluate splits,
                 turns and pacing throughout the race.
             </p>
@@ -364,16 +407,16 @@
                 Discover where races are won and lost.
             </span>
 
-        </div>
+        </a>
 
         <!-- PROFILE -->
-        <div class="feature-card" onclick="showPage('profile')">
+        <a class="feature-card" href="#profile" onclick="showPage('profile'); return false;" aria-labelledby="feature-profile-title" aria-describedby="feature-profile-desc">
 
-            <div class="feature-icon">👤</div>
+            <div class="feature-icon" aria-hidden="true">👤</div>
 
-            <h3>Profile</h3>
+            <h3 id="feature-profile-title">Profile</h3>
 
-            <p>
+            <p id="feature-profile-desc">
                 Build your athlete profile including goals,
                 training background, physical attributes and
                 competitive history.
@@ -383,7 +426,7 @@
                 Your complete swimmer identity.
             </span>
 
-        </div>
+        </a>
 
     </div>
 
@@ -391,14 +434,13 @@
 
     <div class="warroom-wrapper">
 
-        <div class="feature-card warroom-card"
-            onclick="showPage('dashboard')">
+        <a class="feature-card warroom-card" href="#dashboard" onclick="showPage('dashboard'); return false;" aria-labelledby="feature-warroom-title" aria-describedby="feature-warroom-desc">
 
-            <div class="feature-icon">⚔️</div>
+            <div class="feature-icon" aria-hidden="true">⚔️</div>
 
-            <h3>War Room</h3>
+            <h3 id="feature-warroom-title">War Room</h3>
 
-            <p>
+            <p id="feature-warroom-desc">
                 Generate race-preparation plans based on fatigue,
                 soreness, recovery, nutrition and readiness.
             </p>
@@ -407,7 +449,7 @@
                 Peak at the perfect moment.
             </span>
 
-        </div>
+        </a>
 
     </div>
    
@@ -459,7 +501,7 @@
 
 </div>
 
-            <div id="chaseStatus" style="margin-top:10px;font-family:'Orbitron',sans-serif;font-size:0.85rem;letter-spacing:1px;color:#00d9ff;"></div>
+            <div id="chaseStatus" class="tool-status" role="status" aria-live="polite" style="margin-top:10px;font-family:'Orbitron',sans-serif;font-size:0.85rem;letter-spacing:1px;color:#00d9ff;"></div>
 
             <br>
 
@@ -673,6 +715,8 @@
 
             <h3>Your PBs</h3>
             <div id="pbList"></div>
+            <!-- shown by CSS only while #pbList has no entries (styles/polish.css) -->
+            <p id="pbEmpty" class="tool-message empty-state">No personal bests yet. Choose an event, course and time above, then Save PB.</p>
             <p id="pbSyncStatus" class="sync-status" role="status" aria-live="polite"></p>
 
             <div class="st-section">
@@ -2223,23 +2267,25 @@ async function upload() {
     const video = document.getElementById("analyzerPlayer");
     const stroke = document.getElementById("stroke");
 
+    /* problems are shown in the status line under the video (not as
+       browser alerts), with the same wording */
     if (!video) {
-        alert("Video player not found.");
+        setChaseStatus("Video player not found.", "error");
         return;
     }
 
     if (!video.src) {
-        alert("Please upload a swim video first.");
+        setChaseStatus("Please upload a swim video first.", "error");
         return;
     }
 
     if (!stroke || !stroke.value) {
-        alert("Please select a stroke.");
+        setChaseStatus("Please select a stroke.", "error");
         return;
     }
 
     if (!initialiseChasePose()) {
-        alert("CHASE AI could not initialise the pose engine.");
+        setChaseStatus("CHASE AI could not initialise the pose engine.", "error");
         return;
     }
 
@@ -2297,8 +2343,9 @@ async function upload() {
 
         console.error("CHASE AI video playback failed:", error);
 
-        alert(
-            "The video could not be played. Please try uploading it again."
+        setChaseStatus(
+            "The video could not be played. Please try uploading it again.",
+            "error"
         );
 
         return;
@@ -3099,13 +3146,16 @@ function clearChaseOutput() {
     }
 }
 
-function setChaseStatus(text) {
+/* kind: "error" for a problem the swimmer needs to fix (styled in
+   styles/polish.css); anything else is progress */
+function setChaseStatus(text, kind) {
 
     console.log("CHASE AI STATUS:", text);
 
     const status = document.getElementById("chaseStatus");
     if (status) {
         status.textContent = "● " + text;
+        status.dataset.kind = kind === "error" ? "error" : "";
     }
 }
 

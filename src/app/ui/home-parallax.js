@@ -1,5 +1,8 @@
 window.addEventListener("scroll", () => {
 
+    /* no scroll-linked movement for visitors who ask for reduced motion */
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
     const scrollY = window.scrollY;
 
     const overlay =
