@@ -351,13 +351,24 @@ export async function startSupabaseAccounts(env) {
         render();
     }
 
+    /* <html data-pbs-loading> while an account's PBs are on their way: the
+       working list is empty then, but "no personal bests" would be wrong
+       (styles/polish.css hides the empty-state line meanwhile). */
+    function setPbsLoading(on) {
+        if (on) root.dataset.pbsLoading = "true";
+        else delete root.dataset.pbsLoading;
+    }
+
     /* The account's PBs, then whether this device has data to offer for import. */
     async function loadPbsAndOffer(uid) {
         let rows;
         try {
             rows = await pbRepo.loadRows(uid);
         } catch {
-            if (stillUser(uid)) setStatus("pbSyncStatus", `Couldn't load your ${A}'s personal bests.`, "error");
+            if (stillUser(uid)) {
+                setPbsLoading(false);
+                setStatus("pbSyncStatus", `Couldn't load your ${A}'s personal bests.`, "error");
+            }
             return;
         }
         if (!stillUser(uid)) return;
@@ -365,6 +376,7 @@ export async function startSupabaseAccounts(env) {
         lastSyncedKeys = list.map((pb) => pbKey(pb.event, pb.course));
         accountPbsLoaded = true;
         store.showAccountPbs(uid, list);
+        setPbsLoading(false);
         importPlan = null;
         const local = store.deviceData();
         const plan = planImport(local, { profile: rowToProfile(cloudRow), pbs: rowsToCloudPbs(rows) });
@@ -379,6 +391,7 @@ export async function startSupabaseAccounts(env) {
     async function loadAccount(uid) {
         await loadRow(uid);
         if (stillUser(uid) && cloudRow !== undefined) await Promise.all([loadPbsAndOffer(uid), loadPhoto(uid)]);
+        else if (stillUser(uid)) setPbsLoading(false);              // the profile failed, so the PBs aren't loaded either
     }
 
     /* ----- profile photo (only where env.photoSync): kept in the account,
@@ -641,6 +654,7 @@ export async function startSupabaseAccounts(env) {
             photoLoadFailed = false;
             store.showAccountProfile(user.id, {});          // nothing shown until this account's own data loads
             store.showAccountPbs(user.id, []);
+            setPbsLoading(true);
             setTimeout(() => loadAccount(user.id), 0);      // not inside the callback
         }
         render();

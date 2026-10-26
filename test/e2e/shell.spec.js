@@ -389,3 +389,167 @@ test.describe("Entry gate heading", () => {
     });
   }
 });
+
+/* ---------------- UI polish ---------------- */
+
+test.describe("Homepage: purpose and next step", () => {
+  test("the hero says what SWIMTICS is and 'Analyse a swim' opens Chase", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+    await expect(page.locator(".hero-intro")).toContainText("Video analysis, race timing and training tools for competitive swimmers");
+    // the existing brand lines stay
+    await expect(page.locator(".hero-title")).toHaveText("SWIMTICS");
+    await expect(page.locator(".hero-subtitle")).toContainText("Engineered for Champions");
+
+    const explore = page.getByRole("link", { name: "Explore the tools" });
+    await expect(explore).toHaveAttribute("href", "#homeFeatures");
+
+    await page.getByRole("link", { name: "Analyse a swim" }).click();
+    await expect(page.locator("#analyzer")).toBeVisible();
+    await expect(page.locator("#home")).toBeHidden();
+  });
+
+  test("the feature cards are links named by their headings, and open their tool", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+    for (const [name, id] of [["Chase AI", "analyzer"], ["Wall of Records", "pb"], ["Chronos Engine", "race"], ["Profile", "profile"], ["War Room", "dashboard"]]) {
+      const card = page.locator("#homeFeatures").getByRole("link", { name, exact: true });
+      await expect(card).toHaveAttribute("href", `#${id}`);
+      await expect(card).toHaveClass(/feature-card/);
+    }
+    // keyboard: focus the card and press Enter
+    const chronos = page.locator("#homeFeatures").getByRole("link", { name: "Chronos Engine", exact: true });
+    await chronos.focus();
+    await expect(chronos).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#race")).toBeVisible();
+    // a mouse click still works as before
+    await navigateTo(page, "home");
+    await page.locator("#homeFeatures").getByRole("link", { name: "War Room", exact: true }).click();
+    await expect(page.locator("#dashboard")).toBeVisible();
+  });
+
+  test("keyboard focus is visible on a feature card", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+    const card = page.locator("#homeFeatures").getByRole("link", { name: "Chase AI", exact: true });
+    await card.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");                                   // keyboard focus, so :focus-visible applies
+    await expect(card).toBeFocused();
+    const outline = await card.evaluate((el) => getComputedStyle(el).outlineStyle + " " + getComputedStyle(el).outlineWidth);
+    expect(outline).toBe("solid 2px");
+  });
+});
+
+test.describe("Tool states", () => {
+  test("Wall of Records says when there are no PBs, and stops saying it once one is saved", async ({ page }) => {
+    await page.goto("/");
+    await dismissEntryGate(page);
+    await navigateTo(page, "pb");
+    await expect(page.locator("#pbEmpty")).toBeVisible();
+    await expect(page.locator("#pbEmpty")).toContainText("No personal bests yet");
+    await page.locator("#event").selectOption({ index: 1 });
+    await page.locator("#time").fill("30.00");
+    await page.locator("button[onclick='savePB()']").click();
+    await expect(page.locator("#pbList .pb-item")).toHaveCount(1);
+    await expect(page.locator("#pbEmpty")).toBeHidden();
+    await expect(page.locator("#pbList .chart-btn")).toHaveAttribute("aria-label", /Show or hide the chart for /);
+  });
+
+  test("Chase shows a missing video in its status line, not as a browser alert", async ({ page }) => {
+    const dialogs = [];
+    page.on("dialog", async (d) => { dialogs.push(d.message()); await d.dismiss(); });
+    await page.goto("/");
+    await dismissEntryGate(page);
+    await navigateTo(page, "analyzer");
+    await page.locator("button[onclick='upload()']").click();
+    const status = page.locator("#chaseStatus");
+    await expect(status).toHaveText("● Please upload a swim video first.");
+    await expect(status).toHaveAttribute("data-kind", "error");
+    await expect(status).toHaveAttribute("role", "status");
+    expect(dialogs).toEqual([]);
+  });
+});
+
+test.describe("Page head and motion", () => {
+  test("language, theme colour, icons and a social sharing preview are declared", async ({ page, request }) => {
+    await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page).toHaveTitle("Swimtics | Engineered for Champions");
+    const meta = (sel) => page.locator(sel).getAttribute("content");
+    expect(await meta('meta[name="theme-color"]')).toBe("#021a3b");
+    expect(await meta('meta[property="og:title"]')).toBe("Swimtics | Engineered for Champions");
+    expect(await meta('meta[property="og:image"]')).toBe("https://swimtics.com/entry-bg.png");
+    expect(await meta('meta[property="og:url"]')).toBe("https://swimtics.com/");
+    expect(await meta('meta[name="twitter:card"]')).toBe("summary_large_image");
+    for (const href of ["favicon-32.png", "apple-touch-icon.png", "favicon.png?v=2", "entry-bg.png"]) {
+      const res = await request.get(`/${href}`);
+      expect(res.ok(), href).toBe(true);
+      expect(res.headers()["content-type"], href).toContain("image/png");
+    }
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", "apple-touch-icon.png");
+  });
+
+  test("with reduced motion, the homepage shows its content without the scroll parallax", async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: "reduce" });
+    const page = await context.newPage();
+    await page.goto("/");
+    await dismissEntryGate(page);
+    await expect(page.locator(".hero-title")).toBeVisible();
+    await expect(page.locator("#homeFeatures").getByRole("link", { name: "Chase AI", exact: true })).toBeVisible();
+    const before = await page.locator("#bgVideo").evaluate((v) => getComputedStyle(v).transform);
+    await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(400);
+    const after = await page.locator("#bgVideo").evaluate((v) => getComputedStyle(v).transform);
+    expect(after).toBe(before);                                        // no scroll-linked scaling / movement
+    await context.close();
+  });
+
+  test("with reduced motion the hero video doesn't autoplay; otherwise it still does", async ({ browser }) => {
+    for (const [reducedMotion, shouldPlay] of [["reduce", false], ["no-preference", true]]) {
+      const context = await browser.newContext({ reducedMotion });
+      const page = await context.newPage();
+      await page.goto("/");
+      await dismissEntryGate(page);
+      const video = page.locator("#bgVideo");
+      if (shouldPlay) {
+        await expect.poll(() => video.evaluate((v) => !v.paused && v.currentTime > 0), { timeout: 10000 }).toBe(true);
+      } else {
+        await page.waitForTimeout(1500);
+        expect(await video.evaluate((v) => ({ paused: v.paused, autoplay: v.autoplay, time: v.currentTime })))
+          .toEqual({ paused: true, autoplay: false, time: 0 });
+      }
+      await context.close();
+    }
+  });
+});
+
+test.describe("Homepage hero on phones", () => {
+  for (const size of [{ width: 360, height: 640 }, { width: 375, height: 667 }, { width: 320, height: 568 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
+    test(`at ${size.width}x${size.height} the hero clears the nav and stays clear of the Coach ATLAS button`, async ({ browser }) => {
+      const context = await browser.newContext({ viewport: size, isMobile: size.width < 768, hasTouch: true });
+      const page = await context.newPage();
+      await page.goto("/");
+      await dismissEntryGate(page);
+      const banner = page.locator("#consentBanner");
+      if (await banner.isVisible()) await banner.getByRole("button", { name: "Decline" }).click();
+      await expect(page.locator(".hero-title")).toHaveCSS("opacity", "1", { timeout: 8000 });
+      const m = await page.evaluate(() => {
+        const box = (el) => el.getBoundingClientRect();
+        const nav = box(document.querySelector(".site-nav"));
+        const launcher = box(document.getElementById("aiCoachBtn"));
+        const hits = (r) => r.height > 0 && r.bottom > launcher.top && r.right > launcher.left && r.top < launcher.bottom;
+        const quote = box(document.querySelector(".hero-quote"));
+        const buttons = [...document.querySelectorAll(".hero-actions .hero-cta")].map(box);
+        return { titleTop: box(document.querySelector(".hero-title")).top, navBottom: nav.bottom,
+          quoteHits: hits(quote), actionsHit: buttons.some(hits), noHScroll: document.documentElement.scrollWidth <= innerWidth };
+      });
+      expect(m.titleTop, "title below the nav").toBeGreaterThanOrEqual(m.navBottom);
+      expect(m.quoteHits, "quote clear of the Coach ATLAS button").toBe(false);
+      expect(m.actionsHit, "buttons clear of the Coach ATLAS button").toBe(false);
+      expect(m.noHScroll).toBe(true);
+      await context.close();
+    });
+  }
+});
