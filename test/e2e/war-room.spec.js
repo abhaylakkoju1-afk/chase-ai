@@ -128,6 +128,28 @@ test.describe("War Room — soreness body map", () => {
 });
 
 test.describe("War Room — plan generation", () => {
+  test("without the days until the meet, no plan is generated and the field says what to enter", async ({ page }) => {
+    await openWarRoom(page);
+    const days = page.locator("#meetDays");
+    const error = page.locator("#meetDaysError");
+    await expect(error).toBeHidden();
+
+    await page.locator('button[onclick="generateWarRoomPlan()"]').click();
+    await expect(error).toBeVisible();
+    await expect(error).toHaveText("Enter how many days until your meet to generate your plan.");
+    await expect(error).toHaveAttribute("role", "alert");
+    await expect(days).toHaveAttribute("aria-invalid", "true");
+    await expect(days).toBeFocused();
+    await expect(page.locator("#dashboardOutput")).toBeEmpty();
+
+    await days.fill("18");
+    await page.locator('button[onclick="generateWarRoomPlan()"]').click();
+    await expect(error).toBeHidden();
+    await expect(days).not.toHaveAttribute("aria-invalid", "true");
+    await expect(page.locator("#dashboardOutput")).toContainText("WAR ROOM REPORT");
+    await expect(page.locator("#dashboardOutput")).toContainText("Controlled taper initiated"); // 18 days: the existing taper rule, unchanged
+  });
+
   test("Generate War Room Plan produces a rendered report with no error alert", async ({ page }) => {
     let alertMessage = null;
     page.on("dialog", async (dialog) => {
@@ -136,6 +158,7 @@ test.describe("War Room — plan generation", () => {
     });
 
     await openWarRoom(page);
+    await page.locator("#meetDays").fill("10"); // the plan needs the days until the meet
     await page.locator('button[onclick="generateWarRoomPlan()"]').click();
 
     await expect(page.locator("#dashboardOutput")).toContainText("WAR ROOM REPORT");
@@ -153,6 +176,7 @@ test.describe("War Room — plan generation", () => {
     });
 
     await openWarRoom(page);
+    await page.locator("#meetDays").fill("10"); // the plan needs the days until the meet
     // force the generator to fail part-way: reading the soreness map throws
     await page.evaluate(() => {
       sorenessMap = new Proxy({}, { ownKeys() { throw new Error("test: broken soreness map"); } });
@@ -167,6 +191,7 @@ test.describe("War Room — plan generation", () => {
 
   test("a selected body part's soreness reaches the generator and appears in the rendered plan", async ({ page }) => {
     await openWarRoom(page);
+    await page.locator("#meetDays").fill("10"); // the plan needs the days until the meet
 
     await page.locator("#LeftShoulder").click(); // Shoulders -> level 1
 
@@ -179,6 +204,7 @@ test.describe("War Room — plan generation", () => {
 
   test("with no soreness selected, the plan explicitly says so rather than fabricating recovery items", async ({ page }) => {
     await openWarRoom(page);
+    await page.locator("#meetDays").fill("10"); // the plan needs the days until the meet
 
     await page.locator('button[onclick="generateWarRoomPlan()"]').click();
 
@@ -190,6 +216,7 @@ test.describe("War Room — plan generation", () => {
     page.on("pageerror", (error) => errors.push(error.message));
 
     await openWarRoom(page);
+    await page.locator("#meetDays").fill("10"); // the plan needs the days until the meet
 
     await page.locator('button[onclick="generateWarRoomPlan()"]').click();
     await expect(page.locator("#dashboardOutput")).toContainText("No major soreness detected");

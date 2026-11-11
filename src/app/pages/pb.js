@@ -17,7 +17,18 @@
 
             const newTime = timeToSeconds(time);
 
-            if (!event || !course || !newTime) return;
+            /* same check as before; it now says why nothing was saved */
+            const timeInput = document.getElementById("time");
+            const timeError = document.getElementById("pbTimeError");
+
+            if (!event || !course || !newTime) {
+                if (timeError) timeError.hidden = false;
+                if (timeInput) timeInput.setAttribute("aria-invalid", "true");
+                return;
+            }
+
+            if (timeError) timeError.hidden = true;
+            if (timeInput) timeInput.removeAttribute("aria-invalid");
 
             let found = false;
 

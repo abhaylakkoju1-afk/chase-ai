@@ -281,5 +281,6 @@ scoped explicitly before work begins — see `docs/ROADMAP.md`):
   reviewed rules deployment and a reviewed `databaseURL` change.
 - The Analyzer's "Save Analysis Report" / "View Previous Reports"
   buttons call `saveAnalysisReport()` / `loadSavedReports()`, which
-  don't exist; analysis results are not saved anywhere.
+  don't exist; analysis results are not saved anywhere. The buttons
+  are hidden (`.chase-report-actions[hidden]`) until saving is built.
 - `Chart.js` is loaded unpinned (`@latest`).

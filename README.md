@@ -45,7 +45,7 @@ chase-ai/
 ├── index.html          # the entire application today: markup, CSS,
 │                        # and JS all inline — no build step, no backend
 ├── CNAME                # GitHub Pages custom domain (swimtics.com)
-├── bg.mp4, entry-bg.png, fire.gif, favicon.png   # media assets
+├── bg.mp4, hero-poster.jpg, entry-bg.png, fire.gif, favicon.png   # media assets
 ├── CLAUDE.md            # operating contract for Claude Code sessions
 └── docs/
     ├── ARCHITECTURE.md          # current + target architecture, pipeline
