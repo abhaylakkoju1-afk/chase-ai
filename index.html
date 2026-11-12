@@ -294,7 +294,7 @@
 
     <!-- HOME -->
     <div id="home" class="page active">
-        <video autoplay muted loop playsinline id="bgVideo">
+        <video autoplay muted loop playsinline id="bgVideo" poster="hero-poster.jpg">
     <source src="bg.mp4" type="video/mp4">
 </video>
         <script>
@@ -362,9 +362,8 @@
             <h3 id="feature-chase-title">Chase AI</h3>
 
             <p id="feature-chase-desc">
-                Upload training videos and receive detailed and intelligent stroke analysis,
-                technique feedback, efficiency score and performance
-                insights.
+                Upload a side-on training video. Chase measures body alignment,
+                arm symmetry and joint angles from your footage.
             </p>
 
             <span>
@@ -470,6 +469,8 @@
 
             <h2>Chase AI : Your Personal Swim Analyzer</h2>
 
+            <p class="tool-hint">Upload a swim video, choose the stroke, then press Analyze.</p>
+
             <input type="file" id="videoUpload" hidden>
             <label for="videoUpload" class="premium-upload">
              📹 Upload Swim Video
@@ -479,6 +480,7 @@
 
             <br><br>
   
+            <label for="stroke" class="field-label">Stroke</label>
             <select id="stroke">
                 <option value="" selected disabled>Select Stroke</option>
                 <option value="freestyle">Freestyle</option>
@@ -510,17 +512,22 @@
             <div id="metrics"></div>
             <div id="feedback"></div>
 
-            <br><br>
+            <!-- Saving reports isn't built yet (saveAnalysisReport() and
+                 loadSavedReports() don't exist), so these stay hidden until
+                 it is; the space above them is hidden with them. -->
+            <div class="chase-report-actions" hidden>
+                <br><br>
 
-            <button class="btn" onclick="saveAnalysisReport()">
-                Save Analysis Report
-            </button>
+                <button class="btn" onclick="saveAnalysisReport()">
+                    Save Analysis Report
+                </button>
 
-            <button class="btn" onclick="loadSavedReports()">
-                View Previous Reports
-            </button>
+                <button class="btn" onclick="loadSavedReports()">
+                    View Previous Reports
+                </button>
 
-            <div id="savedReports"></div>
+                <div id="savedReports"></div>
+            </div>
 
             <!-- HOW TO USE THE ANALYZER -->
             <div class="st-section">
@@ -530,26 +537,26 @@
 
                     <div class="howto-card">
                         <div class="howto-num">01</div>
-                        <h4>Select Your Stroke</h4>
-                        <p>Choose the stroke you want to analyze.</p>
+                        <h4>Upload Your Video</h4>
+                        <p>Upload a clear, stable swim video with the swimmer fully visible.</p>
                     </div>
 
                     <div class="howto-card">
                         <div class="howto-num">02</div>
-                        <h4>Upload Your Video</h4>
-                        <p>Upload a clear and stable swimming video with the swimmer fully visible.</p>
+                        <h4>Choose the Stroke</h4>
+                        <p>Choose the stroke swum in the video.</p>
                     </div>
 
                     <div class="howto-card">
                         <div class="howto-num">03</div>
-                        <h4>Review the Footage</h4>
-                        <p>Use the video player to review your movement and stroke mechanics.</p>
+                        <h4>Press Analyze</h4>
+                        <p>Press Analyze and let the video play through to the end.</p>
                     </div>
 
                     <div class="howto-card">
                         <div class="howto-num">04</div>
-                        <h4>Apply the Insights</h4>
-                        <p>Use the observations to identify areas to work on during training, then retest your technique over time.</p>
+                        <h4>Review Your Results</h4>
+                        <p>Read the measurements and observations below the video, then retest your technique over time.</p>
                     </div>
 
                 </div>
@@ -682,6 +689,7 @@
 
             <h2>Log Your Personal Best</h2>
 
+            <label for="event" class="field-label">Event</label>
             <select id="event">
                 <option>Freestyle 50m</option>
                 <option>Freestyle 100m</option>
@@ -703,12 +711,15 @@
                 <option>IM 400m</option>
             </select>
 
+            <label for="course" class="field-label">Course</label>
             <select id="course">
                 <option>Short Course</option>
                 <option>Long Course</option>
             </select>
 
-            <input type="text" id="time" placeholder="Enter time">
+            <label for="time" class="field-label">Your time (e.g. 1:05.32)</label>
+            <input type="text" id="time" aria-describedby="pbTimeError">
+            <p id="pbTimeError" class="tool-message" data-kind="error" role="alert" hidden>Enter a time like 28.45 or 1:05.32, then Save PB.</p>
 
             <br>
             <button class="btn" onclick="savePB()">Save PB</button>
@@ -727,7 +738,7 @@
                     <div class="howto-card">
                         <div class="howto-num">01</div>
                         <h4>Add a PB</h4>
-                        <p>Enter your event, time, date, and the relevant performance information.</p>
+                        <p>Choose the event and course, enter your time, then Save PB.</p>
                     </div>
 
                     <div class="howto-card">
@@ -885,26 +896,26 @@
 
                     <div class="howto-card">
                         <div class="howto-num">01</div>
-                        <h4>Add Your Race</h4>
-                        <p>Enter the relevant event and performance information.</p>
+                        <h4>Set Up the Race</h4>
+                        <p>Choose the event, course and pool length.</p>
                     </div>
 
                     <div class="howto-card">
                         <div class="howto-num">02</div>
-                        <h4>Add Your Split Data</h4>
-                        <p>Enter your available splits to build a clearer picture of how your race progressed.</p>
+                        <h4>Upload Your Video</h4>
+                        <p>Upload a video of the race.</p>
                     </div>
 
                     <div class="howto-card">
                         <div class="howto-num">03</div>
-                        <h4>Review the Race</h4>
-                        <p>Examine different phases of your performance and look for meaningful patterns.</p>
+                        <h4>Mark the Start</h4>
+                        <p>Pause just before the start, choose Mark Pre-Start Frame &amp; Lane Position, then click the swimmer.</p>
                     </div>
 
                     <div class="howto-card">
                         <div class="howto-num">04</div>
-                        <h4>Find Areas to Improve</h4>
-                        <p>Use the information to identify sections of your race that deserve attention in training.</p>
+                        <h4>Run the Analysis</h4>
+                        <p>Choose Start Automatic Analysis and review your splits.</p>
                     </div>
 
                 </div>
@@ -939,7 +950,8 @@
             <div class="st-intro">
                 <span class="st-eyebrow">Getting Started</span>
                 <h2>Build Your Athlete Profile</h2>
-                <p>Keep your details up to date so insights and recommendations across SWIMTICS are personalized to you.</p>
+                <p>Keep your swimmer details in one place. They appear on your athlete overview card.</p>
+                <p class="tool-hint"><a href="#profileFormStart">Fill in your details below</a>, then choose Save Profile.</p>
             </div>
 
             <h2>Your Profile</h2>
@@ -972,7 +984,9 @@
 
                 </div>
 
-                <div class="profile-upload-box" onclick="uploadProfileImage()" id="profileImageBox">
+                <div class="profile-upload-box" onclick="uploadProfileImage()" id="profileImageBox"
+                    role="button" tabindex="0" title="Add or change your profile photo"
+                    onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); uploadProfileImage(); }">
                     Upload Image
                 </div>
 
@@ -988,30 +1002,44 @@
 
                     <!-- ===== 1. BASIC INFO ===== -->
 
-                    <h3>Basic Info</h3>
-                    <input id="name" placeholder="Full Name"><br>
+                    <h3 id="profileFormStart">Basic Info</h3>
+                    <label for="name" class="profile-field-label">Full name</label>
+                    <input id="name"><br>
+                    <label for="dob" class="profile-field-label">Date of birth</label>
                     <input id="dob" type="date"><br>
-                    <input id="gender" placeholder="Gender"><br>
-                    <input id="nationality" placeholder="Nationality"><br>
-                    <input id="club" placeholder="Club / State"><br>
+                    <label for="gender" class="profile-field-label">Gender</label>
+                    <input id="gender"><br>
+                    <label for="nationality" class="profile-field-label">Nationality</label>
+                    <input id="nationality"><br>
+                    <label for="club" class="profile-field-label">Club / state</label>
+                    <input id="club"><br>
 
                     <!-- ===== 2. SWIMMING PROFILE ===== -->
                     <h3>Swimming Profile</h3>
-                    <input id="primaryStroke" placeholder="Primary Stroke"><br>
-                    <input id="secondaryStroke" placeholder="Secondary Stroke"><br>
-                    <input id="eventsPref" placeholder="Preferred Events"><br>
+                    <label for="primaryStroke" class="profile-field-label">Primary stroke</label>
+                    <input id="primaryStroke"><br>
+                    <label for="secondaryStroke" class="profile-field-label">Secondary stroke</label>
+                    <input id="secondaryStroke"><br>
+                    <label for="eventsPref" class="profile-field-label">Preferred events</label>
+                    <input id="eventsPref"><br>
+                    <label for="distanceType" class="profile-field-label">Distance type</label>
                     <input id="distanceType" placeholder="Sprint / Middle / Distance"><br>
 
                     <!-- ===== 3. PHYSICAL DATA ===== -->
                     <h3>Physical Data</h3>
-                    <input id="height" placeholder="Height (cm)"><br>
-                    <input id="weight" placeholder="Weight (kg)"><br>
-                    <input id="wingspan" placeholder="Wingspan (cm)"><br>
+                    <label for="height" class="profile-field-label">Height (cm)</label>
+                    <input id="height"><br>
+                    <label for="weight" class="profile-field-label">Weight (kg)</label>
+                    <input id="weight"><br>
+                    <label for="wingspan" class="profile-field-label">Wingspan (cm)</label>
+                    <input id="wingspan"><br>
 
                     <!-- ===== 4. PERFORMANCE DATA ===== -->
                     <h3>Performance</h3>
-                    <input id="strengths" placeholder="Strengths"><br>
-                    <input id="weaknesses" placeholder="Weakness Areas"><br>
+                    <label for="strengths" class="profile-field-label">Strengths</label>
+                    <input id="strengths"><br>
+                    <label for="weaknesses" class="profile-field-label">Weakness areas</label>
+                    <input id="weaknesses"><br>
 
                 </div>
 
@@ -1020,22 +1048,32 @@
 
                     <!-- ===== 5. TRAINING INFO ===== -->
                     <h3>Training</h3>
+                    <label for="level" class="profile-field-label">Level</label>
                     <input id="level" placeholder="Beginner / Competitive"><br>
-                    <input id="hours" placeholder="Weekly Training Hours"><br>
-                    <input id="coach" placeholder="Coach Name"><br>
-                    <input id="facility" placeholder="Training Facility"><br>
+                    <label for="hours" class="profile-field-label">Weekly training hours</label>
+                    <input id="hours"><br>
+                    <label for="coach" class="profile-field-label">Coach name</label>
+                    <input id="coach"><br>
+                    <label for="facility" class="profile-field-label">Training facility</label>
+                    <input id="facility"><br>
 
                     <!-- ===== 6. GOALS ===== -->
                     <h3>Goals</h3>
-                    <input id="shortGoal" placeholder="Short-term Goal"><br>
-                    <input id="longGoal" placeholder="Long-term Goal"><br>
-                    <input id="competition" placeholder="Target Competition"><br>
+                    <label for="shortGoal" class="profile-field-label">Short-term goal</label>
+                    <input id="shortGoal"><br>
+                    <label for="longGoal" class="profile-field-label">Long-term goal</label>
+                    <input id="longGoal"><br>
+                    <label for="competition" class="profile-field-label">Target competition</label>
+                    <input id="competition"><br>
 
                     <!-- ===== 7. COMPETITION HISTORY ===== -->
                     <h3>Competition History</h3>
-                    <input id="lastComp" placeholder="Last Competition"><br>
-                    <input id="bestMeet" placeholder="Best Performance"><br>
-                    <input id="medals" placeholder="Achievements / Medals"><br>
+                    <label for="lastComp" class="profile-field-label">Last competition</label>
+                    <input id="lastComp"><br>
+                    <label for="bestMeet" class="profile-field-label">Best performance</label>
+                    <input id="bestMeet"><br>
+                    <label for="medals" class="profile-field-label">Achievements / medals</label>
+                    <input id="medals"><br>
 
                     <br>
 
@@ -1069,7 +1107,7 @@
                     <div class="howto-card">
                         <div class="howto-num">02</div>
                         <h4>Save Your Profile</h4>
-                        <p>Save your updates so they carry across the rest of SWIMTICS.</p>
+                        <p>Choose Save Profile to keep your changes.</p>
                     </div>
 
                     <div class="howto-card">
@@ -1100,24 +1138,26 @@
 
             <h3>Meet Readiness Assessment</h3>
 
-            <label>Days Until Meet</label><br>
-            <input id="meetDays" type="number" placeholder="Days until meet"><br><br>
+            <label for="meetDays">Days Until Meet</label><br>
+            <input id="meetDays" type="number" min="0" placeholder="Days until meet" aria-describedby="meetDaysError"><br>
+            <p id="meetDaysError" class="tool-message" data-kind="error" role="alert" hidden>Enter how many days until your meet to generate your plan.</p>
+            <br>
 
-            <label>Fatigue Level</label><br>
+            <label for="fatigue">Fatigue Level</label><br>
             <select id="fatigue">
                 <option value="1">Low Fatigue</option>
                 <option value="2">Moderate Fatigue</option>
                 <option value="3">High Fatigue</option>
             </select><br><br>
 
-            <label>Sleep Quality</label><br>
+            <label for="sleep">Sleep Quality</label><br>
             <select id="sleep">
                 <option value="1">8+ Hours</option>
                 <option value="2">6–8 Hours</option>
                 <option value="3">Under 6 Hours</option>
             </select><br><br>
 
-            <label>Overall Soreness</label><br>
+            <label for="soreness">Overall Soreness</label><br>
             <select id="soreness">
                 <option value="1">Minimal soreness</option>
                 <option value="2">Moderate soreness</option>
@@ -1449,7 +1489,7 @@
 
             </div>
 
-            <label>Current Season</label><br>
+            <label for="season">Current Season</label><br>
             <select id="season">
                 <option value="summer">Summer</option>
                 <option value="monsoon">Monsoon</option>
@@ -1457,63 +1497,63 @@
                 <option value="precompetition">Competition Season</option>
             </select><br><br>
 
-            <label>Nutrition Consistency</label><br>
+            <label for="nutrition">Nutrition Consistency</label><br>
             <select id="nutrition">
                 <option value="1">Excellent</option>
                 <option value="2">Average</option>
                 <option value="3">Poor</option>
             </select><br><br>
 
-            <label>Carbohydrates Intake</label>
+            <label for="carbs">Carbohydrates Intake</label>
             <select id="carbs">
                 <option value="1">Optimal (6–10g/kg/day)</option>
                 <option value="2">Moderate (4–6g/kg/day)</option>
                 <option value="3">Low (&lt;4g/kg/day)</option>
             </select>
 
-            <label>Protein Intake</label>
+            <label for="protein">Protein Intake</label>
             <select id="protein">
                 <option value="1">Optimal (1.6–2.2g/kg/day)</option>
                 <option value="2">Moderate (1.2–1.6g/kg/day)</option>
                 <option value="3">Low (&lt;1.2g/kg/day)</option>
             </select>
 
-            <label>Fats Intake</label>
+            <label for="fats">Fats Intake</label>
             <select id="fats">
                 <option value="1">Balanced</option>
                 <option value="2">Suboptimal</option>
                 <option value="3">Poor</option>
             </select>
 
-            <label>Hydration</label>
+            <label for="hydration">Hydration</label>
             <select id="hydration">
                 <option value="1">Excellent</option>
                 <option value="2">Moderate</option>
                 <option value="3">Poor</option>
             </select>
 
-            <label>Vitamins & Minerals</label>
+            <label for="micros">Vitamins & Minerals</label>
             <select id="micros">
                 <option value="1">Optimal</option>
                 <option value="2">Moderate</option>
                 <option value="3">Poor</option>
             </select>
 
-            <label>Training Intensity</label><br>
+            <label for="trainingIntensity">Training Intensity</label><br>
             <select id="trainingIntensity">
                 <option value="1">Low</option>
                 <option value="2">Medium</option>
                 <option value="3">High</option>
             </select><br><br>
 
-            <label>Mental Readiness & Motivation</label><br>
+            <label for="mentalReadiness">Mental Readiness & Motivation</label><br>
             <select id="mentalReadiness">
                 <option value="1">Highly Motivated / Mentally Sharp</option>
                 <option value="2">Moderate Focus / Slight Mental Fatigue</option>
                 <option value="3">Low Motivation / Mentally Drained</option>
             </select><br><br>
 
-            <label>Race Type</label><br>
+            <label for="raceType">Race Type</label><br>
             <select id="raceType">
                 <option value="sprint">Sprint (50–100m)</option>
                 <option value="mid">Mid-Distance (200–400m)</option>
@@ -1844,7 +1884,7 @@ window.addEventListener("DOMContentLoaded", () => {
             fileName.textContent = file.name;
         }
 
-        setChaseStatus("VIDEO LOADED");
+        setChaseStatus("Video loaded. Choose a stroke, then press Analyze.");
 
         /* Clear the old analysis when a new video is selected. */
         stopChaseAnalysis(false);
@@ -2044,7 +2084,7 @@ function initialiseChasePose() {
 
     if (typeof Pose === "undefined") {
         console.error("CHASE AI: MediaPipe Pose is unavailable.");
-        setChaseStatus("POSE ENGINE FAILED TO LOAD");
+        setChaseStatus("The analysis engine didn't load. Check your connection and reload the page.", "error");
         return false;
     }
 
@@ -2067,7 +2107,7 @@ function initialiseChasePose() {
     window.chaseAI.ready = true;
 
     console.log("CHASE AI: Pose engine ready.");
-    setChaseStatus("POSE MODEL INITIALIZED");
+    setChaseStatus("Ready. Upload a swim video to begin.");
 
     return true;
 }
@@ -2152,7 +2192,7 @@ async function chaseDispatchPoseInference(video, pendingTiming) {
     } catch (error) {
 
         console.error("CHASE AI frame error:", error);
-        setChaseStatus("FRAME ERROR — CHECK CONSOLE");
+        setChaseStatus("Something went wrong reading the video. Please try again or use another clip.", "error");
 
     } finally {
         chaseAnalysisBusy = false;
@@ -2385,7 +2425,7 @@ async function upload() {
         }, CHASE_SAMPLE_INTERVAL_MS);
     }
 
-    setChaseStatus("ANALYZING VIDEO…");
+    setChaseStatus("Analysing… keep this tab open while the video plays.");
 
 }
 
@@ -2813,13 +2853,13 @@ function finishChaseAnalysis() {
             `;
         }
 
-        setChaseStatus("INSUFFICIENT POSE DATA");
+        setChaseStatus("Couldn't see the swimmer clearly enough. Try a steady, side-on clip with the whole body in view.", "error");
         return;
     }
 
     displayChaseMetrics();
     generateChaseFeedback();
-    setChaseStatus("ANALYSIS COMPLETE");
+    setChaseStatus("Analysis complete. Your results are below.");
 }
 
 /* ---------------------------------------------------------
@@ -4230,16 +4270,21 @@ window.addEventListener(
 
     </div>
 
-    <div id="coachMessages"></div>
+    <div id="coachMessages">
+        <div class="coach-msg"><b>ATLAS:</b> Ask about swimming rules, records, training or race prep. ATLAS gives general information, not analysis of your own videos.</div>
+    </div>
 
     <div class="coach-input-row">
 
         <input
             id="coachInput"
+            aria-label="Message Coach ATLAS"
             placeholder="Ask anything about training, racing or recovery...">
 
         <button
             class="coach-send-btn"
+            type="button"
+            aria-label="Send"
             onclick="sendCoachMessage()">
 
             ➜

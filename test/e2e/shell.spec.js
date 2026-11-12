@@ -513,6 +513,12 @@ test.describe("Page head and motion", () => {
       await page.goto("/");
       await dismissEntryGate(page);
       const video = page.locator("#bgVideo");
+      // a still of the first frame shows until the video can draw one, and
+      // stays as the background when it doesn't play
+      expect(await video.evaluate(async (v) => {
+        const img = new Image(); img.src = v.poster; await img.decode();
+        return { poster: new URL(v.poster).pathname, width: img.naturalWidth, height: img.naturalHeight };
+      })).toEqual({ poster: "/hero-poster.jpg", width: 832, height: 416 });
       if (shouldPlay) {
         await expect.poll(() => video.evaluate((v) => !v.paused && v.currentTime > 0), { timeout: 10000 }).toBe(true);
       } else {

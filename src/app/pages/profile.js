@@ -7,7 +7,7 @@
             /* ===== BASIC INFO ===== */
             document.getElementById("name").value = profile.name || "";
             document.getElementById("dob").value = profile.dob || "";
-            document.getElementById("gender").value = profile.gender || "male";
+            document.getElementById("gender").value = profile.gender || "";
             document.getElementById("nationality").value = profile.nationality || "";
             document.getElementById("club").value = profile.club || "";
 
@@ -114,6 +114,12 @@
             const clubName = profile.club || "Club";
             const nationality = profile.nationality || "🌍";
             const athleteGender = (profile.gender || "male").toLowerCase();
+            const enteredGender = (profile.gender || "").trim();
+            const genderLabel =
+                enteredGender === "" ? "--"
+                : enteredGender.toLowerCase() === "female" ? "♀ Female"
+                : enteredGender.toLowerCase() === "male" ? "♂ Male"
+                : enteredGender.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
             const container = document.getElementById("strokeCards");
             if (!container) return;
@@ -201,7 +207,7 @@ ${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
         <div class="stroke-meta">
             ${nationality}<br>
             ${clubName}<br>
-            ${athleteGender === "female" ? "♀ Female" : "♂ Male"}
+            ${genderLabel}
         </div>
 
     </div>

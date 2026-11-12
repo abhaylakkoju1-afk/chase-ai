@@ -1,5 +1,20 @@
         function generateWarRoomPlan() {
 
+            /* the taper advice depends on the days until the meet, so ask
+               for them instead of treating an empty field as 0 */
+            const daysInput = document.getElementById("meetDays");
+            const daysError = document.getElementById("meetDaysError");
+
+            if (daysInput && !(daysInput.value.trim() !== "" && parseInt(daysInput.value) >= 0)) {
+                if (daysError) daysError.hidden = false;
+                daysInput.setAttribute("aria-invalid", "true");
+                daysInput.focus();
+                return;
+            }
+
+            if (daysError) daysError.hidden = true;
+            if (daysInput) daysInput.removeAttribute("aria-invalid");
+
             try {
 
                 // =====================================================
@@ -830,7 +845,7 @@ function toggleCoach() {
             }
 
             // ===== DEFAULT =====
-            return "For elite swimming performance, optimize stroke mechanics, race strategy, strength, recovery, mobility, nutrition, and psychological readiness together. Ask a more specific question for advanced personalized coaching.";
+            return "For elite swimming performance, optimize stroke mechanics, race strategy, strength, recovery, mobility, nutrition, and psychological readiness together. Try a more specific question, for example about an event, a world record or race preparation.";
         }
 
         function cycleSoreness(part, element) {
