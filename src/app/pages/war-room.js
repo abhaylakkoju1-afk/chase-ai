@@ -522,18 +522,31 @@ function toggleCoach() {
             const chat =
                 document.getElementById("coachMessages");
 
-            chat.innerHTML +=
-                `<div class="coach-msg"><b>You:</b> ${msg}</div>`;
+            // the message is shown as plain text: markup a user types is
+            // displayed, never run (it used to be added to the page as HTML)
+            appendCoachMessage(chat, "You:", msg);
 
             let reply =
                 generateCoachResponse(msg);
 
-            chat.innerHTML +=
-                `<div class="coach-msg"><b>ATLAS:</b> ${reply}</div>`;
+            appendCoachMessage(chat, "ATLAS:", reply);
 
             input.value = "";
 
             chat.scrollTop = chat.scrollHeight;
+        }
+
+        // One chat bubble: a bold speaker label, then the text as a text node.
+        function appendCoachMessage(chat, speaker, text) {
+
+            const bubble = document.createElement("div");
+            bubble.className = "coach-msg";
+
+            const label = document.createElement("b");
+            label.textContent = speaker;
+
+            bubble.append(label, " " + text);
+            chat.appendChild(bubble);
         }
 
         function generateCoachResponse(msg) {
