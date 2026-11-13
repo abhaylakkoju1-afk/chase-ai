@@ -7,7 +7,7 @@
 // element), the race page's frame driver (raceStartVideoFrameTicker,
 // raceDispatchPoseInference, onRacePoseResults), src/race-pipeline/*
 // (controller, detector adapter, event adapter), SwimmerTracking, the start
-// detector, ChronosEngine, and the Developer Diagnostics panel and report.
+// detector, ChronosEngine, and the Technical details (diagnostics) panel and report.
 //
 // WHAT IS SYNTHETIC: (1) the video's pixels — a generated, content-free WebM
 // that exists only so the <video> element has a source and can seek;
@@ -193,6 +193,8 @@ async function openRacePageWithVideo(page) {
 
   await page.selectOption("#raceEventSelect", "Freestyle 50m");
   await page.selectOption("#raceCourseSelect", "Short Course");
+  // the diagnostics these tests read sit in the collapsed "Technical details" section (below the video)
+  await page.locator("#race details.race-tech-details > summary").click();
   return errors;
 }
 
@@ -431,7 +433,7 @@ test.describe("race page: pre-start reference frame (synthetic video, scripted p
     expect(await page.locator("#raceCalibrationStatus").innerText()).toMatch(/pause the video on the pre-start frame first/i);
 
     await page.click("#raceAutoStartBtn");
-    expect(await page.locator("#racePipelineStatus").innerText()).toMatch(/lane calibration/);
+    expect(await page.locator("#racePipelineStatus").innerText()).toBe("Before starting, mark the start and lane in step 3.");
     expect(await page.locator("#racePipelineReport").innerText()).toBe("");
     expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
 
@@ -445,10 +447,10 @@ test.describe("race page: pre-start reference frame (synthetic video, scripted p
     expect(await page.locator("#raceCalibrationStatus").innerText()).toMatch(/Pre-start reference frame: 4\.0\d s/);
 
     await page.setInputFiles("#raceVideo", { name: "another.webm", mimeType: "video/webm", buffer: Buffer.from(videoBase64, "base64") });
-    await page.waitForFunction(() => /not set/i.test(document.getElementById("raceCalibrationStatus").innerText));
+    await page.waitForFunction(() => /^Start and lane not marked yet./.test(document.getElementById("raceCalibrationStatus").innerText));
 
     await page.click("#raceAutoStartBtn");
-    expect(await page.locator("#racePipelineStatus").innerText()).toMatch(/lane calibration/);
+    expect(await page.locator("#racePipelineStatus").innerText()).toBe("Before starting, mark the start and lane in step 3.");
     expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
 
     expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
@@ -460,7 +462,7 @@ test.describe("race page: pre-start reference frame (synthetic video, scripted p
 // ===========================================================================
 
 const ENDED_REASON = "analysis-ended-before-distance-confirmed";
-const ENDED_STATUS_TEXT = "Analysis incomplete — video ended without a finish event.";
+const ENDED_STATUS_TEXT = "Analysis incomplete: the video ended before a finish was detected. See the results below.";
 
 test.describe("race page: the video's end is passed to the controller (synthetic video, scripted pose and frame callbacks)", () => {
   test.setTimeout(240000);
@@ -735,7 +737,7 @@ test.describe("race page: the lane reference is the clicked position in the vide
     expect(status).not.toMatch(/Pre-start reference frame/);     // the earlier, valid mark was not kept
 
     await page.click("#raceAutoStartBtn");
-    expect(await page.locator("#racePipelineStatus").innerText()).toMatch(/lane calibration/);
+    expect(await page.locator("#racePipelineStatus").innerText()).toBe("Before starting, mark the start and lane in step 3.");
     expect(await page.locator("#racePipelineReport").innerText()).toBe("");
     expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
 
@@ -831,7 +833,7 @@ test.describe("race page: calibration clicks outside the picture are refused, an
 
     expect(await page.locator("#raceCalibrationStatus").innerText()).toMatch(/outside the video frame — lane reference not set/);
     await page.click("#raceAutoStartBtn");
-    expect(await page.locator("#racePipelineStatus").innerText()).toMatch(/lane calibration/);
+    expect(await page.locator("#racePipelineStatus").innerText()).toBe("Before starting, mark the start and lane in step 3.");
     expect(await page.evaluate(() => window.__poseCalls)).toBe(0);
     expect(errors.filter((e) => !e.includes(KNOWN_BASELINE_ERROR))).toEqual([]);
   });

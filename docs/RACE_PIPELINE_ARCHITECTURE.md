@@ -482,7 +482,7 @@ carries a candidate:
   confirmed start, the **confirming** sample, later than the onset) and
   `onsetAtMs` is the estimated motion onset the assessment concerns (the
   candidate's, or the refused one for `onset-before-reference-frame`; `null`
-  otherwise). The existing Developer Diagnostics panel shows them (§7.3). The
+  otherwise). The diagnostics panel (the collapsed "Technical details" section) shows them (§7.3). The
   field is written only while the session is `armed`; once Chronos accepts a
   start the start detector is no longer run and the field keeps the
   confirming assessment. It is informational: nothing reads it to decide what
@@ -554,11 +554,14 @@ selection rule was left unchanged.
   reaction time); the footage may not contain that information.
 - The analysis report line reads `Estimated motion onset: X s — visual
   estimate, not an official start`. X is the **estimated onset**, which
-  precedes the moment the status flips to "Motion onset estimated" by the
+  precedes the moment the status flips to "Start of motion estimated" by the
   confirmation delay (about 0.8 s at 0.096 w/s and 1.3–1.4 s at 0.058 w/s in
   the synthetic runs).
-- The on-page `#timer` and the legacy manual Start/Split/Reset controls are
-  **not** driven by Chronos (the manual `startTimer()` is undefined). The
+- The on-page `#timer` and the legacy manual controls (now the "Manual Split
+  Timing" section: Play Video/Pause Video/Record Split/Reset Video & Splits)
+  are **not** driven by Chronos. They only play, pause and rewind the race
+  video and record its current time as a split (`startTimer()` now just
+  plays the video and shows its time; it starts no analysis). The
   only official start is the Chronos `start` event shown in the analysis
   report. Wiring a live timer to Chronos is a UI behavior change that
   `docs/CHRONOS_ARCHITECTURE.md` §24 requires approval for.
@@ -638,7 +641,7 @@ still analysed from media time 0.
   Chronos events, the analysis start position, and the legacy `#timer` are
   also unchanged; the timer is **not** connected to Chronos.
 
-**Four timestamps, never conflated.** The Developer Diagnostics panel shows,
+**Four timestamps, never conflated.** The diagnostics panel (collapsed "Technical details") shows,
 only when each exists: *Reference frame (marked pre-start)* (the marked
 frame); *Estimated motion onset … (confirmed at …)* (the onset, and the
 later sample at which detection was confirmed); *Start assessment … evaluated
@@ -647,7 +650,7 @@ onset, not an official start)* (the accepted event, whose time **is** the
 onset). A refused departure appears as *Refused motion onset … (it begins
 before the reference frame)*. The analysis report shows *Estimated motion
 onset: X s — visual estimate, not an official start* and the reference frame.
-The user-facing status reads "Motion onset estimated".
+The user-facing status reads "Start of motion estimated. Keep the video playing."
 
 **Demonstrated behavior (synthetic).** Reference 0 excludes nothing (the
 control); the other reference is placed after the unwanted movement.

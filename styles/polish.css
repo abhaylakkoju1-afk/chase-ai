@@ -348,6 +348,72 @@ body.light-mode #chaseStatus[data-kind="error"] {
     color: #b42318 !important;
 }
 
+/* ---------- Chronos and War Room accessibility ---------- */
+
+/* text for screen readers only (status announcements) */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Chronos: the course / pool-length note sits just under the menu */
+#race .race-field-hint {
+    margin: 8px 0 0;
+    font-size: 0.92rem;
+}
+
+/* Chronos: buttons directly under a section title or its note */
+#race .st-section-title + .race-actions,
+#race .st-section-sub + .race-actions {
+    margin-top: 0;
+}
+
+/* Chronos: the stopwatch title matches the other section titles */
+#race .race-manual-timer h3.st-section-title {
+    margin: 0 0 22px;
+    font-size: 1.25rem;
+    font-weight: 400;
+}
+
+/* Chronos: "Technical details" opens and closes */
+#race .race-tech-details > summary {
+    width: fit-content;
+    cursor: pointer;
+}
+
+#race .race-tech-details:not([open]) > summary {
+    margin-bottom: 0;
+}
+
+/* War Room: the plan heading takes focus when the plan is ready */
+#warRoomReportTitle {
+    scroll-margin-top: 90px;
+}
+
+#warRoomReportTitle:focus {
+    outline: none;
+}
+
+/* War Room: a body-map area reached from the keyboard looks like a
+   hovered one, with a thicker outline */
+.body-part:focus {
+    outline: none;
+}
+
+.body-part:focus-visible {
+    stroke: #00ffcc;
+    stroke-width: 8;
+    filter: drop-shadow(0 0 8px #00ffcc);
+}
+
 /* ---------- Readable small labels (were 10.9px / 11.5px) ---------- */
 .st-eyebrow,
 .req-card .req-label {

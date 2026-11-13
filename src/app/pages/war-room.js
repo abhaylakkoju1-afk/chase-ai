@@ -430,7 +430,7 @@
                 dashboard.innerHTML = `
             <div class="metric-box">
 
-                <h2>🏊 WAR ROOM REPORT</h2>
+                <h2 id="warRoomReportTitle" tabindex="-1">🏊 WAR ROOM REPORT</h2>
 
                 <div class="readiness-container">        
                     
@@ -481,6 +481,8 @@
 
             </div>
         `;
+
+                announceWarRoomPlan();
 
             } catch (error) {
                 console.error("War Room Generation Error:", error);
@@ -882,6 +884,10 @@ function toggleCoach() {
 
             element.style.fill =
                 colors[sorenessMap[part]];
+
+            // the area's name now says the level its colour shows
+            setBodyPartLevel(element, sorenessMap[part]);
+            announceBodyMap(`${bodyPartAccessibleName(element)}.`);
         }
 
         function showBodyView(view) {
@@ -901,6 +907,91 @@ function toggleCoach() {
                 document.getElementById("bodyBack")
                     .classList.add("active");
             }
+
+            // Front / Back say which view is showing
+            document.querySelectorAll(".body-map-toggle button[onclick^='showBodyView']")
+                .forEach(button => button.setAttribute(
+                    "aria-pressed",
+                    String(button.getAttribute("onclick") === `showBodyView('${view}')`)));
+        }
+
+        // ===== BODY MAP: keyboard and screen readers =====
+        // Each area is a button named by side, area and the soreness level
+        // its colour shows, e.g. "Left shoulder: moderate soreness".
+        // Enter or Space does what a click does. Nothing here changes the
+        // levels themselves: cycleSoreness() and sorenessMap are untouched.
+
+        const SORENESS_LEVEL_NAMES = ["no soreness", "light soreness", "moderate soreness", "high soreness"];
+
+        // region id (after Left/Right) -> how it's said
+        const BODY_AREA_NAMES = {
+            Shoulder: "shoulder", Chest: "chest", Bicep: "biceps", Forearm: "forearm",
+            Hip: "hip", HipFlexor: "hip flexor", Tibialis: "shin (tibialis)", ITBand: "IT band",
+            Quad: "quadriceps", Trap: "trapezius", RearDelt: "rear shoulder (rear deltoid)",
+            Supraspinatus: "upper shoulder blade (supraspinatus)", Tricep: "triceps", Lat: "lat",
+            Glute: "glute", Hamstring: "hamstring", Calf: "calf", Achilles: "Achilles tendon"
+        };
+
+        // Sides are the swimmer's own left and right. The region ids don't
+        // follow that everywhere: every back-view id is mirrored (the back
+        // figure's "LeftHamstring" is on the swimmer's right) and the two
+        // front hip flexors are swapped. The ids aren't changed (scoring
+        // uses data-part, never the side); the spoken side is corrected here
+        // and checked against the drawing in test/e2e/chronos-war-room-a11y.spec.js.
+        function bodyPartSide(element, idSide) {
+            const mirrored = !!element.closest("#bodyBack") || /HipFlexor$/.test(element.id);
+            if (!mirrored) return idSide;
+            return idSide === "Left" ? "Right" : "Left";
+        }
+
+        function bodyPartAreaName(element) {
+            const match = /^(Left|Right)(.+)$/.exec(element.id);
+            if (!match) {                                               // Neck, Upper core, Adductors...
+                const part = element.dataset.part;
+                return part.charAt(0) + part.slice(1).toLowerCase();
+            }
+            const area = BODY_AREA_NAMES[match[2]] || match[2].toLowerCase();
+            return `${bodyPartSide(element, match[1])} ${area}`;
+        }
+
+        function bodyPartAccessibleName(element) {
+            const level = Number(element.dataset.sorenessLevel) || 0;
+            return `${bodyPartAreaName(element)}: ${SORENESS_LEVEL_NAMES[level]}`;
+        }
+
+        function setBodyPartLevel(element, level) {
+            element.dataset.sorenessLevel = String(level || 0);
+            element.setAttribute("aria-label", bodyPartAccessibleName(element));
+        }
+
+        function announceBodyMap(text) {
+            const status = document.getElementById("bodyMapStatus");
+            if (status) status.textContent = text;
+        }
+
+        function initBodyMapAccessibility() {
+            document.querySelectorAll(".body-part").forEach(element => {
+                element.setAttribute("role", "button");
+                element.setAttribute("tabindex", "0");
+                setBodyPartLevel(element, 0);
+                element.addEventListener("keydown", event => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+                });
+            });
+        }
+
+        // ===== WAR ROOM PLAN: say it's ready and move focus to it =====
+        function announceWarRoomPlan() {
+            const status = document.getElementById("warRoomPlanStatus");
+            if (status) {
+                // cleared first, so a second plan is announced again
+                status.textContent = "";
+                setTimeout(() => { status.textContent = "Your War Room plan is ready."; }, 100);
+            }
+            const title = document.getElementById("warRoomReportTitle");
+            if (title) title.focus();
         }
 
         function showTooltip(event, name) {
@@ -930,8 +1021,13 @@ function toggleCoach() {
                 .forEach(part => {
                     part.style.fill =
                         "rgba(180,190,220,0.16)";
+                    setBodyPartLevel(part, 0);
                 });
+
+            announceBodyMap("Every area reset to no soreness.");
         }
+
+        initBodyMapAccessibility();
 
 
         
