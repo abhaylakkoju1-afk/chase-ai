@@ -578,7 +578,9 @@ Chronos engine by being wired up, and is not being reconnected as
 part of this or any currently-approved stage.** It is dead code today
 (the `racePose` instance that would invoke it is never assigned, and
 `initRaceAI()`/`processRaceFrame()`/`startTimer()` are called but
-never defined anywhere in `index.html` — confirmed during the
+never defined anywhere in `index.html` — `startTimer()` has since been
+defined to play the race video for manual split timing only, unrelated
+to Chronos — confirmed during the
 repository reconnaissance that preceded this document). Its heuristic
 logic is a candidate source for future `detectors/` modules, subject to
 the evaluation and confidence-scoring described in §22, not a system to

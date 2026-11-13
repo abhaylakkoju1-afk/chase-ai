@@ -799,14 +799,15 @@
 
                 <div class="race-field">
                     <label for="raceCourseSelect">Course</label>
-                    <select id="raceCourseSelect">
+                    <select id="raceCourseSelect" aria-describedby="raceCourseHint">
                         <option value="" selected disabled>Select Course</option>
                     </select>
+                    <p id="raceCourseHint" class="tool-hint race-field-hint">Short course is a 25 m pool and long course is a 50 m pool. Choosing a course selects that pool length below; change it if your pool is different.</p>
                 </div>
 
                 <div class="race-field">
                     <label for="racePoolLengthSelect">Pool Length</label>
-                    <select id="racePoolLengthSelect">
+                    <select id="racePoolLengthSelect" aria-describedby="raceCourseHint">
                         <option value="" selected disabled>Select Pool Length</option>
                     </select>
                 </div>
@@ -848,18 +849,22 @@
 
             <div class="st-section">
                 <div class="st-section-title">3. Mark the Pre-Start Frame and Lane Reference</div>
-                <p class="st-section-sub">Pause the video on a frame <b>before the start</b>, while the swimmer is at rest. Then click the button below and click on the swimmer in the video. The paused frame's time becomes the pre-start reference: movement that begins before it is ignored when Chronos estimates the start of motion. Mark a frame before any movement begins &mdash; if the swimmer has already started moving in the frame you mark, no start of motion can be estimated.</p>
+                <p class="st-section-sub">Pause the video just before the start, while the swimmer is still. Choose <b>Mark Pre-Start Frame &amp; Lane Position</b>, then click the swimmer. Movement before this frame is ignored.</p>
 
                 <button class="btn" id="raceCalibrateBtn">🎯 Mark Pre-Start Frame &amp; Lane Position</button>
-                <div id="raceCalibrationStatus" class="metric-box">Calibration: not set</div>
+                <div id="raceCalibrationStatus" class="metric-box" role="status" aria-live="polite">Start and lane not marked yet.</div>
             </div>
 
-            <div class="race-actions">
-                <button class="btn" id="raceAutoStartBtn" onclick="racePipelineHandleStartClick()">▶ Start Automatic Analysis</button>
-                <button class="btn" id="raceAutoStopBtn" onclick="racePipelineHandleStopClick()">⏹ Stop / Reset Analysis</button>
-            </div>
+            <div class="st-section">
+                <div class="st-section-title">4. Run Automatic Analysis</div>
 
-            <div id="racePipelineStatus" class="metric-box">Ready to configure</div>
+                <div class="race-actions">
+                    <button class="btn" id="raceAutoStartBtn" onclick="racePipelineHandleStartClick()">▶ Start Automatic Analysis</button>
+                    <button class="btn" id="raceAutoStopBtn" onclick="racePipelineHandleStopClick()">⏹ Stop / Reset Analysis</button>
+                </div>
+
+                <div id="racePipelineStatus" class="metric-box" role="status" aria-live="polite">Next: choose the event, the course and the pool length, then upload a race video.</div>
+            </div>
 
             <div id="racePipelineReport"></div>
 
@@ -868,24 +873,28 @@
                 <div id="racePipelinePbComparison"></div>
             </div>
 
-            <div class="st-section">
-                <div class="st-section-title">Developer Diagnostics</div>
+            <details class="st-section race-tech-details">
+                <summary class="st-section-title">Technical details</summary>
+                <p class="st-section-sub">Internal readings from the automatic analysis, for troubleshooting.</p>
                 <div id="racePipelineDiagnostics"></div>
-            </div>
+            </details>
 
             <div id="raceMetrics"></div>
 
-            <div class="race-manual-timer">
+            <div class="st-section race-manual-timer" role="region" aria-labelledby="raceStopwatchTitle">
+                <h3 id="raceStopwatchTitle" class="st-section-title">Manual Split Timing (optional)</h3>
+                <p class="st-section-sub">Record splits yourself while the video plays. This is separate from the automatic analysis and doesn't change its results. Play, Pause and Reset control the video; each split is the video's current time.</p>
+
                 <div class="race-actions">
-                    <button class="btn" onclick="startTimer()">▶ Start</button>
-                    <button class="btn" onclick="pauseTimer()">⏸ Pause</button>
-                    <button class="btn" onclick="split()">📍 Split</button>
-                    <button class="btn" onclick="reset()">🔁 Reset</button>
+                    <button class="btn" onclick="startTimer()">▶ Play Video</button>
+                    <button class="btn" onclick="pauseTimer()">⏸ Pause Video</button>
+                    <button class="btn" onclick="split()">📍 Record Split</button>
+                    <button class="btn" onclick="reset()">🔁 Reset Video &amp; Splits</button>
                 </div>
 
                 <h2 id="timer">0.00 s</h2>
 
-                <h3>Splits</h3>
+                <h3>Manual Splits</h3>
                 <div id="splits"></div>
             </div>
 
@@ -1164,19 +1173,23 @@
                 <option value="3">High soreness</option>
             </select><br><br>
 
-            <label>Soreness Body Map</label>
+            <label id="bodyMapLabel">Soreness Body Map</label>
+            <p id="bodyMapHint" class="tool-hint">Tap an area to mark soreness, and tap it again to raise the level: light, then moderate, then high, then back to none. Front and Back switch the view; Reset clears every area. With a keyboard, Tab to an area and press Enter or Space.</p>
 
-            <div class="body-map-toggle">
-                <button type="button" onclick="showBodyView('front')">Front</button>
-                <button type="button" onclick="showBodyView('back')">Back</button>
+            <div class="body-map-toggle" role="group" aria-labelledby="bodyMapLabel">
+                <button type="button" onclick="showBodyView('front')" aria-pressed="true">Front</button>
+                <button type="button" onclick="showBodyView('back')" aria-pressed="false">Back</button>
                 <button type="button" onclick="resetSorenessMap()">Reset</button>
             </div>
+
+            <!-- says each change out loud: "Left shoulder: moderate soreness" -->
+            <p id="bodyMapStatus" class="visually-hidden" role="status" aria-live="polite"></p>
 
             <div class="body-map-wrapper">
 
                 <!-- FRONT BODY -->
                 <div id="bodyFront" class="body-view active">
-                    <svg viewBox="0 0 1400 2500">
+                    <svg viewBox="0 0 1400 2500" role="group" aria-label="Soreness body map, front" aria-describedby="bodyMapHint">
 
                         <!-- LEFT SHOULDER -->
                         <path id="LeftShoulder" class="body-part" data-part="Shoulders" fill="rgba(180,190,220,0.16)"
@@ -1334,7 +1347,7 @@
 
                 <!-- BACK BODY -->
                 <div id="bodyBack" class="body-view">
-                    <svg viewBox="0 0 1400 2500">
+                    <svg viewBox="0 0 1400 2500" role="group" aria-label="Soreness body map, back" aria-describedby="bodyMapHint">
 
                         <!-- RIGHT TRAP -->
                         <path id="RightTrap" class="body-part" data-part="Traps" fill="rgba(180,190,220,0.16)"
@@ -1563,6 +1576,7 @@
             <button type="button" class="btn" onclick="generateWarRoomPlan()">Generate War Room
                 Plan</button>
 
+            <p id="warRoomPlanStatus" class="visually-hidden" role="status" aria-live="polite"></p>
             <div id="dashboardOutput"></div>
 
             <div class="st-section">
@@ -3520,11 +3534,11 @@ window.addEventListener(
             const statusEl = document.getElementById("raceCalibrationStatus");
 
             if (!video || !video.src) {
-                if (statusEl) statusEl.textContent = "Calibration: upload a race video first.";
+                if (statusEl) statusEl.textContent = "Upload a race video first (step 2), then mark the start and lane.";
                 return;
             }
             if (!video.videoWidth || !video.videoHeight) {
-                if (statusEl) statusEl.textContent = "Calibration: waiting for the video to finish loading — try again in a moment.";
+                if (statusEl) statusEl.textContent = "The video is still loading. Try again in a moment.";
                 return;
             }
 
@@ -3536,7 +3550,7 @@ window.addEventListener(
                 canvas.style.cursor = "crosshair";
             }
             if (statusEl) {
-                statusEl.textContent = "Calibration: with the video paused on a frame BEFORE the start (swimmer at rest), click on the swimmer.";
+                statusEl.textContent = "Now click the swimmer in the paused video.";
             }
         }
 
@@ -3574,7 +3588,7 @@ window.addEventListener(
                 if (!video.paused) {
                     const pausedEl = document.getElementById("raceCalibrationStatus");
                     if (pausedEl) {
-                        pausedEl.textContent = "Calibration: pause the video on the pre-start frame first, then click the swimmer.";
+                        pausedEl.textContent = "Pause the video on the pre-start frame first, then click the swimmer.";
                     }
                     return;
                 }
@@ -3611,8 +3625,8 @@ window.addEventListener(
                     raceStartReferenceMs = null;
                     if (statusEl) {
                         statusEl.textContent = !point
-                            ? "Calibration: that click landed outside the video frame — lane reference not set. Try again."
-                            : "Calibration: the video position could not be read — lane reference and pre-start frame not set. Try again.";
+                            ? "That click landed outside the video frame — lane reference not set. Choose Mark Pre-Start Frame & Lane Position and try again."
+                            : "The video position couldn't be read — start and lane not marked. Choose Mark Pre-Start Frame & Lane Position and try again.";
                     }
                     renderRaceStatus();
                     return;
@@ -3623,7 +3637,7 @@ window.addEventListener(
                 drawCalibrationMarker(canvas, event.clientX - rect.left, event.clientY - rect.top);
 
                 if (statusEl) {
-                    statusEl.textContent = `Calibration: ✅ lane reference position marked. Pre-start reference frame: ${(referenceMs / 1000).toFixed(2)} s (video time).`;
+                    statusEl.textContent = `✅ Start and lane marked. Pre-start reference frame: ${(referenceMs / 1000).toFixed(2)} s (video time).`;
                 }
                 renderRaceStatus();
             });
@@ -3680,7 +3694,7 @@ window.addEventListener(
                 raceCalibrationArmed = false;
                 const calibrationStatusEl = document.getElementById("raceCalibrationStatus");
                 if (calibrationStatusEl) {
-                    calibrationStatusEl.textContent = "Calibration: not set (a new video requires recalibration).";
+                    calibrationStatusEl.textContent = "Start and lane not marked yet. A new video needs to be marked again.";
                 }
                 const canvasEl = document.getElementById("raceCanvas");
                 if (canvasEl) {
@@ -3723,7 +3737,7 @@ window.addEventListener(
                    explicitly deferred, alongside manual timing (§13 of
                    that document), not decided here. */
                 const el = document.getElementById("racePipelineStatus");
-                if (el) el.textContent = "Analysis incomplete — video ended without a finish event.";
+                if (el) el.textContent = "Analysis incomplete: the video ended before a finish was detected. See the results below.";
                 renderRacePipelineReportFromController();
                 renderRacePipelineDiagnostics();
             });
@@ -3738,7 +3752,7 @@ window.addEventListener(
             if (raceMediaPipePose) return true;
 
             if (typeof Pose === "undefined") {
-                setRacePipelineStatusText("Pose engine unavailable.");
+                setRacePipelineStatusText(RACE_ENGINE_UNAVAILABLE_TEXT);
                 return false;
             }
 
@@ -3794,7 +3808,7 @@ window.addEventListener(
                 await raceMediaPipePose.send({ image: raceAnalysisCanvas });
             } catch (error) {
                 console.error("Race pipeline frame error:", error);
-                setRacePipelineStatusText("Frame error — check console.");
+                setRacePipelineStatusText("Part of the video couldn't be analyzed. Choose Stop / Reset Analysis, then start again.");
             } finally {
                 raceAnalysisBusy = false;
             }
@@ -3917,7 +3931,7 @@ window.addEventListener(
 
             if (!video || !video.src) {
                 const el = document.getElementById("racePipelineStatus");
-                if (el) el.textContent = "Please upload a race video first.";
+                if (el) el.textContent = "Upload a race video first (step 2).";
                 return;
             }
 
@@ -3933,7 +3947,7 @@ window.addEventListener(
 
             if (missingFields.length > 0) {
                 const el = document.getElementById("racePipelineStatus");
-                if (el) el.textContent = `Please complete configuration before starting: ${missingFields.join(", ")}.`;
+                if (el) el.textContent = racePipelineNextStepText(missingFields, "Before starting,");
                 return;
             }
 
@@ -3942,14 +3956,14 @@ window.addEventListener(
 
             if (!startResult.ok) {
                 const el = document.getElementById("racePipelineStatus");
-                if (el) el.textContent = `Automatic analysis could not start (${startResult.reason}).`;
+                if (el) el.textContent = RACE_COULD_NOT_START_TEXT;
                 renderRacePipelineDiagnostics();
                 return;
             }
 
             if (!initialiseRacePose()) {
                 const el = document.getElementById("racePipelineStatus");
-                if (el) el.textContent = "Could not initialise the pose engine.";
+                if (el) el.textContent = RACE_ENGINE_UNAVAILABLE_TEXT;
                 return;
             }
 
@@ -3977,7 +3991,7 @@ window.addEventListener(
             }).catch((error) => {
                 console.error("Race pipeline video playback failed:", error);
                 const el = document.getElementById("racePipelineStatus");
-                if (el) el.textContent = "The video could not be played.";
+                if (el) el.textContent = "The video couldn't be played. Try uploading it again, or use a different file.";
                 /* raceController itself already advanced (session
                    created/armed) by this point even though playback
                    failed — the diagnostics panel must reflect that real
@@ -4002,54 +4016,82 @@ window.addEventListener(
             renderRacePipelineDiagnostics();
 
             const el = document.getElementById("racePipelineStatus");
-            if (el) el.textContent = "Analysis stopped.";
+            if (el) el.textContent = "Analysis stopped. Choose Start Automatic Analysis to run it again.";
         }
 
         /* ---------------------------------------------------
            STATUS TEXT (Stage 4D.7 §9) — USER-FACING states only. Every
            phrase here comes from the enumerated list in the task; raw
            Chronos/tracking rejection codes are never shown here (they
-           live in the Developer Diagnostics panel below instead).
+           live in the collapsed Technical details panel instead), and
+           each status says what to do next.
         --------------------------------------------------- */
-        function renderRaceStatus(justDetectedKind) {
+        const RACE_ENGINE_UNAVAILABLE_TEXT = "The analysis engine didn't load. Check your connection and reload the page.";
+        const RACE_COULD_NOT_START_TEXT = "Automatic analysis couldn't start with these race settings. Check them and try again; the reason is under Technical details.";
+
+        /* #racePipelineStatus is a live region, and this runs on every
+           analysed frame: only write when the text changes, so a screen
+           reader hears each new status once. (It was called in two places
+           but never defined, so those messages used to throw instead.) */
+        function setRacePipelineStatusText(text) {
             const el = document.getElementById("racePipelineStatus");
-            if (!el) return;
-            el.textContent = computeUserFacingStatusText(justDetectedKind);
+            if (el && el.textContent !== text) el.textContent = text;
+        }
+
+        function renderRaceStatus(justDetectedKind) {
+            setRacePipelineStatusText(computeUserFacingStatusText(justDetectedKind));
+        }
+
+        /* The next step for the race-setup fields still missing (names from
+           racePipelineDescribeMissingConfigFields), e.g. "Next: choose the
+           course, then mark the start and lane in step 3." */
+        function racePipelineNextStepText(missing, lead) {
+            const settings = missing.filter((field) => field !== "lane calibration").map((field) => `the ${field}`);
+            const steps = [];
+            if (settings.length > 1) {
+                steps.push(`choose ${settings.slice(0, -1).join(", ")} and ${settings[settings.length - 1]}`);
+            } else if (settings.length === 1) {
+                steps.push(`choose ${settings[0]}`);
+            }
+            if (missing.includes("lane calibration")) steps.push("mark the start and lane in step 3");
+            return `${lead} ${steps.join(", then ")}.`;
         }
 
         function computeUserFacingStatusText(justDetectedKind) {
             if (raceController.blockedReason) {
-                return `Blocked: ${raceController.blockedReason}.`;
+                return RACE_COULD_NOT_START_TEXT;
             }
 
             if (!raceController.chronosSession) {
                 const video = document.getElementById("racePlayer");
                 const hasVideo = !!(video && video.src);
-                if (!hasVideo) return "Ready to configure";
+                const missing = racePipelineDescribeMissingConfigFields(getCurrentRaceConfig());
 
-                const config = getCurrentRaceConfig();
-                const missing = racePipelineDescribeMissingConfigFields(config);
-                if (missing.length === 0) return "Ready to analyze";
-                if (missing.length === 1 && missing[0] === "lane calibration") return "Calibration required";
-                return "Ready to configure";
+                if (!hasVideo) {
+                    const settings = missing.filter((field) => field !== "lane calibration");
+                    return settings.length
+                        ? racePipelineNextStepText(settings, "Next:").replace(/\.$/, ", then upload a race video.")
+                        : "Next: upload a race video.";
+                }
+                if (missing.length === 0) return "Ready. Choose Start Automatic Analysis.";
+                return racePipelineNextStepText(missing, "Next:");
             }
 
             if (raceController.chronosSession.status === "finished") {
-                return "Analysis finished";
+                return "Analysis finished. Your results are below.";
             }
 
             if (!raceAnalyzing) {
-                return raceStoppedByUser ? "Analysis stopped" : "Analysis incomplete";
+                return raceStoppedByUser
+                    ? "Analysis stopped. Choose Start Automatic Analysis to run it again."
+                    : "Analysis incomplete. See the results below.";
             }
 
-            if (justDetectedKind === "start") return "Motion onset estimated";
-            if (justDetectedKind === "turn") return "Turn detected";
+            if (justDetectedKind === "start") return "Start of motion estimated. Keep the video playing.";
+            if (justDetectedKind === "turn") return "Turn detected. Keep the video playing.";
 
-            if (raceController.trackingSession && raceController.trackingSession.status === "TARGET_LOCKED") {
-                return "Tracking target";
-            }
-
-            return "Analysis running";
+            // following the swimmer or not, the next step is the same
+            return "Analyzing the race. Keep the video playing to the finish.";
         }
 
         /* ---------------------------------------------------
@@ -4066,6 +4108,7 @@ window.addEventListener(
             const lines = [];
 
             lines.push(`Lifecycle: ${racePipelineControllerStatus(raceController)}`);
+            if (raceController.blockedReason) lines.push(`Blocked: ${raceController.blockedReason}`);
             lines.push(`Tracking: ${d.lastTrackingStatus ?? "—"} (${d.lastObservationOutcome ?? "—"})`);
 
             /* Four distinct timestamps are shown, only when they exist, and are
