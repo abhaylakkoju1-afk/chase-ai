@@ -64,10 +64,14 @@
             // ===== PROFILE IMAGE =====
             const imgBox = document.getElementById("profileImageBox");
 
+            /* the saved photo is set as a property, never as HTML */
             if (profile.photo) {
-                imgBox.innerHTML = `<img src="${profile.photo}" alt="Profile">`;
+                const img = document.createElement("img");
+                img.src = profile.photo;
+                img.alt = "Profile";
+                imgBox.replaceChildren(img);
             } else {
-                imgBox.innerHTML = "Upload Image";
+                imgBox.textContent = "Upload Image";
             }
 
             /* ===== REFRESH STROKE CARDS ===== */
@@ -91,20 +95,23 @@
             const profile = JSON.parse(localStorage.getItem("profile"));
             if (!profile) return;
 
-            document.getElementById("summaryContent").innerHTML = `
-<div>Name: ${profile.name || "—"}</div>
-<div>Stroke: ${profile.primaryStroke || "—"}</div>
-<div>Level: ${profile.level || "—"}</div>
+            /* saved profile text is set as text, never parsed as HTML */
+            const line = (text) => {
+                const div = document.createElement("div");
+                div.textContent = text;
+                return div;
+            };
 
-<br>
-
-<div>Height: ${profile.height || "-"} cm</div>
-<div>Weight: ${profile.weight || "-"} kg</div>
-
-<br>
-
-<div>🎯 ${profile.shortGoal || "No goal set"}</div>
-`;
+            document.getElementById("summaryContent").replaceChildren(
+                line(`Name: ${profile.name || "—"}`),
+                line(`Stroke: ${profile.primaryStroke || "—"}`),
+                line(`Level: ${profile.level || "—"}`),
+                document.createElement("br"),
+                line(`Height: ${profile.height || "-"} cm`),
+                line(`Weight: ${profile.weight || "-"} kg`),
+                document.createElement("br"),
+                line(`🎯 ${profile.shortGoal || "No goal set"}`)
+            );
         }
 
         function renderStrokeCards() {
@@ -119,12 +126,32 @@
                 enteredGender === "" ? "--"
                 : enteredGender.toLowerCase() === "female" ? "♀ Female"
                 : enteredGender.toLowerCase() === "male" ? "♂ Male"
-                : enteredGender.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+                : enteredGender;   // set as text below, so no escaping is needed
 
             const container = document.getElementById("strokeCards");
             if (!container) return;
 
-            container.innerHTML = "";
+            container.replaceChildren();
+
+            /* Saved values (nationality, club, gender, PB times, card photo)
+               come from localStorage and, with accounts on, from synced
+               account data. They are always set as text or as a property,
+               never parsed as HTML. */
+            const el = (tag, className, text) => {
+                const node = document.createElement(tag);
+                if (className) node.className = className;
+                if (text !== undefined) node.textContent = text;
+                return node;
+            };
+            /* text lines separated by <br>, as the cards have always shown them */
+            const linesEl = (className, lines) => {
+                const node = el("div", className);
+                lines.forEach((text, i) => {
+                    if (i > 0) node.append(document.createElement("br"));
+                    node.append(`${text}`);
+                });
+                return node;
+            };
 
             const strokes = ["freestyle", "backstroke", "breaststroke", "butterfly"];
 
@@ -184,42 +211,27 @@
 
                 card.ondblclick = () => changeStrokeImage(stroke);
 
-                card.innerHTML = `
+                if (score >= 95) card.append(el("div", "fire-overlay"));
 
-${score >= 95 ? '<div class="fire-overlay"></div>' : ''}
+                const bg = el("div", "card-bg-image");
+                const bgImg = document.createElement("img");
+                bgImg.src = data.photo ? data.photo : "https://via.placeholder.com/500";
+                bg.append(bgImg);
 
-<div class="card-bg-image">
-    <img src="${data.photo ? data.photo : 'https://via.placeholder.com/500'}">
-</div>
+                const top = el("div", "top-content");
+                top.append(
+                    el("div", "stroke-score", `${score || "--"}`),
+                    el("div", "stroke-name", stroke.toUpperCase()),
+                    linesEl("stroke-meta", [nationality, clubName, genderLabel])
+                );
 
-<div class="card-content">
+                const content = el("div", "card-content");
+                content.append(
+                    top,
+                    linesEl("stroke-times", [`50m: ${t50}`, `100m: ${t100}`, `200m: ${t200}`])
+                );
 
-    <div class="top-content">
-
-        <div class="stroke-score">
-            ${score || "--"}
-        </div>
-
-        <div class="stroke-name">
-            ${stroke.toUpperCase()}
-        </div>
-
-        <div class="stroke-meta">
-            ${nationality}<br>
-            ${clubName}<br>
-            ${genderLabel}
-        </div>
-
-    </div>
-
-    <div class="stroke-times">
-        50m: ${t50}<br>
-        100m: ${t100}<br>
-        200m: ${t200}
-    </div>
-
-</div>
-`;
+                card.append(bg, content);
 
                 container.appendChild(card);
 

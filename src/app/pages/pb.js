@@ -95,59 +95,59 @@
             }
         }
 
+        /* Builds one element. Saved values (event, course, time) are always
+           set as text, never parsed as HTML: they come from localStorage and,
+           with accounts on, from the synced account data. */
+        function pbEl(tag, className, text) {
+            const el = document.createElement(tag);
+            if (className) el.className = className;
+            if (text !== undefined) el.textContent = text;
+            return el;
+        }
+
         function displayPBs() {
 
             let c = document.getElementById("pbList");
-            c.innerHTML = "";
+            c.replaceChildren();
 
             pbs.forEach((pb, i) => {
 
-                let d = document.createElement("div");
-                d.className = "pb-item";
+                let d = pbEl("div", "pb-item");
 
-                d.innerHTML = `
-            <div class="pb-header">
-                <div class="pb-title">
-                    ${pb.event} (${pb.course}) -
-                 <span class="pb-time">${pb.time}</span>
-                </div>
+                const header = pbEl("div", "pb-header");
 
-                <div class="pb-controls">
+                const title = pbEl("div", "pb-title");
+                title.append(`${pb.event} (${pb.course}) - `, pbEl("span", "pb-time", `${pb.time}`));
 
-    <button
-        class="pb-action-btn"
-        onclick="editPB(${i})">
-        Edit
-    </button>
+                const controls = pbEl("div", "pb-controls");
 
-    <button
-        class="pb-action-btn delete-btn"
-        onclick="deletePB(${i})">
-        Delete
-    </button>
+                /* the handlers stay inline attributes with a numeric index, as
+                   before (i is the array index, never saved text) */
+                const editBtn = pbEl("button", "pb-action-btn", "Edit");
+                editBtn.setAttribute("onclick", `editPB(${i})`);
 
-    <button
-        class="pb-action-btn chart-btn"
-        onclick="toggleChart(${i})"
-        aria-label="Show or hide the chart for ${pb.event} (${pb.course})">
-        📊
-    </button>
+                const deleteBtn = pbEl("button", "pb-action-btn delete-btn", "Delete");
+                deleteBtn.setAttribute("onclick", `deletePB(${i})`);
 
-</div>
-            </div>
+                const chartBtn = pbEl("button", "pb-action-btn chart-btn", "📊");
+                chartBtn.setAttribute("onclick", `toggleChart(${i})`);
+                chartBtn.setAttribute("aria-label", `Show or hide the chart for ${pb.event} (${pb.course})`);
 
-            <div id="chart-container-${i}" class="chart-container" style="display:none;">
+                controls.append(editBtn, deleteBtn, chartBtn);
+                header.append(title, controls);
 
-                <div class="chart-title">
-                    Performance Trajectory
-                </div>
+                const chartContainer = pbEl("div", "chart-container");
+                chartContainer.id = `chart-container-${i}`;
+                chartContainer.style.display = "none";
 
-                <div class="chart-wrapper">
-                    <canvas id="chart-${i}"></canvas>
-                </div>
+                const chartWrapper = pbEl("div", "chart-wrapper");
+                const canvas = document.createElement("canvas");
+                canvas.id = `chart-${i}`;
+                chartWrapper.append(canvas);
 
-            </div>
-        `;
+                chartContainer.append(pbEl("div", "chart-title", "Performance Trajectory"), chartWrapper);
+
+                d.append(header, chartContainer);
 
                 c.appendChild(d);
             });
