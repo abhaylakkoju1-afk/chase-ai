@@ -172,6 +172,11 @@ const TARGETS = {
   CHASE_COACHING_RULES: { source: "index", anchor: "const CHASE_COACHING_RULES = [" },
   timeToSeconds: { source: "pb", anchor: "function timeToSeconds(t) {" },
   formatTime: { source: "pb", anchor: "function formatTime(seconds) {" },
+  parsePBTime: { source: "pb", anchor: "function parsePBTime(text) {" },
+  formatPBTime: { source: "pb", anchor: "function formatPBTime(seconds) {" },
+  normalizePBTime: { source: "pb", anchor: "function normalizePBTime(text) {" },
+  displayPBTime: { source: "pb", anchor: "function displayPBTime(text) {" },
+  isValidPBSwim: { source: "pb", anchor: "function isValidPBSwim(s) {" },
   capitalize: { source: "profile", anchor: "function capitalize(s) {" },
 };
 
@@ -246,6 +251,11 @@ function readProfileJs() {
 const PURE_FUNCTION_NAMES = [
   "timeToSeconds",
   "formatTime",
+  "parsePBTime",
+  "formatPBTime",
+  "normalizePBTime",
+  "displayPBTime",
+  "isValidPBSwim",
   "capitalize",
 ];
 

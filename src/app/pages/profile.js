@@ -390,7 +390,8 @@
 
             for (let pb of pbs) {
                 if (pb.event === eventName) {
-                    return pb.time;
+                    /* shown as the Wall of Records shows it (pb.js) */
+                    return displayPBTime(pb.time);
                 }
             }
 

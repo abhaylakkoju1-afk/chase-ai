@@ -68,7 +68,7 @@ test.describe("Wall of Records", () => {
 
     await page.locator("button[onclick='savePB()']").click();
     await expect(error).toBeVisible();
-    await expect(error).toHaveText("Enter a time like 28.45 or 1:05.32, then Save PB.");
+    await expect(error).toHaveText("Enter a time of at least 1 second, as seconds (28.45) or minutes:seconds (1:05.32), with up to two decimal places, then Save PB.");
     await expect(time).toHaveAttribute("aria-invalid", "true");
     await expect(page.locator("#pbList .pb-item")).toHaveCount(0);
 
