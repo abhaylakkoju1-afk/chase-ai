@@ -50,54 +50,65 @@ async function enter(page, { event, course, time }) {
 
 const FREE50 = { event: "Freestyle 50m", course: "Long Course" };
 
+// One test per value: each Save PB click waits for the page's smooth
+// scrolling and the button's hover transition to settle (about 1-2 s), so
+// a loop of many values in one test ran close to the 30 s test timeout.
 test.describe("time validation", () => {
-  test("accepted formats are saved as typed (a one-digit seconds part is padded), with the history in seconds", async ({ page }) => {
-    await openPB(page);
-    const cases = [
-      // [event, typed, saved text, seconds]
-      ["Freestyle 50m", "28.45", "28.45", 28.45],
-      ["Freestyle 100m", "1:05.32", "1:05.32", 65.32],
-      ["Freestyle 200m", "2:05", "2:05", 125],
-      ["Backstroke 100m", "65", "65", 65],
-      ["Backstroke 50m", "31.4", "31.4", 31.4],
-      ["Butterfly 50m", " 29.10 ", "29.10", 29.1],
-      ["IM 400m", "4:59.99", "4:59.99", 299.99],
-      ["Breaststroke 100m", "1:5.32", "1:05.32", 65.32],
-      ["Breaststroke 200m", "2:5", "2:05", 125],
-      ["Butterfly 100m", "1.00", "1.00", 1],
-    ];
-    for (const [event, typed] of cases) {
+  const ACCEPTED = [
+    // [event, typed, saved text, seconds]
+    ["Freestyle 50m", "28.45", "28.45", 28.45],
+    ["Freestyle 100m", "1:05.32", "1:05.32", 65.32],
+    ["Freestyle 200m", "2:05", "2:05", 125],
+    ["Backstroke 100m", "65", "65", 65],
+    ["Backstroke 50m", "31.4", "31.4", 31.4],
+    ["Butterfly 50m", " 29.10 ", "29.10", 29.1],
+    ["IM 400m", "4:59.99", "4:59.99", 299.99],
+    ["Breaststroke 100m", "1:5.32", "1:05.32", 65.32],
+    ["Breaststroke 200m", "2:5", "2:05", 125],
+    ["Butterfly 100m", "1.00", "1.00", 1],
+  ];
+  for (const [event, typed, saved, seconds] of ACCEPTED) {
+    test(`accepted: ${JSON.stringify(typed)} is saved as ${JSON.stringify(saved)}, with the history in seconds`, async ({ page }) => {
+      await openPB(page);
       await enter(page, { event, course: "Long Course", time: typed });
-      await expect(page.locator("#pbTimeError"), typed).toBeHidden();
-    }
-    const list = await storedList(page);
-    expect(list.map((pb) => [pb.event, pb.time, pb.history])).toEqual(
-      cases.map(([event, , saved, seconds]) => [event, saved, [seconds]]));
-    await expect(rows(page).filter({ hasText: "Breaststroke 100m" })).toHaveText("Breaststroke 100m (Long Course) - 1:05.32");
-    await expect(page.locator("#pbList .pb-invalid-note")).toHaveCount(0);
-  });
+      await expect(page.locator("#pbTimeError")).toBeHidden();
+      expect(await storedList(page)).toEqual([{ event, course: "Long Course", time: saved, history: [seconds] }]);
+      await expect(rows(page)).toHaveText([`${event} (Long Course) - ${saved}`]);
+      await expect(page.locator("#pbList .pb-invalid-note")).toHaveCount(0);
+    });
+  }
 
-  test("malformed times show the inline error and change nothing", async ({ page }) => {
+  const MALFORMED = ["-5", "0", "0.00", "0:00.00", "0.99", "0:00.99", "1:65.00", "1:60", "28.4x", "99:99", "1:05:32", "28.456", "1:5.321", "28,45", ".45", "abc", "", "1e3", "Infinity"];
+  for (const bad of MALFORMED) {
+    test(`malformed: ${JSON.stringify(bad)} shows the inline error and changes nothing`, async ({ page }) => {
+      await seed(page, [{ ...FREE50, time: "28.00", history: [28] }]);
+      await openPB(page);
+      const before = await stored(page);
+      const error = page.locator("#pbTimeError");
+
+      await enter(page, { ...FREE50, time: bad });
+      await expect(error).toBeVisible();
+      await expect(error).toHaveText("Enter a time of at least 1 second, as seconds (28.45) or minutes:seconds (1:05.32), with up to two decimal places, then Save PB.");
+      await expect(page.locator("#time")).toHaveAttribute("aria-invalid", "true");
+      expect(await stored(page)).toBe(before);
+      await expect(rows(page)).toHaveText(["Freestyle 50m (Long Course) - 28.00"]);
+    });
+  }
+
+  test("after a rejected time, a valid one clears the error and saves", async ({ page }) => {
     await seed(page, [{ ...FREE50, time: "28.00", history: [28] }]);
     await openPB(page);
-    const before = await stored(page);
     const error = page.locator("#pbTimeError");
     const time = page.locator("#time");
 
-    for (const bad of ["-5", "0", "0.00", "0:00.00", "0.99", "0:00.99", "1:65.00", "1:60", "28.4x", "99:99", "1:05:32", "28.456", "1:5.321", "28,45", ".45", "abc", "", "1e3", "Infinity"]) {
-      await enter(page, { ...FREE50, time: bad });
-      await expect(error, bad).toBeVisible();
-      await expect(error).toHaveText("Enter a time of at least 1 second, as seconds (28.45) or minutes:seconds (1:05.32), with up to two decimal places, then Save PB.");
-      await expect(time, bad).toHaveAttribute("aria-invalid", "true");
-      expect(await stored(page), bad).toBe(before);
-      await expect(rows(page)).toHaveText(["Freestyle 50m (Long Course) - 28.00"]);
-    }
+    await enter(page, { ...FREE50, time: "1:65.00" });
+    await expect(error).toBeVisible();
 
-    // a valid time then clears the error and saves
     await enter(page, { ...FREE50, time: "27.50" });
     await expect(error).toBeHidden();
     await expect(time).not.toHaveAttribute("aria-invalid", "true");
     await expect(rows(page)).toHaveText(["Freestyle 50m (Long Course) - 27.50"]);
+    expect(await storedList(page)).toEqual([{ ...FREE50, time: "27.50", history: [28, 27.5] }]);
   });
 
   test("adding still works as before: a faster time becomes the best, a slower one is kept in the history", async ({ page }) => {
