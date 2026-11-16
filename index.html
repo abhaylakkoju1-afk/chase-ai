@@ -719,10 +719,14 @@
 
             <label for="time" class="field-label">Your time (e.g. 1:05.32)</label>
             <input type="text" id="time" aria-describedby="pbTimeError">
-            <p id="pbTimeError" class="tool-message" data-kind="error" role="alert" hidden>Enter a time like 28.45 or 1:05.32, then Save PB.</p>
+            <p id="pbTimeError" class="tool-message" data-kind="error" role="alert" hidden>Enter a time of at least 1 second, as seconds (28.45) or minutes:seconds (1:05.32), with up to two decimal places, then Save PB.</p>
+            <p id="pbBlockedError" class="tool-message" data-kind="error" role="alert" hidden></p>
+
+            <p id="pbEditStatus" class="tool-message" role="status" hidden></p>
 
             <br>
             <button class="btn" onclick="savePB()">Save PB</button>
+            <button type="button" class="btn" id="pbCancelEdit" onclick="cancelPBEdit()" hidden>Cancel edit</button>
 
             <h3>Your PBs</h3>
             <div id="pbList"></div>

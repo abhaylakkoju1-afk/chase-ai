@@ -319,6 +319,50 @@ html[data-pbs-loading] #pbList + #pbEmpty {
     display: none;
 }
 
+/* Wall of Records: an older saved time that isn't valid is flagged
+   under it (pb.js adds the note; the saved value is left as it is) */
+.pb-invalid-note {
+    display: block;
+    margin-top: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #ffc2c2;
+}
+
+body.light-mode .pb-invalid-note {
+    color: #9b1c1c;
+}
+
+/* ... and saved history entries that aren't valid are listed under the
+   chart (they are not plotted); the chart box grows to fit the list */
+.chart-container:has(.pb-invalid-history) {
+    height: auto;
+}
+
+.pb-invalid-history {
+    margin-top: 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #ffc2c2;
+}
+
+.pb-invalid-history-title {
+    margin: 0 0 4px;
+    font-weight: 600;
+}
+
+.pb-invalid-history ul {
+    margin: 0;
+    padding-left: 1.2em;
+}
+
+body.light-mode .pb-invalid-history {
+    color: #9b1c1c;
+}
+
 .tool-message[data-kind="error"] {
     border-style: solid;
     border-color: rgba(255, 107, 107, 0.45);

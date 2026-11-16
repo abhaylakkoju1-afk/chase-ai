@@ -63,31 +63,36 @@ async function expectNoInjectedElements(page) {
 }
 
 test.describe("Wall of Records: saved PB text", () => {
-  test("a time typed with HTML in it is shown literally, on the list and the stroke cards, and never runs", async ({ page }) => {
+  test("a time typed with HTML in it is refused, and nothing runs", async ({ page }) => {
     const typed = `27${IMG("typed-time")}`;
     await open(page, "pb");
     await page.locator("#event").selectOption("Freestyle 50m");
     await page.locator("#time").fill(typed);
     await page.locator("button[onclick='savePB()']").click();
 
-    // (this value is saved today because the time check is lenient; tightening
-    //  it is a separate change, and the seeded-storage test below covers the
-    //  same rendering without depending on the form)
-    const item = page.locator("#pbList .pb-item");
-    await expect(item).toHaveCount(1);
-    await expect(item.locator(".pb-time")).toHaveText(typed);
-    await expect(item.locator(".pb-time *")).toHaveCount(0);
-    await expect(page.locator("#strokeCards .stroke-times").first()).toContainText(`50m: ${typed}`);
+    await expect(page.locator("#pbTimeError")).toBeVisible();
+    await expect(page.locator("#pbList .pb-item")).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem("pbs"))).toBeNull();
     await expectNoInjectedElements(page);
     await expectNothingRan(page);
+  });
 
-    // it is stored as typed, and stays inert on the next visit
-    expect(JSON.parse(await page.evaluate(() => localStorage.getItem("pbs")))[0].time).toBe(typed);
-    await open(page, "pb");
-    await expect(page.locator("#pbList .pb-time")).toHaveText(typed);
-    await expect(page.locator("#strokeCards .stroke-times").first()).toContainText(`50m: ${typed}`);
-    await expectNoInjectedElements(page);
-    await expectNothingRan(page);
+  test("a stored time with HTML in it (older or synced data) is shown literally on the list and the stroke cards", async ({ page }) => {
+    const stored = `27${IMG("stored-time-card")}`;
+    await page.addInitScript((t) => {
+      if (!localStorage.getItem("pbs")) localStorage.setItem("pbs", JSON.stringify([{ event: "Freestyle 50m", course: "Long Course", time: t, history: [27] }]));
+    }, stored);
+
+    for (const visit of ["first visit", "after reload"]) {
+      await open(page, "pb");
+      const item = page.locator("#pbList .pb-item");
+      await expect(item, visit).toHaveCount(1);
+      await expect(item.locator(".pb-time"), visit).toHaveText(stored);
+      await expect(item.locator(".pb-time *"), visit).toHaveCount(0);
+      await expect(page.locator("#strokeCards .stroke-times").first(), visit).toContainText(`50m: ${stored}`);
+      await expectNoInjectedElements(page);
+      await expectNothingRan(page);
+    }
   });
 
   test("HTML-like event, course and time from storage (as synced data would arrive) are shown as text", async ({ page }) => {
@@ -105,8 +110,11 @@ test.describe("Wall of Records: saved PB text", () => {
       await open(page, "pb");
       const item = page.locator("#pbList .pb-item");
       await expect(item, visit).toHaveCount(1);
-      await expect(item.locator(".pb-title"), visit).toHaveText(`${pb.event} (${pb.course}) - ${pb.time}`);
-      await expect(item.locator(".pb-title > *"), visit).toHaveCount(1);   // only the time span
+      // the stored time isn't a valid time, so the list also flags it (as text)
+      const note = "This saved time isn't valid. Use Edit to correct it, or Delete.";
+      await expect(item.locator(".pb-title"), visit).toHaveText(`${pb.event} (${pb.course}) - ${pb.time}${note}`);
+      await expect(item.locator(".pb-title > *"), visit).toHaveCount(2);   // only the time span and the note
+      await expect(item.locator(".pb-title .pb-time *, .pb-title .pb-invalid-note *"), visit).toHaveCount(0);
       await expect(item.locator(".chart-btn"), visit)
         .toHaveAttribute("aria-label", `Show or hide the chart for ${pb.event} (${pb.course})`);
       await expectNoInjectedElements(page);
