@@ -471,9 +471,11 @@
 
             <p class="tool-hint">Upload a swim video, choose the stroke, then press Analyze.</p>
 
-            <input type="file" id="videoUpload" hidden>
+            <!-- the file input stays focusable and announced (visually
+                 hidden, not hidden); the label is the visible button -->
+            <input type="file" id="videoUpload" class="upload-input" aria-describedby="fileName">
             <label for="videoUpload" class="premium-upload">
-             📹 Upload Swim Video
+             <span aria-hidden="true">📹</span> Upload Swim Video
             </label>
 
             <span id="fileName">No file selected</span>
@@ -820,16 +822,19 @@
             <div class="st-section">
                 <div class="st-section-title">2. Upload Race Video</div>
 
+                <!-- the file input stays focusable and announced (visually
+                     hidden, not hidden); the label is the visible button -->
                 <input
     type="file"
     id="raceVideo"
-    hidden>
+    class="upload-input"
+    aria-describedby="raceFileName">
 
 <label
     for="raceVideo"
     class="premium-upload">
 
-    🎥 Upload Race Video
+    <span aria-hidden="true">🎥</span> Upload Race Video
 
 </label>
 
