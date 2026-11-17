@@ -45,6 +45,70 @@ can score a pipeline stage's output against that ground truth. This
 phase exists explicitly to prevent Phase 6+ from shipping unvalidated
 model output — see `docs/DECISIONS.md`.
 
+**Four-stroke foundation (in progress).** Two parts exist so far, both
+exercised only by synthetic fixtures:
+
+- a versioned label contract for expert-labelled events, phases and
+  cycles in all four strokes (`chase.stroke-labels.v0.1`);
+- a deterministic harness that scores candidate outputs per stroke and
+  per camera view (`docs/evaluation/STROKE_LABEL_CONTRACT_V0.1.md`).
+
+No real clips or labels have been collected. The freestyle pilot
+protocol (`docs/evaluation/ANNOTATION_PROTOCOL_V0.1.md`) is unchanged.
+
+### Stroke validation gate
+
+This gate is recorded as decision **EVAL-1** in `docs/DECISIONS.md`; this
+section is its working checklist. It applies, separately for each
+stroke and camera view, before
+any of the following is enabled for that stroke:
+
+- a stroke-specific detector, phase model, cycle segmenter,
+  measurement or technique claim;
+- any change to backstroke, butterfly or breaststroke's current
+  research-only status.
+
+All of the following must hold:
+
+1. **Approved protocol.** An annotation protocol for that stroke is
+   approved after a double-annotation pilot. It defines each event
+   visually, says which views can show it, and says when to abstain.
+2. **Dataset decision first.** A dataset decision is recorded in
+   `docs/DECISIONS.md` before any footage is collected (`CLAUDE.md`
+   §14). It covers the consent basis (including guardians of minors),
+   private storage and access control, and retention and deletion.
+   Footage never enters this repository.
+3. **Real labels.** Real expert labels exist, made blind to candidate
+   output, covering the views the stroke's events need, with a
+   held-out evaluation split by swimmer.
+4. **Tolerances from agreement.** Matching tolerances are chosen from
+   measured inter-annotator agreement and recorded with the evaluation
+   version.
+5. **Report per stroke and view.** A harness report on the held-out
+   labels (`expert_labelled_not_validated`) shows, for each stroke and
+   view:
+   - event and timing errors;
+   - cycle errors;
+   - coverage and abstention rate;
+   - annotator agreement.
+   Views that do not meet the agreed limits stay unsupported, and the
+   detector abstains there.
+6. **Human sign-off.** A human sign-off is recorded in
+   `docs/DECISIONS.md`, naming:
+   - the stroke and views;
+   - the contract, protocol, evaluation and detector versions;
+   - the acceptance limits used;
+   - the remaining limitations.
+   Passing the gate does not by itself enable a detector or change
+   user-facing wording; each needs its own explicit approval (EVAL-1).
+
+Constraints on the gate:
+
+- A synthetic report can never satisfy the gate.
+- Passing for one stroke or view does not carry over to another.
+- No acceptance limits are set yet. They are set at sign-off, from
+  agreement data.
+
 ## Phase 4 — Pose & tracking improvements
 
 Add temporal filtering/smoothing beyond MediaPipe's built-in
@@ -57,14 +121,17 @@ evaluation set — not just the existing frame-presence "reliability %."
 
 Replace the coarse up/down heuristic with a real labeled phase model
 (catch / pull / push / recovery / entry), evaluated against Phase 3
-ground truth, starting with freestyle.
+ground truth, starting with freestyle. No phase model is enabled for a
+stroke until it passes the stroke validation gate (Phase 3, decision
+EVAL-1).
 
 ## Phase 6 — Stroke-cycle segmentation
 
 Generalize cycle segmentation beyond the current freestyle-only
 wrist-height heuristic, add a confidence score to detected cycles, and
 extend coverage to additional strokes only once each has evaluation
-data to validate against.
+data to validate against and has passed the stroke validation gate
+(Phase 3, decision EVAL-1) for the views it will run on.
 
 ## Phase 7 — Biomechanical measurements
 

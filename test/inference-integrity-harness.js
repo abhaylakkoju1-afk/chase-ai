@@ -23,7 +23,7 @@ export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const PRE_INTEGRITY_INDEX_BLOB = "19d32c86049f5180518b95b0da71fa2ed73511f8";
 
 const ENGINE_FILES = [
-  "geometry.js", "stats.js", "stroke-cycles.js", "pose-frame.js", "frame-timing.js", "tracked-sequence.js",
+  "geometry.js", "stats.js", "stroke-cycles.js", "pose-frame.js", "frame-timing.js", "tracked-sequence.js", "stroke-report-context.js",
 ];
 
 export function currentIndexHtml() {

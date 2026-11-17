@@ -312,6 +312,26 @@ describe("no per-stroke behaviour and freestyle preservation", () => {
     for (const stroke of ["backstroke", "breaststroke", "butterfly"]) assert.match(block, new RegExp(`${stroke}:\\s*\\{ supported: false`));
   });
 
+  test("each stroke report explains suitable views and camera-dependent limits", async () => {
+    const expectedViewCues = {
+      freestyle: "side or front-oblique",
+      backstroke: "end-on view",
+      butterfly: "both arms and hips",
+      breaststroke: "side-underwater footage",
+    };
+
+    for (const [stroke, cue] of Object.entries(expectedViewCues)) {
+      const h = await scriptedRun({ stroke });
+      const html = h.feedback();
+      const context = html.match(/<section data-stroke-context="[^"]+">[\s\S]*?<\/section>/)?.[0];
+      assert.ok(context, `${stroke}: missing stroke-context section`);
+      assert.match(context, new RegExp(`data-stroke-context="${stroke}"`));
+      assert.ok(context.includes(cue), `${stroke}: missing view guidance ${cue}`);
+      assert.match(context, /not stroke detection or a technique score/);
+      assert.match(context, /expert-labelled swimming footage/);
+    }
+  });
+
   // The baseline is read from Git (CI checks out full history for it).
   // Locally a checkout without it skips with a reason; in CI it fails,
   // so the comparison can never be skipped silently there.
@@ -323,14 +343,18 @@ describe("no per-stroke behaviour and freestyle preservation", () => {
     return null;
   }
 
-  test("on clean serial input, histories and the report equal the pre-integrity analyzer's", async (t) => {
+  test("on clean serial input, histories and non-context report output equal the pre-integrity analyzer's", async (t) => {
     const oldHtml = baselineOrSkip(t);
     if (!oldHtml) return;
     for (const stroke of ["freestyle", "backstroke"]) {
       const before = await scriptedRun({ html: oldHtml, stroke });
       const after = await scriptedRun({ stroke });
       assert.deepEqual(comparable(after.state()), comparable(before.state()), stroke);
-      assert.equal(after.feedback(), before.feedback(), `${stroke} report HTML`);
+      const withoutStrokeContext = html => html
+        .replace(/<section data-stroke-context="[^"]+">[\s\S]*?<\/section>/, "")
+        .replace(/\n[ \t]*\n(?:[ \t]*\n)*/g, "\n\n")
+        .trim();
+      assert.equal(withoutStrokeContext(after.feedback()), withoutStrokeContext(before.feedback()), `${stroke} report HTML`);
       assert.equal(after.status(), before.status());
     }
   });
