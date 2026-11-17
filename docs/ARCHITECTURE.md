@@ -122,11 +122,31 @@ analysis output. Wiring it into the pipeline is future work (see
   Sign Up only if `PRODUCTION_PUBLIC_SIGNUPS` (false). Full detail:
   `docs/SUPABASE_PRODUCTION.md`.
 
+### 1.2.1 Inference-result integrity
+
+The Chase analyzer's shared result path is guarded for every stroke
+selection by `src/chase-engine/inference-integrity.js`, loaded from
+`index.html`. It permits one outstanding `pose.send()` window page-wide,
+including across stop, restart and video replacement. A result is held
+until that send settles and is committed only when exactly one callback
+was observed in the window and the originating analysis session remains
+active. Detected violations fail closed: the current report is withheld,
+and further analysis requires a page reload.
+
+This is containment, not request/result identity. The legacy MediaPipe
+callback has no verified request ID. A foreign callback observed alone
+in a send window while that send's own result is missing or delayed can
+still be committed as that frame's result. The Node tests and browser
+spec use a scripted MediaPipe stand-in; real-MediaPipe, real-video and
+real-browser validation remain separate gates. Backstroke, butterfly and
+breaststroke remain research-only. See
+`docs/CHASE_INFERENCE_INTEGRITY.md` and decision INT-1.
+
 ### 1.3 Current deployment
 
 Static GitHub Pages, custom domain via `CNAME` (swimtics.com), no build
-step, no CI. Whatever is committed to the served branch ships
-immediately on merge.
+step. CI runs Node and Playwright checks on pull requests and pushes to
+`main`; whatever is merged to the served branch ships immediately.
 
 ## 2. Target architecture
 

@@ -1720,6 +1720,7 @@
     <script src="src/chase-engine/pose-frame.js"></script>
     <script src="src/chase-engine/frame-timing.js"></script>
     <script src="src/chase-engine/tracked-sequence.js"></script>
+    <script src="src/chase-engine/inference-integrity.js"></script>
     <script>
 
     </script>
@@ -1822,22 +1823,37 @@ let chasePoseFrameHistory = [];
    (new upload while the previous frame's inference was still in
    flight) can be recognized as stale and never attributed a
    timestamp from the wrong session — see chaseSelectFrameTimestamp().
-   Nothing here queues multiple in-flight requests; chaseAnalysisBusy
-   guarantees only one inference runs at a time (both the rVFC path and
-   the no-rVFC fallback path check it before dispatching, and skip —
-   never queue — a sample that becomes due while it is still true), so
-   a single pending-timing slot is sufficient.
+   Nothing here queues multiple in-flight requests. chaseAnalysisBusy
+   is true exactly while a pose.send() is unsettled; both the rVFC path
+   and the no-rVFC fallback path check it before dispatching, and skip —
+   never queue — a sample that becomes due while it is still true. It
+   is NOT cleared by stop/restart (see chaseInferenceIntegrity below),
+   so no two sends are ever outstanding at once, page-wide.
 
    `chaseLastAnalyzedMediaTimeMs` is the mediaTime of the last frame
    actually DISPATCHED to MediaPipe (not merely displayed) — the
    baseline chaseIsSampleDue() measures the ~120ms cadence against.
 
    `chasePendingFrameTiming` is set synchronously, immediately before
-   each pose.send() dispatch, and consumed once when that dispatch's
-   result arrives (in chaseCaptureAdditivePoseFrame) — it is what lets
-   the associated frame's timestamp survive MediaPipe's asynchronous
-   inference instead of being overwritten by whatever video.currentTime
-   reads as once inference completes.
+   each pose.send() dispatch. It is now a diagnostic copy of the most
+   recent dispatch's record only: result attribution never reads it.
+   Each send's own record travels in that send's inference window
+   (chaseInferenceIntegrity, src/chase-engine/inference-integrity.js)
+   and is used only if that window commits a result — which is what
+   lets the frame's timestamp survive MediaPipe's asynchronous inference
+   without a late or duplicate callback picking up a newer record.
+
+   `chaseInferenceIntegrity` is the page-wide state machine described in
+   docs/CHASE_INFERENCE_INTEGRITY.md: one window per pose.send(), a
+   callback committed only when its window resolves with exactly that
+   one callback for the still-active session, and a permanent latch
+   (until reload) on any other pattern. It does not establish
+   request/result identity; the legacy callback carries no request ID.
+
+   `chaseAnalysisCanvasNeedsPrepare` defers the analysis-canvas resize
+   from upload() to the next dispatch, which only happens while no send
+   is outstanding, so the canvas is never resized or redrawn while a
+   previous send may still read it.
 
    `chaseVideoFrameCallbackHandle` is the live requestVideoFrameCallback
    registration id, kept so it can be explicitly cancelled via
@@ -1848,6 +1864,8 @@ let chaseAnalysisGeneration = 0;
 let chaseLastAnalyzedMediaTimeMs = null;
 let chasePendingFrameTiming = null;
 let chaseVideoFrameCallbackHandle = null;
+const chaseInferenceIntegrity = chaseCreateInferenceIntegrityState();
+let chaseAnalysisCanvasNeedsPrepare = true;
 
 /* Literal, hand-written description of the currently configured pose
    model (see initialiseChasePose()'s pose.setOptions() call and the
@@ -2187,15 +2205,28 @@ function prepareChaseAnalysisCanvas(video) {
    pixels and `pendingTiming` originate from the same rVFC callback. */
 async function chaseDispatchPoseInference(video, pendingTiming) {
 
+    /* Inference-integrity gate (docs/CHASE_INFERENCE_INTEGRITY.md): no
+       draw and no send while any earlier send, from any session, is
+       still outstanding, or after an integrity violation. Callers
+       already skip while chaseAnalysisBusy; this also covers the latch. */
+    if (!chaseInferenceCanDispatch(chaseInferenceIntegrity)) {
+        return;
+    }
+
     chaseAnalysisBusy = true;
+
+    let inferenceWindow = null;
+    let outcome = "rejected";
 
     try {
 
         if (
+            chaseAnalysisCanvasNeedsPrepare ||
             !chaseAnalysisCanvas.width ||
             !chaseAnalysisCanvas.height
         ) {
             prepareChaseAnalysisCanvas(video);
+            chaseAnalysisCanvasNeedsPrepare = false;
         }
 
         chaseAnalysisCtx.drawImage(
@@ -2208,9 +2239,16 @@ async function chaseDispatchPoseInference(video, pendingTiming) {
 
         chasePendingFrameTiming = pendingTiming;
 
+        inferenceWindow = chaseOpenInferenceWindow(chaseInferenceIntegrity, {
+            generation: chaseAnalysisGeneration,
+            pendingTiming
+        });
+
         await pose.send({
             image: chaseAnalysisCanvas
         });
+
+        outcome = "resolved";
 
     } catch (error) {
 
@@ -2218,8 +2256,94 @@ async function chaseDispatchPoseInference(video, pendingTiming) {
         setChaseStatus("Something went wrong reading the video. Please try again or use another clip.", "error");
 
     } finally {
+
+        if (inferenceWindow) {
+            chaseSettleInferenceWindow(inferenceWindow, outcome);
+        }
+
         chaseAnalysisBusy = false;
     }
+}
+
+/* Closes one inference window when its pose.send() settles, and either
+   commits its single held result (chaseApplyPoseResult) or drops it.
+   The commit is the only path by which a MediaPipe result reaches
+   metricsHistory, chasePoseFrameHistory or the live overlay. */
+function chaseSettleInferenceWindow(inferenceWindow, outcome) {
+
+    const decision = chaseCloseInferenceWindow(chaseInferenceIntegrity, inferenceWindow, {
+        outcome,
+        currentGeneration: chaseAnalysisGeneration,
+        sessionActive: analyzing
+    });
+
+    if (decision.action === "COMMIT") {
+        chaseApplyPoseResult(
+            decision.payload.results,
+            decision.payload.arrivalVideoTimeSec,
+            decision.pendingTiming
+        );
+    }
+
+    chasePublishInferenceIntegrity();
+
+    if (decision.violation) {
+        chaseHandleInferenceIntegrityViolation();
+    }
+}
+
+function chasePublishInferenceIntegrity() {
+    window.chaseAI.inferenceIntegrity = chaseInferenceIntegritySummary(chaseInferenceIntegrity);
+}
+
+/* Fail closed: once any violation is detected, no further dispatch is
+   possible on this page (the state is latched), and a running session
+   is finished now so finishChaseAnalysis() withholds its report. */
+function chaseHandleInferenceIntegrityViolation() {
+
+    chasePublishInferenceIntegrity();
+
+    if (analyzing) {
+        finishChaseAnalysis();
+    } else {
+        setChaseStatus("Results couldn't be matched reliably to video frames. Reload the page before trying again.", "error");
+    }
+}
+
+/* Feedback text for the two cases where an analysis cannot be reported
+   because of inference integrity, or null when it can. */
+function chaseInferenceIntegrityBlockMessage() {
+
+    if (chaseInferenceIntegrity.latched !== null) {
+        return {
+            status: "Analysis withheld because results couldn't be matched reliably to video frames. Reload the page before trying again.",
+            html: `
+                <div class="metric-box">
+                    <h3>Analysis Withheld</h3>
+                    <p>Chase AI couldn't match the pose engine's results to video frames reliably, so no measurements are shown for this analysis.</p>
+                    <p>Reload the page before trying again.</p>
+                    <p>Reference code: ${chaseInferenceIntegrity.latched.violation}</p>
+                </div>
+            `
+        };
+    }
+
+    const open = chaseInferenceIntegrity.open;
+
+    if (open !== null && open.generation !== chaseAnalysisGeneration) {
+        return {
+            status: "Analysis couldn't start because a frame from an earlier analysis was still being processed. Reload the page and try again.",
+            html: `
+                <div class="metric-box">
+                    <h3>Analysis Incomplete</h3>
+                    <p>A frame from an earlier analysis was still being processed by the pose engine, so this analysis couldn't start.</p>
+                    <p>Reload the page and try again.</p>
+                </div>
+            `
+        };
+    }
+
+    return null;
 }
 
 /* Self-chaining requestVideoFrameCallback() loop — the frame-selection
@@ -2352,6 +2476,18 @@ async function upload() {
         return;
     }
 
+    /* Inference integrity is latched for the rest of this page load
+       (docs/CHASE_INFERENCE_INTEGRITY.md): refuse explicitly rather than
+       start an analysis that could never dispatch a frame. */
+    if (chaseInferenceIntegrity.latched !== null) {
+        stopChaseAnalysis(false);
+        const blocked = chaseInferenceIntegrityBlockMessage();
+        const feedback = document.getElementById("feedback");
+        if (feedback) feedback.innerHTML = blocked.html;
+        setChaseStatus(blocked.status, "error");
+        return;
+    }
+
     stopChaseAnalysis(false);
 
     metricsHistory.elbow = [];
@@ -2396,7 +2532,10 @@ async function upload() {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
-    prepareChaseAnalysisCanvas(video);
+    /* Resized at the next dispatch instead of here: a send from the
+       previous session may still be outstanding and reading this canvas
+       (chaseDispatchPoseInference() only runs once it has settled). */
+    chaseAnalysisCanvasNeedsPrepare = true;
 
     video.currentTime = 0;
 
@@ -2502,7 +2641,11 @@ function stopChaseAnalysis(clearOutput = true) {
 
     chaseStopVideoFrameTicker(document.getElementById("analyzerPlayer"));
 
-    chaseAnalysisBusy = false;
+    /* chaseAnalysisBusy is deliberately NOT cleared here: a pose.send()
+       that is still outstanding keeps it true until it settles, so a
+       restart cannot overlap it (docs/CHASE_INFERENCE_INTEGRITY.md). Its
+       result, if any, is discarded at settlement because this session is
+       no longer active. */
 
     if (clearOutput) {
         clearChaseOutput();
@@ -2540,9 +2683,15 @@ window.addEventListener("DOMContentLoaded", () => {
    affect any existing metric calculation, drawing, or coaching output.
    Safe to delete this function and its two call sites below to fully
    remove this feature. */
-function chaseCaptureAdditivePoseFrame(video, results) {
+function chaseCaptureAdditivePoseFrame(video, results, pendingTiming, arrivalVideoTimeSec) {
 
     if (!video || typeof chaseBuildPoseFrame !== "function") return;
+
+    /* pendingTiming is the committing inference window's own dispatch
+       record (see chaseSettleInferenceWindow()), never the shared
+       chasePendingFrameTiming slot. arrivalVideoTimeSec is
+       video.currentTime read when the callback arrived, exactly the
+       value the fallback used before results were held to settlement. */
 
     /* videoTimestampMs comes from the pending record captured at
        dispatch time (see chaseDispatchPoseInference(), called from
@@ -2557,9 +2706,9 @@ function chaseCaptureAdditivePoseFrame(video, results) {
        for that case and for when requestVideoFrameCallback is
        unsupported. */
     const frameTiming = chaseSelectFrameTimestamp({
-        pendingTiming: chasePendingFrameTiming,
+        pendingTiming,
         currentGeneration: chaseAnalysisGeneration,
-        fallbackVideoTimeMs: video.currentTime * 1000
+        fallbackVideoTimeMs: arrivalVideoTimeSec * 1000
     });
 
     chasePoseFrameHistory.push(chaseBuildPoseFrame({
@@ -2572,7 +2721,40 @@ function chaseCaptureAdditivePoseFrame(video, results) {
     }));
 }
 
+/* Copies the landmark arrays a held result needs, at callback time, so
+   nothing MediaPipe does to its own result object before the send
+   settles can change what is committed. */
+function chaseSnapshotPoseLandmarks(list) {
+    return Array.isArray(list) ? list.map((point) => (point && typeof point === "object" ? { ...point } : point)) : list;
+}
+
+/* The MediaPipe onResults callback. It commits nothing itself: it only
+   snapshots the result and hands it to the inference-integrity state
+   machine, which holds it until its send settles
+   (chaseSettleInferenceWindow) or drops it as a violation. */
 function onChasePoseResults(results) {
+
+    const video = document.getElementById("analyzerPlayer");
+
+    const decision = chaseRecordInferenceCallback(chaseInferenceIntegrity, {
+        results: {
+            poseLandmarks: chaseSnapshotPoseLandmarks(results && results.poseLandmarks),
+            poseWorldLandmarks: chaseSnapshotPoseLandmarks(results && results.poseWorldLandmarks)
+        },
+        arrivalVideoTimeSec: video ? video.currentTime : null
+    });
+
+    if (decision.violation) {
+        chaseHandleInferenceIntegrityViolation();
+    }
+}
+
+/* Landmark extraction + Phase 2 metrics for ONE committed result. The
+   body is the pre-integrity onChasePoseResults() body, with the two
+   result-time video.currentTime reads replaced by arrivalVideoTimeSec
+   (the same value, read when the callback arrived) and the PoseFrame
+   capture given the committing window's own pendingTiming. */
+function chaseApplyPoseResult(results, arrivalVideoTimeSec, pendingTiming) {
 
     const video = document.getElementById("analyzerPlayer");
     const canvas = document.getElementById("canvas");
@@ -2581,7 +2763,7 @@ function onChasePoseResults(results) {
 
         if (analyzing) {
             currentAnalysis.frames++;
-            chaseCaptureAdditivePoseFrame(video, results);
+            chaseCaptureAdditivePoseFrame(video, results, pendingTiming, arrivalVideoTimeSec);
         }
 
         return;
@@ -2607,7 +2789,7 @@ function onChasePoseResults(results) {
     currentAnalysis.frames++;
     currentAnalysis.validFrames++;
 
-    chaseCaptureAdditivePoseFrame(video, results);
+    chaseCaptureAdditivePoseFrame(video, results, pendingTiming, arrivalVideoTimeSec);
 
     /* -----------------------------------------------------
        LANDMARKS
@@ -2750,7 +2932,7 @@ function onChasePoseResults(results) {
         metricsHistory.kneeAngle.push(Number.isFinite(kneeAngle) ? kneeAngle : null);
         metricsHistory.lateralX.push(Number.isFinite(lateralX) ? lateralX : null);
         metricsHistory.wristMinY.push(Number.isFinite(wristMinY) ? wristMinY : null);
-        metricsHistory.timestamps.push(video.currentTime * 1000);
+        metricsHistory.timestamps.push(arrivalVideoTimeSec * 1000);
 
         const MAX_HISTORY = 900;
         Object.keys(metricsHistory).forEach((key) => {
@@ -2768,7 +2950,7 @@ function onChasePoseResults(results) {
         hipAlignment,
         kneeAngle,
         lateralX,
-        timestamp: video.currentTime
+        timestamp: arrivalVideoTimeSec
     };
 
     /* -----------------------------------------------------
@@ -2828,6 +3010,33 @@ function finishChaseAnalysis() {
     chaseStopVideoFrameTicker(document.getElementById("analyzerPlayer"));
 
     currentAnalysis.endedAt = performance.now();
+
+    /* Inference integrity (docs/CHASE_INFERENCE_INTEGRITY.md): after a
+       violation, or when this session never dispatched because a send
+       from an earlier session is still outstanding, no report and no
+       TrackedSequence are produced, and the reason is shown instead of
+       the ordinary "no usable pose" text. */
+    chasePublishInferenceIntegrity();
+
+    const integrityBlock = chaseInferenceIntegrityBlockMessage();
+
+    if (integrityBlock) {
+
+        window.chaseAI.lastTrackedSequence = null;
+        window.lastMetrics = null;
+
+        /* Removes the live metrics and skeleton overlay already drawn
+           from this session's committed results. */
+        clearChaseOutput();
+
+        const blockedFeedback = document.getElementById("feedback");
+        if (blockedFeedback) {
+            blockedFeedback.innerHTML = integrityBlock.html;
+        }
+
+        setChaseStatus(integrityBlock.status, "error");
+        return;
+    }
 
     /* Additive TrackedSequence snapshot — built from chasePoseFrameHistory
        (the raw, frame-accurate PoseFrame capture), independently of
