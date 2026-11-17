@@ -351,3 +351,33 @@ the hosted test project; Firebase accounts were never switched on.
   flag on, Supabase / Vercel settings — needs separate owner approval.
   `swimtics-production` is never used for testing. See
   `docs/SUPABASE_PRODUCTION.md`.
+
+
+---
+
+## INT-1 — Contain detectable Chase inference-result integrity failures
+
+**Decision:** The Chase analyzer uses a page-wide inference window for
+each `pose.send()`. It does not dispatch another send while one remains
+outstanding. It commits a result only after that send resolves, exactly
+one callback was observed during its window, and the analysis session
+is still active. A detected integrity violation withholds the current
+report and requires a page reload before another analysis.
+
+**Why:** The legacy callback carries no verified request identifier,
+while stopping and restarting analysis can leave asynchronous work from
+an earlier session outstanding. Containment prevents detected stale,
+missing, duplicate and unsolicited callback patterns from silently
+entering analysis histories.
+
+**Limits:** This does not establish which request produced a callback.
+A foreign callback observed alone during a send window while that send's
+own result is missing or delayed can still be committed. The state
+machine is tested with scripted callbacks; real MediaPipe and real-video
+behavior have not been validated by those tests. The availability cost
+is that a detected anomaly blocks analysis until reload.
+
+**Scope:** Shared by all stroke selections. It changes no stroke
+capability, detector, sampling cadence or coaching rule. The three
+research-only strokes remain research-only. This scoped `INT-1` identifier
+is independent of the repository's numbered D1–D15 decisions.
