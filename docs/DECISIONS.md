@@ -381,3 +381,110 @@ is that a detected anomaly blocks analysis until reload.
 capability, detector, sampling cadence or coaching rule. The three
 research-only strokes remain research-only. This scoped `INT-1` identifier
 is independent of the repository's numbered D1–D15 decisions.
+
+---
+
+## EVAL-1 — Stroke validation gate for stroke-specific detectors
+
+**Recorded:** 2026-11-17.
+
+**Decision:** This gate covers any stroke-specific phase detector or
+cycle detector (including a segmenter or phase model) for freestyle,
+backstroke, butterfly or breaststroke.
+
+- **Expert labels first.** No such detector may be described as
+  reliable, or enabled for users, until it has been evaluated against
+  expert-labelled data for that stroke and for each camera view it will
+  run on.
+- **The contract and harness to use.** The evaluation uses the
+  four-stroke contract and harness (`chase.stroke-labels.v0.1`,
+  `chase.stroke-evaluation-report.v0.1`, specified in
+  `docs/evaluation/STROKE_LABEL_CONTRACT_V0.1.md`), or a reviewed
+  successor version.
+- **No carry-over.** Evidence for one stroke or view does not carry
+  over to another. Existing freestyle capability does not validate any
+  other stroke.
+
+**What the evaluation must report:**
+
+- For each stroke and each camera view, separately:
+  - event errors, including timing error;
+  - cycle errors;
+  - coverage;
+  - abstentions;
+  - inter-annotator agreement.
+- A single pooled score is not enough.
+- **How the labels are made:** blind to candidate output, and
+  evaluated on a held-out split by swimmer. Matching tolerances come
+  from measured annotator agreement; they are never asserted in
+  advance.
+- **Unsupported views:** a view without adequate evidence stays
+  unsupported, and the detector abstains there.
+- **Synthetic data:** synthetic fixtures test the harness's mechanics
+  only. They are never evidence of accuracy, for any stroke. Every
+  harness report carries an `evidence_status`, and no status means
+  "validated".
+
+**What this decision does not authorize:** filming, collecting,
+uploading, storing or retaining athlete footage or personal data. The
+contract and harness do not authorize any of these. Before any real
+data is collected, a separate decision must be recorded in this file
+(`CLAUDE.md` §14). It must document:
+
+- the consent basis, including parents or guardians of minors;
+- privacy and access control;
+- storage;
+- retention and deletion.
+
+Footage never enters this repository. It is never sent to a
+third-party service without explicit approval.
+
+**Enablement is a separate approval.** Passing the gate is necessary
+but not sufficient. Each of these needs its own explicit human review
+and approval, recorded in this file (`CLAUDE.md` §10):
+
+- enabling a detector for users;
+- changing a stroke's research-only status;
+- changing any user-facing claim.
+
+**How an enabled detector reports:**
+
+- Its phases and cycles are reported as **inferred**, never as measured
+  (D6, `CLAUDE.md` §15).
+- It states its camera assumption and what that assumption cannot
+  determine (D8).
+- Coaching built on its output stays traceable to measurements and
+  fires only when they have data (D4, `CLAUDE.md` §6). It abstains
+  rather than filling gaps (`CLAUDE.md` §16).
+
+**No numeric limits:** this decision sets no acceptance thresholds,
+tolerances or dataset sizes. They are to be set in a later decision,
+based on real labelled evidence and measured agreement.
+
+**Why:**
+
+- Chase has only a freestyle cycle heuristic.
+- D7 already requires evaluation before technique models; it does not
+  say how stroke-specific detectors are judged.
+- The owner-provided *Elite Competitive Swimming* research paper
+  (Chapters 9, 10 and 17) explains that event definitions, error and
+  observability differ by stroke and camera view, and that freestyle
+  capability does not validate other strokes.
+- The harness now exists, but only with synthetic data. Recording this
+  gate prevents a passing synthetic run, or the static per-stroke report
+  guidance, from being read as validation.
+
+**Consequence:**
+
+- Nothing changes in the app today. Backstroke, butterfly and
+  breaststroke remain research-only (`supported: false`). The static
+  per-stroke report notes remain viewing guidance, not detection.
+- The "Stroke validation gate" in `docs/ROADMAP.md` Phase 3 is the
+  working checklist for this decision, and roadmap Phases 5 and 6
+  depend on it.
+- This extends D7 to stroke-specific phase and cycle detectors without
+  amending D7. It is consistent with `CLAUDE.md` §7.
+- Identifier: numbered decision IDs are being allocated in parallel on
+  unmerged branches (D13 and D16–D22 are already in use there), so this
+  entry uses the scoped identifier `EVAL-1`, like `INT-1`, independent
+  of the numbered D-series.

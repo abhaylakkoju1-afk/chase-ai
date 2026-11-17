@@ -57,6 +57,26 @@ Video file (user upload)
       section
 ```
 
+The feedback report also includes static, research-informed camera-view
+and interpretation notes for freestyle, backstroke, butterfly, and
+breaststroke (`src/chase-engine/stroke-report-context.js`). These notes
+are guidance for reviewing footage, not measurements or detected phases.
+Backstroke, butterfly, and breaststroke remain without stroke-specific
+cycle or phase detectors; their numeric output is still generic pose data.
+Any future detector must be evaluated against stroke-specific expert
+labels before it is described as reliable (decision EVAL-1,
+`docs/DECISIONS.md`; see §2.5).
+
+The view notes synthesize the owner-provided *Elite Competitive Swimming*
+research paper (Chapters 2–5, 9, and 15). Representative primary work
+describes pace-sensitive coordination in backstroke
+([Chollet et al., 2008](https://pubmed.ncbi.nlm.nih.gov/18409098/)),
+butterfly ([Seifert et al., 2008](https://pubmed.ncbi.nlm.nih.gov/17935810/)),
+and breaststroke
+([Chollet et al., 2004](https://pubmed.ncbi.nlm.nih.gov/15459828/)).
+Those studies inform which visible events merit review; they do not
+validate Chase's pose estimates or these camera-view notes as detectors.
+
 The Chronos Engine (race timer) runs a second, independent MediaPipe
 Pose instance for motion-triggered start/split timing and a coarse
 stroke-count heuristic. It does not share code or state with the
@@ -251,6 +271,48 @@ first implements each stage, and update this section when they change.
   to read from — never raw video or raw frames.
 - **`CoachingObservation`** — one coaching statement, always carrying a
   pointer back to the `BiomechMeasurement`(s) it was derived from.
+
+### 2.5 Evaluation contracts (not pipeline contracts)
+
+Evaluation contracts describe how pipeline output is checked against
+expert ground truth. They are separate from the §2.4 pipeline
+contracts:
+
+- They live in `src/evaluation/` as Node-only ES modules.
+- `index.html` does not load them.
+- They do not call MediaPipe, the DOM, storage or the network.
+
+Two generations exist:
+
+- **Freestyle pilot (v0.1)**: `src/evaluation/contracts.js`, which
+  follows `docs/evaluation/ANNOTATION_PROTOCOL_V0.1.md`.
+- **Four-stroke foundation (v0.1 draft)**:
+  `src/evaluation/stroke-labels.js` and
+  `src/evaluation/stroke-evaluation.js`, specified in
+  `docs/evaluation/STROKE_LABEL_CONTRACT_V0.1.md`. It has three
+  shapes:
+  - **`StrokeLabelSet`**: one clip's expert annotations — events,
+    phases, cycles, unusable intervals, and certainty and visibility
+    per label. It also records camera view and position, frame rate,
+    pool course, race segment and pace, and the annotator's opaque
+    reference, role and blinding.
+  - **`StrokeCandidateSet`**: a candidate's events, cycles and
+    abstentions for one clip.
+  - **`StrokeEvaluationReport`**: errors, coverage, abstentions and
+    annotator agreement, grouped per stroke, per view, and per stroke
+    and view. Each report carries an `evidence_status`, and none says
+    "validated".
+
+The four-stroke contract cannot carry footage, file references,
+personal data or free text: unknown fields are rejected, and
+references must be opaque codes.
+
+A future stroke-specific detector would be scored by converting its
+`StrokeCycle` / `StrokePhaseLabel` output into a `StrokeCandidateSet`
+in evaluation code. Its enablement is governed by the stroke validation
+gate, decision EVAL-1 in `docs/DECISIONS.md`, with its checklist in
+`docs/ROADMAP.md` Phase 3. The static per-stroke report notes
+(§1.1) are viewing guidance only, not a candidate output.
 
 ## 3. Non-goals for this document
 

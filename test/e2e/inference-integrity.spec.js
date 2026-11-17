@@ -604,11 +604,11 @@ async function scriptedSerialRun(page) {
   });
 }
 
-test.describe("Clean serial output is unchanged from the pre-integrity analyzer", () => {
+test.describe("Clean serial analysis data is unchanged from the pre-integrity analyzer", () => {
   const oldHtml = preIntegrityIndexHtml();
 
   for (const stroke of STROKES) {
-    test(`${stroke}: histories, live metrics, report and status equal the pre-change index.html`, async ({ page, context }) => {
+    test(`${stroke}: histories, live metrics, existing report content and status match the pre-change index.html`, async ({ page, context }) => {
       if (!oldHtml) {
         // Locally, a checkout without the baseline skips with this reason.
         // In CI (full history, fetch-depth: 0) it must exist, so a missing
@@ -630,7 +630,11 @@ test.describe("Clean serial output is unchanged from the pre-integrity analyzer"
       expect(after.data.metrics.timestamps).toHaveLength(9);
       expect(after.data).toEqual(before.data);
       expect(after.ui.metrics).toBe(before.ui.metrics);
-      expect(after.ui.feedback).toBe(before.ui.feedback);
+      const withoutStrokeContext = html => html
+        .replace(/<section data-stroke-context="[^"]+">[\s\S]*?<\/section>/, "")
+        .replace(/>\s+</g, "><")
+        .trim();
+      expect(withoutStrokeContext(after.ui.feedback)).toBe(withoutStrokeContext(before.ui.feedback));
       expect(after.ui.status).toBe(before.ui.status);
       expect(after.maxOutstanding).toBe(1);
     });
@@ -638,8 +642,8 @@ test.describe("Clean serial output is unchanged from the pre-integrity analyzer"
 });
 
 // ---------------------------------------------------------------------
-test.describe("Stroke capabilities remain unchanged", () => {
-  test("backstroke, butterfly and breaststroke stay research-only: unsupported, with no stroke-specific model in the report", async ({ page }) => {
+test.describe("Stroke capabilities and report guidance", () => {
+  test("non-freestyle detectors remain research-only and every stroke has camera-specific guidance", async ({ page }) => {
     test.setTimeout(90_000);
     await openAnalyzer(page, { stroke: "freestyle" });
     const support = await page.evaluate(() => JSON.parse(JSON.stringify(CHASE_STROKE_SUPPORT)));
@@ -650,6 +654,9 @@ test.describe("Stroke capabilities remain unchanged", () => {
       await page.goto("/", { waitUntil: "domcontentloaded" });
       await enterAnalyzer(page, stroke);
       const run = await scriptedSerialRun(page);
+      const contextText = await page.locator(`section[data-stroke-context="${stroke}"]`).innerText();
+      expect(contextText, stroke).toContain("research-informed viewing guidance");
+      expect(contextText, stroke).toContain("not stroke detection or a technique score");
       const note = "does not yet have a stroke-specific biomechanical model";
       if (stroke === "freestyle") expect(run.ui.feedback).not.toContain(note);
       else expect(run.ui.feedback, stroke).toContain(note);

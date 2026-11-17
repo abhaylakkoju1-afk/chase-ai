@@ -32,6 +32,28 @@ exists yet.
   timestamp fixtures (`test/evaluation/fixtures.js`), covering the
   matcher/metrics' mechanical edge cases.
 
+### Four-stroke label contract and harness (draft v0.1)
+
+`src/evaluation/stroke-labels.js` and
+`src/evaluation/stroke-evaluation.js` add a separate, versioned label
+contract and harness for freestyle, backstroke, butterfly and
+breaststroke. They are specified in
+`docs/evaluation/STROKE_LABEL_CONTRACT_V0.1.md` and tested only with
+`SYNTHETIC-` fixtures (`test/evaluation/stroke-fixtures.js`). The
+harness reuses `matchEvents()` and the metric primitives above
+unchanged, and adds:
+
+- per-stroke and per-view grouping;
+- abstention and coverage accounting;
+- unusable-interval and indeterminate-label handling;
+- cycle start and duration error;
+- annotator agreement.
+
+Using it to judge a real detector is governed by decision EVAL-1 in
+`docs/DECISIONS.md` (the stroke validation gate). Nothing in this
+section changes the freestyle pilot contracts or Annotation Protocol
+v0.1.
+
 ## What this infrastructure does NOT do
 
 - It does not collect, download, generate, or reference any real swim

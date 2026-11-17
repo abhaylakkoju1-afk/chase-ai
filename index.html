@@ -1721,6 +1721,7 @@
     <script src="src/chase-engine/frame-timing.js"></script>
     <script src="src/chase-engine/tracked-sequence.js"></script>
     <script src="src/chase-engine/inference-integrity.js"></script>
+    <script src="src/chase-engine/stroke-report-context.js"></script>
     <script>
 
     </script>
@@ -3353,6 +3354,7 @@ function generateChaseFeedback() {
 
     const strokeKey = document.getElementById("stroke")?.value || "freestyle";
     const strokeInfo = CHASE_STROKE_SUPPORT[strokeKey] || CHASE_STROKE_SUPPORT.freestyle;
+    const strokeContext = chaseGetStrokeReportContext(strokeKey);
 
     const ruleResults = chaseRunCoachingRules();
 
@@ -3381,6 +3383,13 @@ function generateChaseFeedback() {
             <ul>
                 ${priorities.length ? priorities.map(item => `<li>${item}</li>`).join("") : "<li>Not enough data to generate priorities from this clip.</li>"}
             </ul>
+
+            <section data-stroke-context="${strokeKey}">
+                <h3>${strokeContext.label}: camera and interpretation notes</h3>
+                <p><strong>View for manual review:</strong> ${strokeContext.view}</p>
+                <p><strong>Limits:</strong> ${strokeContext.limits}</p>
+                <p>These notes are research-informed viewing guidance, not stroke detection or a technique score. Stroke-specific phase and cycle models remain provisional until tested against expert-labelled swimming footage.</p>
+            </section>
 
             <h3>Confidence &amp; Limitations</h3>
             <ul>
