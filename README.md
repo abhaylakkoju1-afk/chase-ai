@@ -37,9 +37,9 @@ An inference-integrity change was prepared in PR #49 to prevent accepting pose r
 
 ### Pose adapter and lifecycle
 
-A standalone Pose adapter has been prototyped with an injectable engine and deterministic fake-engine tests. It is designed to serialize sends, track warm-up and session state, and carry both frame-dispatch and callback-arrival timestamps.
+A Pose adapter (`src/inference/pose-adapter.js`) over a pure request lifecycle (`src/inference/request-lifecycle.js`) is **integrated into Chase only**. The Chase analyzer sends its one-time warm-up and every frame through it; the adapter allows one send at a time, applies INT-1's frame-request rules, tracks warm-up and analysis-session state, and carries both frame-dispatch and callback-arrival timestamps. Race/Chronos is unchanged and does not use the adapter.
 
-The adapter is **not wired into Chase or Chronos**. Its smoke testing used synthetic input and does not validate real swim footage, long sessions, recovery after a hung send, or behavior across browsers and GPUs. Integration decisions and lifecycle audits are still in progress.
+It is tested with deterministic fake-engine tests, a scripted MediaPipe stand-in in the browser, and an opt-in offline smoke test on the pinned real engine that used synthetic input only (no person in the frame). That does not validate real swim footage, long sessions, recovery after a hung send or a warm-up that never settles, or behavior across browsers, devices and GPUs.
 
 ### Stroke evaluation foundation
 

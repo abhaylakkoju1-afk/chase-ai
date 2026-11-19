@@ -1720,7 +1720,8 @@
     <script src="src/chase-engine/pose-frame.js"></script>
     <script src="src/chase-engine/frame-timing.js"></script>
     <script src="src/chase-engine/tracked-sequence.js"></script>
-    <script src="src/chase-engine/inference-integrity.js"></script>
+    <script src="src/inference/request-lifecycle.js"></script>
+    <script src="src/inference/pose-adapter.js"></script>
     <script src="src/chase-engine/stroke-report-context.js"></script>
     <script>
 
@@ -1825,11 +1826,14 @@ let chasePoseFrameHistory = [];
    flight) can be recognized as stale and never attributed a
    timestamp from the wrong session — see chaseSelectFrameTimestamp().
    Nothing here queues multiple in-flight requests. chaseAnalysisBusy
-   is true exactly while a pose.send() is unsettled; both the rVFC path
-   and the no-rVFC fallback path check it before dispatching, and skip —
-   never queue — a sample that becomes due while it is still true. It
-   is NOT cleared by stop/restart (see chaseInferenceIntegrity below),
-   so no two sends are ever outstanding at once, page-wide.
+   is true from the moment a frame is dispatched until the Pose adapter
+   has returned that send's result, so it covers the whole unsettled
+   pose.send(); both the rVFC path and the no-rVFC fallback path check
+   it before dispatching, and skip — never queue — a sample that becomes
+   due while it is still true. It is NOT cleared by stop/restart, and
+   the adapter itself refuses a second send while one is open (see
+   chaseInferenceAdapter below), so no two sends are ever outstanding at
+   once, page-wide.
 
    `chaseLastAnalyzedMediaTimeMs` is the mediaTime of the last frame
    actually DISPATCHED to MediaPipe (not merely displayed) — the
@@ -1838,18 +1842,24 @@ let chasePoseFrameHistory = [];
    `chasePendingFrameTiming` is set synchronously, immediately before
    each pose.send() dispatch. It is now a diagnostic copy of the most
    recent dispatch's record only: result attribution never reads it.
-   Each send's own record travels in that send's inference window
-   (chaseInferenceIntegrity, src/chase-engine/inference-integrity.js)
-   and is used only if that window commits a result — which is what
-   lets the frame's timestamp survive MediaPipe's asynchronous inference
-   without a late or duplicate callback picking up a newer record.
+   Each send's own record travels with that send through the Pose
+   adapter (as the request's meta) and is used only if that request's
+   result is eligible — which is what lets the frame's timestamp survive
+   MediaPipe's asynchronous inference without a late or duplicate
+   callback picking up a newer record.
 
-   `chaseInferenceIntegrity` is the page-wide state machine described in
-   docs/CHASE_INFERENCE_INTEGRITY.md: one window per pose.send(), a
-   callback committed only when its window resolves with exactly that
-   one callback for the still-active session, and a permanent latch
-   (until reload) on any other pattern. It does not establish
-   request/result identity; the legacy callback carries no request ID.
+   `chaseInferenceAdapter` (src/inference/pose-adapter.js over the
+   lifecycle core in src/inference/request-lifecycle.js) is the only path
+   to MediaPipe for Chase: every Chase frame send, callback and
+   settlement goes through it. For frame requests it applies decision
+   INT-1's rules (docs/CHASE_INFERENCE_INTEGRITY.md): one open send, a
+   result used only when its send resolves with exactly that one callback
+   for the still-active session, and a permanent latch (until reload) on
+   any other pattern. It also owns the one-time warm-up and the
+   session-failure policy (a result that cannot be processed ends that
+   analysis). It does not establish request/result identity; the legacy
+   callback carries no request ID. `chaseInferenceSessionToken` is the
+   adapter session for the current analysis (one per upload()).
 
    `chaseAnalysisCanvasNeedsPrepare` defers the analysis-canvas resize
    from upload() to the next dispatch, which only happens while no send
@@ -1865,7 +1875,10 @@ let chaseAnalysisGeneration = 0;
 let chaseLastAnalyzedMediaTimeMs = null;
 let chasePendingFrameTiming = null;
 let chaseVideoFrameCallbackHandle = null;
-const chaseInferenceIntegrity = chaseCreateInferenceIntegrityState();
+let chaseInferenceAdapter = null;
+let chaseInferenceEngineResultsHandler = null;
+let chaseInferenceSessionToken = null;
+let chaseInferenceWarmingUp = false;
 let chaseAnalysisCanvasNeedsPrepare = true;
 
 /* Literal, hand-written description of the currently configured pose
@@ -2130,21 +2143,48 @@ function initialiseChasePose() {
         return false;
     }
 
-    pose = new Pose({
-        locateFile: (file) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+    if (typeof createInferencePoseAdapter !== "function") {
+        console.error("CHASE AI: the inference adapter is unavailable.");
+        setChaseStatus("The analysis engine didn't load. Check your connection and reload the page.", "error");
+        return false;
+    }
+
+    /* The adapter creates the engine once, here, and is then the only
+       way Chase sends to it. MediaPipe still calls onChasePoseResults,
+       which only forwards each result to the adapter's handler. */
+    chaseInferenceAdapter = createInferencePoseAdapter({
+        createEngine: () => {
+            pose = new Pose({
+                locateFile: (file) =>
+                    `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+            });
+
+            pose.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                smoothSegmentation: false,
+                minDetectionConfidence: 0.35,
+                minTrackingConfidence: 0.35
+            });
+
+            pose.onResults(onChasePoseResults);
+
+            return {
+                send: (input) => pose.send(input),
+                onResults: (handler) => {
+                    chaseInferenceEngineResultsHandler = handler;
+                }
+            };
+        },
+        readArrivalTime: chaseReadArrivalVideoTime,
+        onEligibleResult: chaseConsumeEligiblePoseResult,
+        onIntegrityLatch: () => {
+            chaseHandleInferenceIntegrityViolation();
+        }
     });
 
-    pose.setOptions({
-        modelComplexity: 1,
-        smoothLandmarks: true,
-        enableSegmentation: false,
-        smoothSegmentation: false,
-        minDetectionConfidence: 0.35,
-        minTrackingConfidence: 0.35
-    });
-
-    pose.onResults(onChasePoseResults);
+    chasePublishInferenceIntegrity();
 
     window.chaseAI.ready = true;
 
@@ -2207,17 +2247,15 @@ function prepareChaseAnalysisCanvas(video) {
 async function chaseDispatchPoseInference(video, pendingTiming) {
 
     /* Inference-integrity gate (docs/CHASE_INFERENCE_INTEGRITY.md): no
-       draw and no send while any earlier send, from any session, is
-       still outstanding, or after an integrity violation. Callers
-       already skip while chaseAnalysisBusy; this also covers the latch. */
-    if (!chaseInferenceCanDispatch(chaseInferenceIntegrity)) {
+       draw and no send while any earlier send (warm-up or frame, from
+       any session) is still outstanding, after an integrity latch, or
+       after the warm-up failed. Callers already skip while
+       chaseAnalysisBusy; this also covers the latch. */
+    if (!chaseInferenceMayDispatch()) {
         return;
     }
 
     chaseAnalysisBusy = true;
-
-    let inferenceWindow = null;
-    let outcome = "rejected";
 
     try {
 
@@ -2240,16 +2278,29 @@ async function chaseDispatchPoseInference(video, pendingTiming) {
 
         chasePendingFrameTiming = pendingTiming;
 
-        inferenceWindow = chaseOpenInferenceWindow(chaseInferenceIntegrity, {
-            generation: chaseAnalysisGeneration,
-            pendingTiming
-        });
+        if (chaseInferenceAdapter === null) {
+            throw new Error("CHASE AI: the pose engine is not available.");
+        }
 
-        await pose.send({
-            image: chaseAnalysisCanvas
-        });
+        /* The adapter forwards this to MediaPipe only if the lifecycle
+           core accepts it (engine ready, active session, nothing open,
+           not latched), and resolves once the send has settled and any
+           eligible result has been handed to
+           chaseConsumeEligiblePoseResult(). It never rejects. Both
+           times travel with the frame: the dispatch time (this frame's
+           pendingTiming, used for PoseFrames) and the callback-arrival
+           video time (used by the existing metrics). */
+        const result = await chaseInferenceAdapter.sendFrame(
+            chaseInferenceSessionToken,
+            { image: chaseAnalysisCanvas },
+            {
+                generation: chaseAnalysisGeneration,
+                pendingTiming,
+                dispatchTime: pendingTiming ? pendingTiming.mediaTimeMs : null
+            }
+        );
 
-        outcome = "resolved";
+        chaseHandleFrameSendResult(result);
 
     } catch (error) {
 
@@ -2258,48 +2309,135 @@ async function chaseDispatchPoseInference(video, pendingTiming) {
 
     } finally {
 
-        if (inferenceWindow) {
-            chaseSettleInferenceWindow(inferenceWindow, outcome);
-        }
-
         chaseAnalysisBusy = false;
     }
 }
 
-/* Closes one inference window when its pose.send() settles, and either
-   commits its single held result (chaseApplyPoseResult) or drops it.
-   The commit is the only path by which a MediaPipe result reaches
-   metricsHistory, chasePoseFrameHistory or the live overlay. */
-function chaseSettleInferenceWindow(inferenceWindow, outcome) {
-
-    const decision = chaseCloseInferenceWindow(chaseInferenceIntegrity, inferenceWindow, {
-        outcome,
-        currentGeneration: chaseAnalysisGeneration,
-        sessionActive: analyzing
-    });
-
-    if (decision.action === "COMMIT") {
-        chaseApplyPoseResult(
-            decision.payload.results,
-            decision.payload.arrivalVideoTimeSec,
-            decision.pendingTiming
-        );
-    }
+/* What the page does with one frame send's result from the adapter.
+   Integrity latches are not handled here: the adapter reports each latch
+   once, through the deferred onIntegrityLatch notification. */
+function chaseHandleFrameSendResult(result) {
 
     chasePublishInferenceIntegrity();
 
-    if (decision.violation) {
-        chaseHandleInferenceIntegrityViolation();
+    if (!result.accepted) {
+        return; // refused by the lifecycle core; nothing was sent
+    }
+
+    if (result.sendError !== null) {
+        console.error("CHASE AI frame error:", result.sendError);
+        /* A latch's own message takes precedence, as before. */
+        if (!chaseInferenceIsLatched()) {
+            setChaseStatus("Something went wrong reading the video. Please try again or use another clip.", "error");
+        }
+    }
+
+    if (result.failure !== null) {
+        chaseHandleInferenceSessionFailure(result.failure);
     }
 }
 
+/* The adapter's consumer: called once per ELIGIBLE frame result, after
+   its send settled and outside MediaPipe's callback. This is the only
+   path by which a MediaPipe result reaches metricsHistory,
+   chasePoseFrameHistory or the live overlay. If it throws, the adapter
+   ends the session and reports CONSUMER_ERROR. */
+function chaseConsumeEligiblePoseResult(eligible) {
+    chaseApplyPoseResult(
+        eligible.results,
+        eligible.timing.arrivalTime,
+        eligible.meta ? eligible.meta.pendingTiming : null
+    );
+}
+
+/* Read by the adapter inside MediaPipe's callback: the video time when
+   the result arrived, exactly what the metrics used before. */
+function chaseReadArrivalVideoTime() {
+    const video = document.getElementById("analyzerPlayer");
+    return video ? video.currentTime : null;
+}
+
+function chaseInferenceLifecycleSnapshot() {
+    return chaseInferenceAdapter === null ? null : chaseInferenceAdapter.snapshot().lifecycle;
+}
+
+function chaseInferenceIsLatched() {
+    const life = chaseInferenceLifecycleSnapshot();
+    return life !== null && life.latch !== null;
+}
+
+/* The INT-1 dispatch condition (nothing open, not latched), plus the
+   lifecycle's warm-up failure. Without an engine the dispatch goes on to
+   report the missing engine, as it did before. */
+function chaseInferenceMayDispatch() {
+    const life = chaseInferenceLifecycleSnapshot();
+    if (life === null) return true;
+    return life.openRequest === null && life.latch === null && life.engine !== "WARMUP_FAILED";
+}
+
+/* Ends the current adapter session (if active). The token is kept, so
+   its failure, if any, can still be looked up. */
+function chaseEndInferenceSession(reason) {
+    if (chaseInferenceAdapter !== null && chaseInferenceSessionToken !== null) {
+        chaseInferenceAdapter.endSession(chaseInferenceSessionToken, reason);
+    }
+}
+
+function chaseInferenceSessionFailure() {
+    if (chaseInferenceAdapter === null || chaseInferenceSessionToken === null) return null;
+    return chaseInferenceAdapter.sessionFailure(chaseInferenceSessionToken);
+}
+
+/* Plain, JSON-safe diagnostics (window.chaseAI.inferenceIntegrity), in
+   the shape INT-1's summary used, from the adapter's snapshot. Counters
+   cover frame requests; the warm-up is reported separately. */
+function chaseInferenceIntegrityDiagnostics() {
+
+    if (chaseInferenceAdapter === null) return null;
+
+    const snap = chaseInferenceAdapter.snapshot();
+    const life = snap.lifecycle;
+    const c = life.counters;
+
+    return JSON.parse(JSON.stringify({
+        status: life.latch !== null ? "LATCHED" : (life.openRequest !== null ? "SEND_OUTSTANDING" : "IDLE"),
+        engine: life.engine,
+        latched: life.latch === null ? null : {
+            violation: life.latch.reason,
+            requestId: life.latch.requestId,
+            kind: life.latch.kind,
+            sessionToken: life.latch.sessionToken
+        },
+        warmupFailure: life.warmupFailure,
+        openWindow: life.openRequest,
+        session: life.session,
+        counters: {
+            windowsOpened: c.requestsOpened - c.warmupsOpened,
+            resultsCommitted: c.resultsEligible,
+            resultsDiscardedStale: c.resultsDiscardedStale,
+            sendsRejectedWithoutResult: c.sendsRejectedWithoutResult,
+            callbacksDropped: c.callbacksDropped,
+            dispatchesRefused: c.dispatchesRefused,
+            violations: c.latches,
+            warmupsOpened: c.warmupsOpened,
+            warmupsFailed: c.warmupsFailed
+        },
+        adapter: snap.adapter,
+        sessionFailures: snap.failedSessions,
+        identity: "not established: the legacy onResults callback carries no request ID"
+    }));
+}
+
 function chasePublishInferenceIntegrity() {
-    window.chaseAI.inferenceIntegrity = chaseInferenceIntegritySummary(chaseInferenceIntegrity);
+    window.chaseAI.inferenceIntegrity = chaseInferenceIntegrityDiagnostics();
 }
 
 /* Fail closed: once any violation is detected, no further dispatch is
    possible on this page (the state is latched), and a running session
-   is finished now so finishChaseAnalysis() withholds its report. */
+   is finished now so finishChaseAnalysis() withholds its report.
+   Called by the adapter's deferred onIntegrityLatch notification (once
+   per page load, in a microtask after the callback or settlement that
+   latched — never inside MediaPipe's callback). */
 function chaseHandleInferenceIntegrityViolation() {
 
     chasePublishInferenceIntegrity();
@@ -2315,7 +2453,13 @@ function chaseHandleInferenceIntegrityViolation() {
    because of inference integrity, or null when it can. */
 function chaseInferenceIntegrityBlockMessage() {
 
-    if (chaseInferenceIntegrity.latched !== null) {
+    const life = chaseInferenceLifecycleSnapshot();
+
+    if (life === null) {
+        return null;
+    }
+
+    if (life.latch !== null) {
         return {
             status: "Analysis withheld because results couldn't be matched reliably to video frames. Reload the page before trying again.",
             html: `
@@ -2323,15 +2467,15 @@ function chaseInferenceIntegrityBlockMessage() {
                     <h3>Analysis Withheld</h3>
                     <p>Chase AI couldn't match the pose engine's results to video frames reliably, so no measurements are shown for this analysis.</p>
                     <p>Reload the page before trying again.</p>
-                    <p>Reference code: ${chaseInferenceIntegrity.latched.violation}</p>
+                    <p>Reference code: ${life.latch.reason}</p>
                 </div>
             `
         };
     }
 
-    const open = chaseInferenceIntegrity.open;
+    const open = life.openRequest;
 
-    if (open !== null && open.generation !== chaseAnalysisGeneration) {
+    if (open !== null && open.sessionToken !== chaseInferenceSessionToken) {
         return {
             status: "Analysis couldn't start because a frame from an earlier analysis was still being processed. Reload the page and try again.",
             html: `
@@ -2345,6 +2489,130 @@ function chaseInferenceIntegrityBlockMessage() {
     }
 
     return null;
+}
+
+/* A session failure reported by the adapter (CONSUMER_ERROR,
+   RESULT_COPY_FAILED or ARRIVAL_TIME_FAILED): the adapter has already
+   ended that session and withheld its result. This stops the frame
+   drivers, discards everything that analysis produced so far (metrics,
+   PoseFrames, live overlay, live metrics) and shows one message. The
+   engine stays available: a later Analyze works without reload. The
+   previous completed analysis's window.chaseAI.lastTrackedSequence is
+   deliberately left as it was. Not an integrity latch. */
+function chaseHandleInferenceSessionFailure(failure) {
+
+    console.error("CHASE AI: analysis stopped —", failure.reason, failure.message);
+
+    chasePublishInferenceIntegrity();
+
+    if (failure.sessionToken !== chaseInferenceSessionToken) {
+        return; // an earlier analysis: nothing of it is on screen any more
+    }
+
+    analyzing = false;
+    window.chaseAI.analyzing = false;
+
+    if (chaseAnalysisTimer) {
+        clearInterval(chaseAnalysisTimer);
+        chaseAnalysisTimer = null;
+    }
+
+    chaseStopVideoFrameTicker(document.getElementById("analyzerPlayer"));
+    chaseEndInferenceSession(failure.reason);
+
+    chaseDiscardSessionResults();
+
+    const feedback = document.getElementById("feedback");
+    if (feedback) {
+        feedback.innerHTML = `
+            <div class="metric-box">
+                <h3>Analysis Stopped</h3>
+                <p>Chase AI couldn't process a result from the pose engine, so this analysis was stopped and no measurements are shown for it.</p>
+                <p>Press Analyze to try again. You don't need to reload the page.</p>
+                <p>Reference code: ${failure.reason}</p>
+            </div>
+        `;
+    }
+
+    setChaseStatus("Analysis stopped because a result couldn't be processed. Press Analyze to try again.", "error");
+}
+
+/* Discards all partial results of the current analysis, in place (the
+   metricsHistory object itself stays the one window.chaseAI exposes). */
+function chaseDiscardSessionResults() {
+
+    Object.keys(metricsHistory).forEach((key) => {
+        metricsHistory[key] = [];
+    });
+
+    chasePoseFrameHistory = [];
+
+    currentAnalysis = {
+        frames: 0,
+        validFrames: 0,
+        startedAt: null,
+        endedAt: null
+    };
+
+    window.lastMetrics = null;
+
+    /* A consumer that threw mid-draw may have left the overlay's scaled
+       transform in place; reset it before clearing. */
+    const canvas = document.getElementById("canvas");
+    if (canvas) {
+        canvas.getContext("2d").setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    clearChaseOutput();
+}
+
+/* Lets the browser paint the "Preparing" status before the first send,
+   which can block the page while the engine loads: waits for the next
+   animation frame, then for that frame's paint. No timer is involved
+   where requestAnimationFrame is unavailable. In a hidden tab the
+   warm-up therefore starts when the tab is shown again. */
+function chaseYieldForStatusPaint() {
+    if (typeof requestAnimationFrame !== "function") {
+        return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+    });
+}
+
+/* The one-time warm-up: a synthetic flat-grey canvas (no video pixels,
+   no person) sent through the adapter's dedicated warm-up request.
+   Resolves with the adapter's result; never rejects. */
+async function chaseWarmUpPoseEngine() {
+
+    const input = document.createElement("canvas");
+    input.width = 256;
+    input.height = 256;
+    const inputCtx = input.getContext("2d");
+    inputCtx.fillStyle = "#808080";
+    inputCtx.fillRect(0, 0, input.width, input.height);
+
+    await chaseYieldForStatusPaint();
+
+    const result = await chaseInferenceAdapter.warmUp({ image: input });
+
+    if (result.sendError) {
+        console.error("CHASE AI warm-up failed:", result.sendError);
+    }
+
+    chasePublishInferenceIntegrity();
+    return result;
+}
+
+const CHASE_WARMUP_FAILED_STATUS = "The analysis engine couldn't start. Reload the page before trying again.";
+
+/* Shows the existing integrity refusal (latched until reload). */
+function chaseShowInferenceIntegrityRefusal() {
+    stopChaseAnalysis(false);
+    const blocked = chaseInferenceIntegrityBlockMessage();
+    const feedback = document.getElementById("feedback");
+    if (feedback) feedback.innerHTML = blocked.html;
+    setChaseStatus(blocked.status, "error");
 }
 
 /* Self-chaining requestVideoFrameCallback() loop — the frame-selection
@@ -2480,13 +2748,55 @@ async function upload() {
     /* Inference integrity is latched for the rest of this page load
        (docs/CHASE_INFERENCE_INTEGRITY.md): refuse explicitly rather than
        start an analysis that could never dispatch a frame. */
-    if (chaseInferenceIntegrity.latched !== null) {
-        stopChaseAnalysis(false);
-        const blocked = chaseInferenceIntegrityBlockMessage();
-        const feedback = document.getElementById("feedback");
-        if (feedback) feedback.innerHTML = blocked.html;
-        setChaseStatus(blocked.status, "error");
+    if (chaseInferenceIsLatched()) {
+        chaseShowInferenceIntegrityRefusal();
         return;
+    }
+
+    /* The warm-up failed earlier on this page load: refuse until reload. */
+    if (chaseInferenceLifecycleSnapshot().engine === "WARMUP_FAILED") {
+        setChaseStatus(CHASE_WARMUP_FAILED_STATUS, "error");
+        return;
+    }
+
+    /* Warm up once per page load, on the first Analyze, before playback.
+       Another Analyze while it runs is ignored (the status already says
+       it is preparing). */
+    if (chaseInferenceWarmingUp) {
+        return;
+    }
+
+    if (chaseInferenceLifecycleSnapshot().engine === "CREATED") {
+
+        chaseInferenceWarmingUp = true;
+        setChaseStatus("Preparing the analysis engine… The page may not respond for several seconds while it starts. Please wait.");
+
+        try {
+            await chaseWarmUpPoseEngine();
+        } finally {
+            chaseInferenceWarmingUp = false;
+        }
+
+        if (chaseInferenceIsLatched()) {
+            chaseShowInferenceIntegrityRefusal();
+            return;
+        }
+
+        if (chaseInferenceLifecycleSnapshot().engine !== "READY") {
+            setChaseStatus(CHASE_WARMUP_FAILED_STATUS, "error");
+            return;
+        }
+
+        /* The video or stroke may have changed while it prepared. */
+        if (!video.src) {
+            setChaseStatus("Please upload a swim video first.", "error");
+            return;
+        }
+
+        if (!stroke.value) {
+            setChaseStatus("Please select a stroke.", "error");
+            return;
+        }
     }
 
     stopChaseAnalysis(false);
@@ -2510,6 +2820,12 @@ async function upload() {
     chaseAnalysisGeneration++;
     chaseLastAnalyzedMediaTimeMs = null;
     chasePendingFrameTiming = null;
+
+    /* One adapter session per analysis. Beginning it retires the previous
+       session, so a send still outstanding from it is discarded as stale
+       when it settles. */
+    const begun = chaseInferenceAdapter.beginSession();
+    chaseInferenceSessionToken = begun.accepted ? begun.token : null;
 
     currentAnalysis = {
         frames: 0,
@@ -2545,6 +2861,8 @@ async function upload() {
     } catch (error) {
 
         console.error("CHASE AI video playback failed:", error);
+
+        chaseEndInferenceSession("playback-failed");
 
         setChaseStatus(
             "The video could not be played. Please try uploading it again.",
@@ -2634,6 +2952,7 @@ function stopChaseAnalysis(clearOutput = true) {
 
     analyzing = false;
     window.chaseAI.analyzing = false;
+    chaseEndInferenceSession("stopped");
 
     if (chaseAnalysisTimer) {
         clearInterval(chaseAnalysisTimer);
@@ -2643,10 +2962,11 @@ function stopChaseAnalysis(clearOutput = true) {
     chaseStopVideoFrameTicker(document.getElementById("analyzerPlayer"));
 
     /* chaseAnalysisBusy is deliberately NOT cleared here: a pose.send()
-       that is still outstanding keeps it true until it settles, so a
-       restart cannot overlap it (docs/CHASE_INFERENCE_INTEGRITY.md). Its
-       result, if any, is discarded at settlement because this session is
-       no longer active. */
+       that is still outstanding keeps it true until it settles, and the
+       adapter keeps its single request slot until then too, so a restart
+       cannot overlap it (docs/CHASE_INFERENCE_INTEGRITY.md). Its result,
+       if any, is discarded at settlement because this session is no
+       longer active. */
 
     if (clearOutput) {
         clearChaseOutput();
@@ -2688,8 +3008,8 @@ function chaseCaptureAdditivePoseFrame(video, results, pendingTiming, arrivalVid
 
     if (!video || typeof chaseBuildPoseFrame !== "function") return;
 
-    /* pendingTiming is the committing inference window's own dispatch
-       record (see chaseSettleInferenceWindow()), never the shared
+    /* pendingTiming is the eligible request's own dispatch record
+       (see chaseConsumeEligiblePoseResult()), never the shared
        chasePendingFrameTiming slot. arrivalVideoTimeSec is
        video.currentTime read when the callback arrived, exactly the
        value the fallback used before results were held to settlement. */
@@ -2722,31 +3042,16 @@ function chaseCaptureAdditivePoseFrame(video, results, pendingTiming, arrivalVid
     }));
 }
 
-/* Copies the landmark arrays a held result needs, at callback time, so
-   nothing MediaPipe does to its own result object before the send
-   settles can change what is committed. */
-function chaseSnapshotPoseLandmarks(list) {
-    return Array.isArray(list) ? list.map((point) => (point && typeof point === "object" ? { ...point } : point)) : list;
-}
-
-/* The MediaPipe onResults callback. It commits nothing itself: it only
-   snapshots the result and hands it to the inference-integrity state
-   machine, which holds it until its send settles
-   (chaseSettleInferenceWindow) or drops it as a violation. */
+/* The MediaPipe onResults callback. It does nothing itself: it hands
+   every result to the Pose adapter, which counts it in the lifecycle
+   core first, copies the landmark arrays and reads the arrival video
+   time (chaseReadArrivalVideoTime), and holds it until its send settles
+   or drops it as an integrity violation. Nothing the page does runs
+   inside this callback. */
 function onChasePoseResults(results) {
 
-    const video = document.getElementById("analyzerPlayer");
-
-    const decision = chaseRecordInferenceCallback(chaseInferenceIntegrity, {
-        results: {
-            poseLandmarks: chaseSnapshotPoseLandmarks(results && results.poseLandmarks),
-            poseWorldLandmarks: chaseSnapshotPoseLandmarks(results && results.poseWorldLandmarks)
-        },
-        arrivalVideoTimeSec: video ? video.currentTime : null
-    });
-
-    if (decision.violation) {
-        chaseHandleInferenceIntegrityViolation();
+    if (chaseInferenceEngineResultsHandler !== null) {
+        chaseInferenceEngineResultsHandler(results);
     }
 }
 
@@ -2754,7 +3059,8 @@ function onChasePoseResults(results) {
    body is the pre-integrity onChasePoseResults() body, with the two
    result-time video.currentTime reads replaced by arrivalVideoTimeSec
    (the same value, read when the callback arrived) and the PoseFrame
-   capture given the committing window's own pendingTiming. */
+   capture given the eligible request's own pendingTiming. Called only
+   by chaseConsumeEligiblePoseResult(). */
 function chaseApplyPoseResult(results, arrivalVideoTimeSec, pendingTiming) {
 
     const video = document.getElementById("analyzerPlayer");
@@ -3000,8 +3306,15 @@ function finishChaseAnalysis() {
         return;
     }
 
+    /* A session the adapter failed (chaseHandleInferenceSessionFailure)
+       never produces a report; its failure message stays. */
+    if (chaseInferenceSessionFailure() !== null) {
+        return;
+    }
+
     analyzing = false;
     window.chaseAI.analyzing = false;
+    chaseEndInferenceSession("finished");
 
     if (chaseAnalysisTimer) {
         clearInterval(chaseAnalysisTimer);

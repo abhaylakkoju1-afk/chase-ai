@@ -25,6 +25,17 @@
 // Nothing in this file writes to the repository. The pre-change
 // index.html used by the equivalence tests is read from Git by blob id
 // and served from memory for that test only.
+//
+// Chase now routes inference through the Pose adapter
+// (src/inference/pose-adapter.js), which sends one synthetic warm-up
+// frame on the first Analyze of each page load. HARNESS-ONLY changes for
+// that: clickAnalyze() completes that warm-up (one callback, then the
+// send resolves) when the page has one pending; `sends()` and the send
+// indices used by the tests count frame sends only, after the warm-up;
+// state() reads the page's adapter-backed integrity diagnostics. Test 4
+// lets the deferred latch notification run before reading the state
+// (the page now reacts to a latch in a microtask after the callback, not
+// inside it). No behavioural assertion is changed.
 
 import { test, expect } from "@playwright/test";
 import { execFileSync } from "node:child_process";
@@ -158,7 +169,9 @@ function installHarnessInPage() {
 
   // The analyzer's own Pose instance (the `pose` global), never the Race page's.
   const analyzerPose = pose;
-  const sends = () => analyzerPose.__sends;
+  // Frame sends only: the warm-up send (if this page has one) is excluded.
+  let warmupSends = 0;
+  const sends = () => analyzerPose.__sends.slice(warmupSends);
 
   // Every touch of the hidden analysis canvas, with whether any send was
   // outstanding at that moment. drawImage is recorded, not performed: the
@@ -214,6 +227,23 @@ function installHarnessInPage() {
     holdPlayback() { let release; const promise = new Promise((r) => { release = r; }); vstate.playGate = { promise, release: () => { vstate.playGate = null; release(); } }; },
     releasePlayback() { if (vstate.playGate) vstate.playGate.release(); },
     endVideo() { video.dispatchEvent(new Event("ended")); },
+    // Completes the adapter's one-time warm-up if the page has started it:
+    // one callback (no pose: the warm-up input is a flat grey canvas), then
+    // the send resolves. Pages without the adapter never warm up.
+    async settleWarmup() {
+      if (typeof chaseInferenceIntegrityDiagnostics !== "function") return false;
+      for (let i = 0; i < 200 && chaseInferenceIntegrityDiagnostics().engine === "CREATED" && chaseInferenceWarmingUp; i++) {
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      if (chaseInferenceIntegrityDiagnostics().engine !== "WARMING") return false;
+      const all = analyzerPose.__sends;
+      if (all.length !== 1 || all[0].settled) throw new Error("expected exactly one pending warm-up send");
+      analyzerPose.__onResults(noPoseResult());
+      all[0].resolve();
+      warmupSends = 1;
+      await flush();
+      return true;
+    },
     state() {
       return JSON.parse(JSON.stringify({
         metrics: metricsHistory,
@@ -222,7 +252,7 @@ function installHarnessInPage() {
         analyzing,
         busy: chaseAnalysisBusy,
         generation: chaseAnalysisGeneration,
-        integrity: typeof chaseInferenceIntegrity !== "undefined" ? chaseInferenceIntegritySummary(chaseInferenceIntegrity) : null,
+        integrity: typeof chaseInferenceIntegrityDiagnostics === "function" ? chaseInferenceIntegrityDiagnostics() : null,
         tracked: window.chaseAI.lastTrackedSequence,
         ui: {
           metrics: document.getElementById("metrics").innerHTML,
@@ -269,10 +299,11 @@ async function openAnalyzer(page, { stroke = "freestyle", html = null } = {}) {
   return mediapipeRequests;
 }
 
-// Clicks the real Analyze button and lets upload() run to completion.
+// Clicks the real Analyze button and lets upload() run to completion,
+// completing the page's one-time warm-up first if it starts one.
 async function clickAnalyze(page) {
   await page.locator('button[onclick="upload()"]').click();
-  await page.evaluate(() => window.__t.flush());
+  await page.evaluate(async () => { await window.__t.flush(); await window.__t.settleWarmup(); await window.__t.flush(); });
 }
 
 async function startSession(page) {
@@ -404,6 +435,7 @@ test.describe("Chase inference integrity in the browser (scripted Pose stand-in;
       t.frame(0.13);
       t.callback(t.poseResult(1));
       t.callback(t.poseResult(2));                 // a second callback in the same window
+      await t.flush();                             // harness: let the deferred latch notification run
       const atSecond = t.state();
       await t.resolve(1);
       return { atSecond, settled: t.state() };

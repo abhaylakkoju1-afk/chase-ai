@@ -9,6 +9,15 @@
 //
 // index.html and the engine files are only read, never written.
 //
+// Chase now routes inference through the Pose adapter
+// (src/inference/pose-adapter.js over src/inference/request-lifecycle.js),
+// which sends one synthetic warm-up frame on the first upload() of each
+// page load. HARNESS-ONLY accommodations: those two scripts are loaded
+// when index.html loads them; h.upload() completes a pending warm-up (one
+// no-pose callback, then the send resolves); warm-up sends are kept in
+// h.warmupSends, so h.sends and its indices are frame sends only; and
+// h.state().integrity reads the page's live adapter diagnostics.
+//
 // The pre-integrity analyzer can be loaded from Git by its blob id
 // (PRE_INTEGRITY_INDEX_BLOB, the index.html at the pre-integrity main baseline) to compare
 // behaviour on identical scripted input.
@@ -72,7 +81,8 @@ export function noPoseResult() {
 
 export function createAnalyzer({ html = currentIndexHtml(), stroke = "freestyle", extraScripts = [], search = "" } = {}) {
   const h = {
-    sends: [],          // every pose.send() call: { settled, resolve(), reject() }
+    sends: [],          // every frame pose.send() call: { settled, resolve(), reject() }
+    warmupSends: [],    // the adapter's warm-up send(s), kept apart from frame sends
     events: [],         // analysis-canvas draws/resizes, with whether a send was outstanding
     timeouts: [],       // any setTimeout the analyzer schedules
     errors: [],
@@ -81,7 +91,7 @@ export function createAnalyzer({ html = currentIndexHtml(), stroke = "freestyle"
     rvfc: null,
     playGate: null,
   };
-  const outstanding = () => h.sends.some((s) => !s.settled);
+  const outstanding = () => h.sends.some((s) => !s.settled) || h.warmupSends.some((s) => !s.settled);
 
   const plainCtx = () => new Proxy({}, { get: (t, k) => (k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
 
@@ -150,7 +160,8 @@ export function createAnalyzer({ html = currentIndexHtml(), stroke = "freestyle"
         resolve() { record.settled = true; resolve(); },
         reject(error) { record.settled = true; reject(error || new Error("scripted rejection")); },
       };
-      h.sends.push(record);
+      const warming = h.run && h.run('typeof chaseInferenceIntegrityDiagnostics === "function" && chaseInferenceIntegrityDiagnostics() !== null && chaseInferenceIntegrityDiagnostics().engine === "WARMING"');
+      (warming ? h.warmupSends : h.sends).push(record);
       return promise;
     }
   }
@@ -187,6 +198,11 @@ export function createAnalyzer({ html = currentIndexHtml(), stroke = "freestyle"
   if (html.includes('src="src/chase-engine/inference-integrity.js"')) {
     vm.runInContext(readFileSync(join(ROOT, "src", "chase-engine", "inference-integrity.js"), "utf8"), sandbox, { filename: "inference-integrity.js" });
   }
+  for (const file of ["src/inference/request-lifecycle.js", "src/inference/pose-adapter.js"]) {
+    if (html.includes(`src="${file}"`)) {
+      vm.runInContext(readFileSync(join(ROOT, file), "utf8"), sandbox, { filename: file });
+    }
+  }
   for (const file of extraScripts) {
     vm.runInContext(readFileSync(join(ROOT, file), "utf8"), sandbox, { filename: file });
   }
@@ -197,7 +213,17 @@ export function createAnalyzer({ html = currentIndexHtml(), stroke = "freestyle"
   h.elements = elements;
   h.listeners = listeners;
   h.flush = async () => { for (let i = 0; i < 4; i++) await new Promise((r) => setImmediate(r)); };
-  h.upload = async () => { const p = h.run("upload()"); await h.flush(); return p; };
+  h.upload = async () => {
+    const p = h.run("upload()");
+    await h.flush();
+    const warm = h.warmupSends[h.warmupSends.length - 1];
+    if (warm && !warm.settled) {
+      h.pose.cb(noPoseResult());
+      warm.resolve();
+      await h.flush();
+    }
+    return p;
+  };
   h.holdPlayback = () => { let release; const promise = new Promise((r) => { release = r; }); h.playGate = { promise, release: () => { h.playGate = null; release(); } }; return h.playGate; };
   // Presents a frame at `seconds`; a due frame is dispatched by the real rVFC ticker.
   h.frame = (seconds) => { video.currentTime = seconds; const cb = h.rvfc; h.rvfc = null; if (cb) cb(0, { mediaTime: seconds }); };
@@ -214,7 +240,7 @@ export function createAnalyzer({ html = currentIndexHtml(), stroke = "freestyle"
     analyzing,
     busy: chaseAnalysisBusy,
     generation: chaseAnalysisGeneration,
-    integrity: window.chaseAI.inferenceIntegrity || null,
+    integrity: typeof chaseInferenceIntegrityDiagnostics === "function" ? chaseInferenceIntegrityDiagnostics() : (window.chaseAI.inferenceIntegrity || null),
     tracked: window.chaseAI.lastTrackedSequence,
     lastMetrics: window.lastMetrics
   })`));
