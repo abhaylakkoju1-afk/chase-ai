@@ -40,6 +40,7 @@ const KEY = {
     synced: (uid) => `swimtics:syncedPbKeys:${uid}`,
     pending: (uid) => `swimtics:pendingData:${uid}`,      // { profile?: {data, token}, pbs?: {data, token} }
     dismissed: (uid, fp) => `swimtics:importDismissed:${uid}:${fp}`,
+    unreadableCopy: (uid) => `swimtics:unreadableCopy:${uid}:`,   // saved-data-check.js keepUnreadableCopies
     device: "swimtics:deviceId",
 };
 
@@ -59,6 +60,30 @@ const store = {
     remove(key) { try { localStorage.removeItem(key); } catch { /* ignore */ } },
 };
 
+/* The saved PBs ("pbs") and profile ("profile") are checked with
+   saved-data-check.js (a classic script, loaded before this module). Text
+   that can't be read is copied and put back exactly as it is, never
+   re-encoded, and is never sent to the account (see syncPbsNow and
+   saveProfile). */
+const savedData = window.swimticsSavedData;
+
+function rawGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
+function rawSet(key, raw) {
+    try {
+        if (raw === null) localStorage.removeItem(key); else localStorage.setItem(key, raw);
+        return true;
+    } catch (err) { console.error("SWIMTICS storage:", err); return false; }
+}
+
+/* the value in `raw` if it is readable saved data of that kind, else `fallback` */
+function usable(key, raw, fallback) {
+    const r = savedData.classifySaved(key, raw);
+    return r.status === "ok" ? r.value : fallback;
+}
+
+/* true unless the working copy of `key` is readable saved data */
+const notReadable = (key) => savedData.readSaved(key).status !== "ok";
+
 function deviceId() {
     let id = store.get(KEY.device);
     if (!id) {
@@ -72,8 +97,8 @@ function deviceId() {
 
 function readWorking() {
     return {
-        profile: store.get("profile", {}) || {},
-        pbs: store.get("pbs", []) || [],
+        profile: usable("profile", rawGet("profile"), {}),
+        pbs: usable("pbs", rawGet("pbs"), []),
         strokeData: store.get("strokeData", {}) || {},
     };
 }
@@ -99,12 +124,29 @@ function rerender() {
     try { if (typeof displayPBs === "function") displayPBs(); } catch (e) { console.error(e); }
 }
 
+/* this device's own set-aside data, as usable values (an unreadable
+   profile or PB list counts as empty here, e.g. for the import offer) */
 function guestData() {
     return {
-        profile: store.get(KEY.guestProfile, {}) || {},
-        pbs: store.get(KEY.guestPbs, []) || [],
+        profile: usable("profile", rawGet(KEY.guestProfile), {}),
+        pbs: usable("pbs", rawGet(KEY.guestPbs), []),
         strokeData: store.get(KEY.guestStroke, {}) || {},
     };
+}
+
+/* Put this device's own data back in the working copy. The set-aside
+   profile and PB text goes back exactly as it was saved, so a value that
+   can't be read is kept (and shows its recovery message) instead of being
+   replaced with an empty one. */
+function restoreGuestWorking() {
+    const profileRaw = rawGet(KEY.guestProfile);
+    const pbsRaw = rawGet(KEY.guestPbs);
+    writeWorking(guestData());
+    if (profileRaw !== null || pbsRaw !== null) {
+        if (profileRaw !== null) rawSet("profile", profileRaw);
+        if (pbsRaw !== null) rawSet("pbs", pbsRaw);
+        rerender();
+    }
 }
 
 function hasLocalData(local) {
@@ -113,16 +155,19 @@ function hasLocalData(local) {
 
 /* Keep the departing account's local-only photos (they exist nowhere else),
    then put this device's own data back in the working copy. The account's
-   profile/PB copy is not kept: it lives in the database. */
+   profile/PB copy is not kept: it lives in the database. If that copy
+   can't be read, its exact text is kept for this uid first (shown only
+   when this account is signed in again). */
 function leaveAccount(uid) {
     if (!uid) return;
+    savedData.keepUnreadableCopies(KEY.unreadableCopy(uid));
     const w = readWorking();
     const photos = store.get(KEY.localPhotos(uid), {}) || {};
     if (w.profile.photo) photos.photo = w.profile.photo;
     if (Object.keys(w.strokeData).length) photos.strokeData = w.strokeData;
     if (Object.keys(photos).length) store.set(KEY.localPhotos(uid), photos);
     store.remove(KEY.active);
-    writeWorking(guestData());
+    restoreGuestWorking();
 }
 
 /* loadProfile() calls this; the real version is defined below. */
@@ -179,6 +224,12 @@ function collectProfileForm() {
 }
 
 function saveProfileLocally(message = "Saved on this device.") {
+    /* never written over a saved profile that can't be read (profile.js
+       also holds the button back and shows the recovery message) */
+    if (savedData.needsRecovery(savedData.readSaved("profile"))) {
+        setStatus("profileSaveStatus", "Your profile wasn't saved, because your saved profile can't be read. Save a backup or start fresh using the message at the top of Profile first.", "error");
+        return null;
+    }
     const next = collectProfileForm();
     if (!store.set("profile", next)) {
         setStatus("profileSaveStatus", "Couldn't save on this device (browser storage is full or blocked).", "error");
@@ -223,6 +274,27 @@ function setupAccounts() {
 
     /* still the same signed-in user, in the same session? */
     const still = (uid, myGen) => gen === myGen && !!currentUser && currentUser.uid === uid;
+
+    /* For Profile's saved-data notes (profile.js renderAccountSavedDataNotes):
+       only while this account's data is shown. */
+    window.swimticsAccountSavedData = {
+        status() {
+            if (!currentUser || !accountLoaded || store.get(KEY.active) !== currentUser.uid) return null;
+            return {
+                copies: savedData.listUnreadableCopies(KEY.unreadableCopy(currentUser.uid)),
+                deviceUnreadable: [["pbs", KEY.guestPbs], ["profile", KEY.guestProfile]]
+                    .filter(([key, guestKey]) => savedData.needsRecovery(savedData.classifySaved(key, rawGet(guestKey))))
+                    .map(([key]) => key),
+            };
+        },
+    };
+    function refreshSavedDataNotes() {
+        try {
+            if (typeof window.renderProfileDataRecovery === "function") {
+                window.renderProfileDataRecovery(savedData.readSaved("profile"));
+            }
+        } catch (e) { console.error(e); }
+    }
 
     /* ----- pending (unsynced) changes, backed up per uid ----- */
 
@@ -426,10 +498,12 @@ function setupAccounts() {
         return rest;
     }
 
+    /* the saved profile and PB text is copied exactly as it is, so a value
+       that can't be read is kept unchanged until it is put back */
     function snapshotGuest() {
         const w = readWorking();
-        store.set(KEY.guestProfile, w.profile);
-        store.set(KEY.guestPbs, w.pbs);
+        rawSet(KEY.guestProfile, rawGet("profile"));
+        rawSet(KEY.guestPbs, rawGet("pbs"));
         store.set(KEY.guestStroke, w.strokeData);
     }
 
@@ -439,6 +513,7 @@ function setupAccounts() {
         const active = store.get(KEY.active);
         if (active && active !== uid) leaveAccount(active);
         if (!store.get(KEY.active)) snapshotGuest();
+        else savedData.keepUnreadableCopies(KEY.unreadableCopy(uid));   // replacing this account's own working copy
 
         let cloud;
         try {
@@ -463,6 +538,7 @@ function setupAccounts() {
         store.set(KEY.synced(uid), list.map((p) => pbKey(p.event, p.course)));
         writeWorking({ profile, pbs: list, strokeData: photos.strokeData || {} });
         accountLoaded = true;
+        refreshSavedDataNotes();
 
         await replayPending(uid, myGen);
         if (!still(uid, myGen)) return;
@@ -487,6 +563,7 @@ function setupAccounts() {
             const cloud = await repo.load(uid);
             if (!still(uid, myGen)) return;
             const list = cloudPbsToLocal(cloud.pbs);
+            savedData.keepUnreadableCopies(KEY.unreadableCopy(uid));
             const w = readWorking();
             store.set(KEY.synced(uid), list.map((x) => pbKey(x.event, x.course)));
             writeWorking({ profile: { ...stripMeta(cloud.profile), ...(w.profile.photo ? { photo: w.profile.photo } : {}) }, pbs: list });
@@ -591,6 +668,10 @@ function setupAccounts() {
         }
         const uid = currentUser.uid;
         const myGen = gen;
+        if (notReadable("profile")) {
+            setStatus("profileSaveStatus", "Your profile wasn't saved, because the profile saved on this device can't be read. Nothing was sent to your account.", "error");
+            return;
+        }
         const next = collectProfileForm();
         store.set("profile", next);                    // working copy first: never lose the edit
         rerender();
@@ -626,6 +707,13 @@ function setupAccounts() {
 
     async function syncPbsNow(uid) {
         const myGen = gen;
+        /* A PB list that can't be read (or is missing) would be sent as an
+           empty one, and the sync removes every account PB missing from the
+           list: send nothing instead. */
+        if (notReadable("pbs")) {
+            setStatus("pbSyncStatus", "Not saved to your account: the personal bests saved on this device can't be read, so nothing was sent.", "error");
+            return;
+        }
         const workingPbs = readWorking().pbs;           // the data being saved, captured now
         const syncedKeys = store.get(KEY.synced(uid), []) || [];
         const token = beginWrite(uid, "pbs", { pbs: workingPbs, syncedKeys });
@@ -638,6 +726,7 @@ function setupAccounts() {
                 endWrite(uid, "pbs", token);
                 if (!still(uid, myGen)) return false;
                 store.set(KEY.synced(uid), list.map((p) => pbKey(p.event, p.course)));
+                savedData.keepUnreadableCopies(KEY.unreadableCopy(uid));
                 const w = readWorking();
                 writeWorking({ profile: w.profile, pbs: list });
                 return true;

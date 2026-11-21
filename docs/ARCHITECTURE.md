@@ -93,6 +93,23 @@ analysis output. Wiring it into the pipeline is future work (see
   uploaded to a server or persisted. Reloading the page discards it.
 - **Personal bests, profile, stroke data, soreness map, theme**:
   `localStorage` on the device (the working copy the UI reads).
+  The saved PBs (`"pbs"`) and profile (`"profile"`) are checked on read
+  by `src/app/data/saved-data-check.js`: a value that isn't valid JSON,
+  or isn't the shape the app writes, is never changed on load. The Wall
+  of Records / Profile show a recovery message (download or copy a
+  backup; "Start fresh" removes only that key after confirmation) and
+  hold back writes that would replace it. Start fresh never calls
+  account sync and isn't offered while the working copy belongs to a
+  signed-in account. With accounts (Firebase `account.js`, Supabase
+  `supabase-accounts-core.js`): this device's own `"pbs"` / `"profile"`
+  text is set aside and put back exactly as saved, never re-encoded; PB
+  sync and the account profile save refuse to send anything while the
+  local copy can't be read; and before account code replaces an account
+  working copy that can't be read (reload, log out, switching account),
+  its exact text is kept under a key for that account only
+  (`…unreadableCopy:<uid>:pbs|profile:<time>`), offered on Profile for
+  backup or Discard only while that account is signed in. Discard removes
+  only that local key and sends nothing.
 - **Accounts (Stage 1, D10)**: Firebase Auth (email/password) +
   Realtime Database under `/users/{uid}` with deny-by-default rules
   (`database.rules.json`). When signed in, profile text fields and PBs

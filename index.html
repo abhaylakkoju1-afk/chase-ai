@@ -973,7 +973,9 @@
             </div>
 
             <h2>Your Profile</h2>
-            
+            <!-- filled only when the saved profile or PBs can't be read (profile.js) -->
+            <div id="profileDataRecovery"></div>
+
             <button class="login-btn" onclick="openLoginModal()">
              Log In / Sign Up
              </button>
@@ -1727,6 +1729,8 @@
 
     </script>
     <script src="src/app/pages/navigation.js"></script>
+    <!-- checks the saved PBs and Profile before anything reads them -->
+    <script src="src/app/data/saved-data-check.js"></script>
     <script>
 
 
@@ -1747,7 +1751,10 @@
            otherwise unchanged (Stage 4D.6 §16). */
         let startTime = 0, running = false;
 
-        let pbs = JSON.parse(localStorage.getItem("pbs")) || [];
+        /* the saved list, or an empty one if it can't be read; the saved
+           value itself is left untouched (saved-data-check.js), and the
+           Wall of Records shows a recovery message for it */
+        let pbs = swimticsSavedData.usablePbs();
         let strokeData = JSON.parse(localStorage.getItem("strokeData")) || {};
 
         /* =========================================================

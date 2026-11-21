@@ -198,7 +198,7 @@ export function createAnalyzer({ html = currentIndexHtml(), stroke = "freestyle"
   if (html.includes('src="src/chase-engine/inference-integrity.js"')) {
     vm.runInContext(readFileSync(join(ROOT, "src", "chase-engine", "inference-integrity.js"), "utf8"), sandbox, { filename: "inference-integrity.js" });
   }
-  for (const file of ["src/inference/request-lifecycle.js", "src/inference/pose-adapter.js"]) {
+  for (const file of ["src/inference/request-lifecycle.js", "src/inference/pose-adapter.js", "src/app/data/saved-data-check.js"]) {
     if (html.includes(`src="${file}"`)) {
       vm.runInContext(readFileSync(join(ROOT, file), "utf8"), sandbox, { filename: file });
     }

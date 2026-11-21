@@ -392,6 +392,127 @@ body.light-mode .pb-invalid-history {
     color: #9b1c1c;
 }
 
+/* Wall of Records and Profile: the recovery message for saved PBs or a
+   saved profile that can't be read (saved-data-check.js) */
+.saved-data-recovery {
+    margin: 14px 0;
+    padding: 16px 18px;
+    border: 1px solid rgba(255, 107, 107, 0.45);
+    border-radius: 14px;
+    background: rgba(255, 107, 107, 0.08);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #ffd6d6;
+    text-align: left;
+}
+
+.saved-data-recovery p {
+    margin: 0 0 10px;
+}
+
+.saved-data-recovery-title {
+    margin: 0 0 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.saved-data-recovery-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 4px 0 10px;
+}
+
+.saved-data-recovery-confirm {
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.saved-data-recovery-confirm[hidden] {
+    display: none;
+}
+
+.saved-data-recovery-status:empty {
+    display: none;
+}
+
+.saved-data-recovery-status[data-kind="ok"] {
+    color: #34d399;
+}
+
+.recovery-btn {
+    padding: 9px 16px;
+    border: 1px solid rgba(0, 200, 255, 0.35);
+    border-radius: 12px;
+    background: rgba(0, 180, 255, 0.14);
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.recovery-btn:hover {
+    background: rgba(0, 180, 255, 0.24);
+}
+
+.recovery-btn:focus-visible {
+    outline: 2px solid #00d9ff;
+    outline-offset: 3px;
+}
+
+.recovery-btn[hidden] {
+    display: none;
+}
+
+.recovery-btn-danger {
+    border-color: rgba(255, 107, 107, 0.6);
+    background: rgba(255, 80, 80, 0.16);
+}
+
+.recovery-btn-danger:hover {
+    background: rgba(255, 80, 80, 0.28);
+}
+
+.saved-data-pbs-note .recovery-btn {
+    display: block;
+    margin-top: 8px;
+}
+
+body.light-mode .saved-data-recovery {
+    border-color: rgba(200, 40, 40, 0.35);
+    background: rgba(200, 40, 40, 0.06);
+    color: #5c1515;
+}
+
+body.light-mode .saved-data-recovery-title {
+    color: #7a1010;
+}
+
+body.light-mode .saved-data-recovery-status[data-kind="ok"] {
+    color: #087f5b;
+}
+
+body.light-mode .recovery-btn {
+    border-color: rgba(0, 98, 214, 0.4);
+    background: rgba(0, 98, 214, 0.08);
+    color: #0b2a55;
+}
+
+body.light-mode .recovery-btn:focus-visible {
+    outline-color: #0062d6;
+}
+
+body.light-mode .recovery-btn-danger {
+    border-color: rgba(200, 40, 40, 0.5);
+    background: rgba(200, 40, 40, 0.08);
+    color: #7a1010;
+}
+
 .tool-message[data-kind="error"] {
     border-style: solid;
     border-color: rgba(255, 107, 107, 0.45);

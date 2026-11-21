@@ -151,6 +151,10 @@ While a test account is signed in, the Profile form shows **that
 account's** profile; this device's own (signed-out) profile is set aside
 and put back when the account logs out or another account signs in, and
 the page reloads so nothing of the previous account stays on screen.
+Set-aside profile and PB text goes back exactly as saved, even if it
+can't be read; an unreadable copy of an account's own data is kept for
+that account only (`swimtics-test:unreadableCopy:<uid>:…`) and shown on
+Profile while it is signed in (`docs/ACCOUNTS.md` §2 describes both).
 1. Signed out: type a recognisable name (e.g. "Device Owner") → Save
    Profile → it saves on this device only.
 2. Sign in as A → the form is empty (not "Device Owner") until A's own

@@ -130,6 +130,33 @@
             return `${name} has a saved time that isn't valid (${pb.time}), so another time can't be added to it. Correct that time with Edit, or delete that PB, first. Nothing was saved.`;
         }
 
+        /* true (and says why) when the saved PB list can't be read: nothing
+           is written over it until the person chooses a recovery action
+           under Your PBs (saved-data-check.js) */
+        function pbSavedDataBlocked() {
+            if (!swimticsSavedData.needsRecovery(swimticsSavedData.readSaved("pbs"))) return false;
+            showPBBlocked("Your saved personal bests can't be read, so nothing can be added, edited or deleted yet. Nothing was saved. Save a backup or start fresh using the message under Your PBs first.");
+            displayPBs();
+            return true;
+        }
+
+        /* Save PB and Delete are also held back BEFORE their click handlers
+           run, so the handler (and anything wrapped around it) doesn't run
+           at all. The Supabase account code wraps savePB/deletePB and syncs
+           after every call, whatever the call did; that sync reads the
+           unreadable saved list as an empty one, and account sync deletes
+           every account PB missing from the local list. Stopping the click
+           keeps that sync from starting. */
+        document.addEventListener("click", (e) => {
+            const btn = e.target instanceof Element
+                ? e.target.closest("button[onclick='savePB()'], #pbList button[onclick^='deletePB(']")
+                : null;
+            if (btn && pbSavedDataBlocked()) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
         function endPBEdit() {
             pbEdit = null;
             setPBEditStatus("");
@@ -178,6 +205,8 @@
         }
 
         function savePB() {
+
+            if (pbSavedDataBlocked()) return;
 
             const event = document.getElementById("event").value;
             const course = document.getElementById("course").value;
@@ -313,6 +342,7 @@
 
 
         function deletePB(i) {
+            if (pbSavedDataBlocked()) return;
             if (pbEdit && pbEdit.record === pbs[i]) cancelPBEdit();
 
             pbs.splice(i, 1);
@@ -325,6 +355,7 @@
         }
 
         function editPB(i) {
+            if (pbSavedDataBlocked()) return;
             let pb = pbs[i];
             if (!pb) return;
 
@@ -371,6 +402,28 @@
 
             let c = document.getElementById("pbList");
             c.replaceChildren();
+
+            /* a saved list that can't be read: a recovery message instead of
+               the list (or an empty-list message), and the saved value is
+               left exactly as it is */
+            const saved = swimticsSavedData.readSaved("pbs");
+            if (swimticsSavedData.needsRecovery(saved)) {
+                swimticsSavedData.renderSavedDataRecovery(c, saved, {
+                    accountOwned: pbListBelongsToAccount,
+                    afterReset: (message) => {
+                        pbs.length = 0;
+                        endPBEdit();
+                        showPBBlocked("");
+                        displayPBs();
+                        renderStrokeCards();
+                        renderProfileDataRecovery(swimticsSavedData.readSaved("profile"));
+                        setPBEditStatus(message);
+                        document.getElementById("event").focus();
+                    },
+                });
+                return;
+            }
+
             const signedIn = pbListBelongsToAccount();
 
             pbs.forEach((pb, i) => {

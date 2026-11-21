@@ -60,6 +60,8 @@ export function storageKeys(env) {
         guestPbs: `${p}guestPbs`,
         device: `${p}deviceId`,
         dismissed: (uid, fingerprint) => `${p}importDismissed:${uid}:${fingerprint}`,
+        /* unreadable copies of one account's working copy (saved-data-check.js) */
+        unreadableCopy: (uid) => `${p}unreadableCopy:${uid}:`,
     };
 }
 
