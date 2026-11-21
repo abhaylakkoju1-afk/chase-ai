@@ -121,6 +121,7 @@ describe("case 4: duplicate callback after B has started", () => {
     // If B's own result arrives later, the anomaly is caught from then on.
     h.callback(poseResult(2));
     assert.equal(h.state().integrity.latched.violation, "CALLBACK_WITHOUT_OPEN_SEND");
+    await h.flush();                       // harness: the page reacts to a latch in a deferred notification
     assert.match(h.feedback(), /Analysis Withheld/, "the session still running is withheld");
   });
 });
