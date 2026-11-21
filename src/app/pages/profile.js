@@ -2,7 +2,12 @@
 
         function loadProfile() {
 
-            const profile = JSON.parse(localStorage.getItem("profile")) || {};
+            /* a saved profile that can't be read is left exactly as saved:
+               the form starts blank and a recovery message says why
+               (saved-data-check.js) */
+            const saved = swimticsSavedData.readSaved("profile");
+            const profile = saved.status === "ok" ? saved.value : {};
+            renderProfileDataRecovery(saved);
 
             /* ===== BASIC INFO ===== */
             document.getElementById("name").value = profile.name || "";
@@ -80,6 +85,110 @@
 
         }
 
+        /* The recovery message at the top of Profile: for a saved profile
+           that can't be read, and a short note when the saved PBs can't be
+           read (the stroke cards then show no times). Empty otherwise. */
+        function renderProfileDataRecovery(saved) {
+            const box = document.getElementById("profileDataRecovery");
+            if (!box) return;
+            box.replaceChildren();
+
+            if (swimticsSavedData.needsRecovery(saved)) {
+                swimticsSavedData.renderSavedDataRecovery(box, saved, {
+                    /* the same account markers own the profile and the PBs */
+                    accountOwned: pbListBelongsToAccount,
+                    /* the form is left as it is, so anything already typed
+                       into it can now be saved with Save Profile */
+                    afterReset: (message) => {
+                        renderProfileDataRecovery(swimticsSavedData.readSaved("profile"));
+                        renderStrokeCards();
+                        const status = document.getElementById("profileSaveStatus");
+                        if (status) {
+                            status.textContent = message;
+                            status.dataset.kind = "ok";
+                        }
+                        document.getElementById("name").focus();
+                    },
+                });
+            }
+
+            if (swimticsSavedData.needsRecovery(swimticsSavedData.readSaved("pbs"))) {
+                const note = document.createElement("p");
+                note.className = "tool-message saved-data-pbs-note";
+                note.dataset.kind = "error";
+                note.append("Your saved personal bests can't be read, so the stroke cards show no times. ");
+                const go = document.createElement("button");
+                go.type = "button";
+                go.className = "recovery-btn";
+                go.textContent = "Go to Wall of Records";
+                go.addEventListener("click", () => window.showPage("pb"));
+                note.append(go);
+                box.append(note);
+            }
+
+            renderAccountSavedDataNotes(box);
+        }
+
+        /* While an account is signed in (account.js or the Supabase account
+           code sets window.swimticsAccountSavedData): unreadable copies of
+           THIS account's working copy that were kept instead of being
+           replaced, and a note when this device's own set-aside data can't
+           be read. Nothing here sends anything to the account. */
+        function renderAccountSavedDataNotes(box) {
+            const account = window.swimticsAccountSavedData;
+            if (!account || typeof account.status !== "function") return;
+            let status;
+            try { status = account.status(); } catch (e) { console.error(e); return; }
+            if (!status) return;
+
+            for (const copy of status.copies || []) {
+                swimticsSavedData.renderAccountCopyRecovery(box, copy, {
+                    onDiscarded: (message) => {
+                        renderProfileDataRecovery(swimticsSavedData.readSaved("profile"));
+                        const statusLine = document.getElementById("profileSaveStatus");
+                        if (statusLine) {
+                            statusLine.textContent = message;
+                            statusLine.dataset.kind = "ok";
+                        }
+                    },
+                });
+            }
+
+            const unreadable = status.deviceUnreadable || [];
+            if (unreadable.length) {
+                const note = document.createElement("p");
+                note.className = "tool-message saved-data-device-note";
+                note.dataset.kind = "info";
+                note.textContent = swimticsSavedData.deviceDataNoteText(unreadable);
+                box.append(note);
+            }
+        }
+
+        /* true (and says why) when the saved profile can't be read: nothing
+           is written over it until the person chooses a recovery action */
+        function profileSaveBlocked(what) {
+            const saved = swimticsSavedData.readSaved("profile");
+            if (!swimticsSavedData.needsRecovery(saved)) return false;
+            const status = document.getElementById("profileSaveStatus");
+            if (status) {
+                status.textContent = `${what} wasn't saved, because your saved profile can't be read. Save a backup or start fresh using the message at the top of Profile first.`;
+                status.dataset.kind = "error";
+            }
+            renderProfileDataRecovery(saved);
+            return true;
+        }
+
+        /* Save Profile (whichever account code defines saveProfile()) is
+           held back while the saved profile can't be read. Checked before
+           the button's own handler runs, which then doesn't run at all. */
+        document.addEventListener("click", (e) => {
+            const btn = e.target instanceof Element ? e.target.closest("button[onclick='saveProfile()']") : null;
+            if (btn && profileSaveBlocked("Your profile")) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
         window.addEventListener("load", () => {
             const btn = document.getElementById("save-profile-btn");
             if (btn) {
@@ -92,8 +201,9 @@
 
         function updateProfileSummary() {
 
-            const profile = JSON.parse(localStorage.getItem("profile"));
-            if (!profile) return;
+            const saved = swimticsSavedData.readSaved("profile");
+            if (saved.status !== "ok") return;
+            const profile = saved.value;
 
             /* saved profile text is set as text, never parsed as HTML */
             const line = (text) => {
@@ -116,7 +226,7 @@
 
         function renderStrokeCards() {
 
-            const profile = JSON.parse(localStorage.getItem("profile")) || {};
+            const profile = swimticsSavedData.usableProfile();
 
             const clubName = profile.club || "Club";
             const nationality = profile.nationality || "🌍";
@@ -284,8 +394,8 @@
 
         function calculateStrokeScore(stroke, gender = "male") {
 
-            let pbs = JSON.parse(localStorage.getItem("pbs")) || [];
-            const profile = JSON.parse(localStorage.getItem("profile")) || {};
+            let pbs = swimticsSavedData.usablePbs();
+            const profile = swimticsSavedData.usableProfile();
 
             const athleteGender = (profile.gender || "male").toLowerCase();
 
@@ -402,6 +512,8 @@
 
         function uploadProfileImage() {
 
+            if (profileSaveBlocked("The photo")) return;
+
             const input = document.createElement("input");
             input.type = "file";
             input.accept = "image/*";
@@ -415,8 +527,10 @@
 
                 reader.onload = function (event) {
 
-                    let profile =
-                        JSON.parse(localStorage.getItem("profile")) || {};
+                    /* checked again: the saved profile may have changed
+                       while the picker was open */
+                    if (profileSaveBlocked("The photo")) return;
+                    let profile = swimticsSavedData.usableProfile();
 
                     profile.photo = event.target.result;
 

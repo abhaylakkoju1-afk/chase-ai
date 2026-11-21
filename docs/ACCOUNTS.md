@@ -38,7 +38,16 @@ account; after ~8 s without a reply it says so.
   `.pbs`, `.strokeData`. On sign-in this device's own data is snapshotted
   (`swimtics:guest:*`) and the working copy is replaced by the account's
   data; leaving the account restores the device's data. Nothing on the
-  device is deleted by sign-in, import or sign-out.
+  device is deleted by sign-in, import or sign-out. The device's saved
+  profile and PB text is copied and put back exactly as saved, so a value
+  that can't be read (`src/app/data/saved-data-check.js`) is kept; it is
+  never offered for import, and while signed in Profile notes that it is
+  kept. PB sync and the account profile save send nothing while the
+  local copy can't be read. If the account's own working copy can't be
+  read when it is about to be replaced (start-up, sign-out, switching
+  account, reloading the account), its exact text is kept first under
+  `swimtics:unreadableCopy:<uid>:pbs|profile:<time>` and shown on Profile,
+  with backup and Discard, only while that account is signed in.
 - **Repository** (`src/app/data/user-data.js`): pure conversion/merge logic
   plus a repository that takes the Firebase Database functions as
   arguments (browser: CDN SDK 10.12.2; tests: npm `firebase`).
@@ -282,8 +291,8 @@ described as backed up.
   own approval because it adds a credential and copies user data.
 - **Per-user export / deletion**: "Download my data" (JSON of
   `/users/{uid}`) and "Delete my account and data" — not built yet.
-- **Device copies** (`swimtics:guest:*`, `swimtics:pendingData:*`) are a
-  convenience, not a backup.
+- **Device copies** (`swimtics:guest:*`, `swimtics:pendingData:*`,
+  `swimtics:unreadableCopy:*`) are a convenience, not a backup.
 
 ## 6. Later stages (not implemented)
 

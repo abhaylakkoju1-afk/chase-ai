@@ -43,14 +43,20 @@ function redrawProfileForm() {
     if (typeof window.loadProfile === "function") { try { window.loadProfile(); } catch { /* ignore */ } }
 }
 
-function parseJson(raw, fallback) {
-    try { const v = JSON.parse(raw); return v ?? fallback; } catch { return fallback; }
+/* The saved PBs ("pbs") and profile ("profile") are checked with
+   saved-data-check.js (a classic script, loaded before any module): the
+   value in `raw` if it is readable saved data of that kind, else `fallback`. */
+function usable(key, raw, fallback) {
+    const r = window.swimticsSavedData.classifySaved(key, raw);
+    return r.status === "ok" ? r.value : fallback;
 }
 
 /* The PB list: localStorage plus index.html's in-memory `pbs` array (used
-   by pb.js), kept in step the same way account.js does. */
-function setWorkingPbs(list) {
-    lsSet("pbs", JSON.stringify(list || []));
+   by pb.js), kept in step the same way account.js does. With `raw`, that
+   exact saved text is stored instead (null removes it) and `list` is only
+   the in-memory copy. */
+function setWorkingPbs(list, raw) {
+    lsSet("pbs", raw !== undefined ? raw : JSON.stringify(list || []));
     if (typeof pbs !== "undefined" && Array.isArray(pbs)) {
         pbs.length = 0;
         pbs.push(...(list || []));
@@ -79,17 +85,35 @@ function setStatus(id, text, kind = "info") {
    that the working copy currently belongs to an account. Each environment
    has its own keys; the Firebase path (account.js) keeps its own too. */
 function deviceDataStore(keys) {
+    /* Working keys that still hold this device's own data although it has
+       just been set aside (the profile and the PBs are replaced one after
+       the other): never kept as the account's copy. */
+    const stillDeviceData = new Set();
+
+    /* Before an account's working copy is replaced: if its profile or PBs
+       (`which`) can't be read, keep the exact text for that account only
+       (saved-data-check.js; shown when that account is signed in again). */
+    function keepAccountCopy(which) {
+        const active = lsGet(keys.active);
+        const owned = which.filter((key) => !stillDeviceData.has(key));
+        if (active !== null && owned.length) window.swimticsSavedData.keepUnreadableCopies(keys.unreadableCopy(active), owned);
+    }
+
     /* Put this device's own profile and PBs back (or none, if it had none)
        and forget which account the working copy belonged to. Returns true if it did. */
     function restoreDeviceData() {
         if (lsGet(keys.active) === null) return false;
+        keepAccountCopy(["pbs", "profile"]);
+        stillDeviceData.clear();
         lsSet("profile", lsGet(keys.guest));
         const devicePbs = lsGet(keys.guestPbs);
         lsSet(keys.guest, null);
         lsSet(keys.guestPbs, null);
         lsSet(keys.active, null);
-        setWorkingPbs(parseJson(devicePbs, []));
-        if (devicePbs === null) lsSet("pbs", null);
+        /* the saved text goes back exactly as it was set aside (or is
+           removed, if there was none): PBs that can't be read are kept, and
+           the Wall of Records shows its recovery message for them */
+        setWorkingPbs(usable("pbs", devicePbs, []), devicePbs);
         return true;
     }
 
@@ -99,24 +123,32 @@ function deviceDataStore(keys) {
         if (lsGet(keys.active) === null) {
             lsSet(keys.guest, lsGet("profile"));
             lsSet(keys.guestPbs, lsGet("pbs"));
+            stillDeviceData.add("profile");
+            stillDeviceData.add("pbs");
         }
         lsSet(keys.active, uid);
     }
 
     function showAccountProfile(uid, profile) {
+        keepAccountCopy(["profile"]);
         setAsideDeviceData(uid);
         lsSet("profile", JSON.stringify(profile || {}));
+        stillDeviceData.delete("profile");
         redrawProfileForm();
     }
 
     function showAccountPbs(uid, list) {
+        keepAccountCopy(["pbs"]);
         setAsideDeviceData(uid);
         setWorkingPbs(list);
+        stillDeviceData.delete("pbs");
     }
 
     /* This device's own (set-aside) data, the source of a first-sign-in import. */
+    /* (a profile or PB list that can't be read counts as empty here, so it
+       is never offered for import) */
     function deviceData() {
-        return { profile: parseJson(lsGet(keys.guest), {}) || {}, pbs: parseJson(lsGet(keys.guestPbs), []) || [] };
+        return { profile: usable("profile", lsGet(keys.guest), {}), pbs: usable("pbs", lsGet(keys.guestPbs), []) };
     }
 
     function deviceId() {
@@ -128,7 +160,15 @@ function deviceDataStore(keys) {
         return id;
     }
 
-    return { restoreDeviceData, showAccountProfile, showAccountPbs, deviceData, deviceId };
+    /* which of this device's own set-aside profile / PBs can't be read */
+    function deviceUnreadable() {
+        if (lsGet(keys.active) === null) return [];
+        return [["pbs", keys.guestPbs], ["profile", keys.guest]]
+            .filter(([key, guestKey]) => window.swimticsSavedData.needsRecovery(window.swimticsSavedData.classifySaved(key, lsGet(guestKey))))
+            .map(([key]) => key);
+    }
+
+    return { restoreDeviceData, showAccountProfile, showAccountPbs, deviceData, deviceId, deviceUnreadable };
 }
 
 /* Put this device's own data back if an account of `env` was still shown
@@ -392,6 +432,26 @@ export async function startSupabaseAccounts(env) {
         await loadRow(uid);
         if (stillUser(uid) && cloudRow !== undefined) await Promise.all([loadPbsAndOffer(uid), loadPhoto(uid)]);
         else if (stillUser(uid)) setPbsLoading(false);              // the profile failed, so the PBs aren't loaded either
+        refreshSavedDataNotes();
+    }
+
+    /* For Profile's saved-data notes (profile.js renderAccountSavedDataNotes):
+       only while this account's own data is shown. */
+    window.swimticsAccountSavedData = {
+        status() {
+            if (!currentUser || !accountPbsLoaded || lsGet(keys.active) !== currentUser.id) return null;
+            return {
+                copies: window.swimticsSavedData.listUnreadableCopies(keys.unreadableCopy(currentUser.id)),
+                deviceUnreadable: store.deviceUnreadable(),
+            };
+        },
+    };
+    function refreshSavedDataNotes() {
+        try {
+            if (typeof window.renderProfileDataRecovery === "function") {
+                window.renderProfileDataRecovery(window.swimticsSavedData.readSaved("profile"));
+            }
+        } catch { /* ignore */ }
     }
 
     /* ----- profile photo (only where env.photoSync): kept in the account,
@@ -487,9 +547,19 @@ export async function startSupabaseAccounts(env) {
         pbChain = pbChain.then(async () => {
             if (!stillUser(uid)) return;
             const before = lsGet("pbs");
+            /* A PB list that can't be read (or is missing) would be sent as an
+               empty one, and the sync removes every account PB missing from
+               the list: send nothing instead. This also covers a Save PB or
+               Delete that pb.js refused, which the wrapper below still follows
+               with a sync. */
+            const current = window.swimticsSavedData.classifySaved("pbs", before);
+            if (current.status !== "ok") {
+                setStatus("pbSyncStatus", `Not saved to your ${A}: the personal bests saved on this device can't be read, so nothing was sent.`, "error");
+                return;
+            }
             setStatus("pbSyncStatus", `Saving to your ${A}…`);
             try {
-                const list = await pbRepo.syncPbs(uid, parseJson(before, []), lastSyncedKeys, store.deviceId());
+                const list = await pbRepo.syncPbs(uid, current.value, lastSyncedKeys, store.deviceId());
                 if (!stillUser(uid)) return;
                 lastSyncedKeys = list.map((pb) => pbKey(pb.event, pb.course));
                 if (lsGet("pbs") === before) setWorkingPbs(list);           // else a newer change follows
