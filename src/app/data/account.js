@@ -22,6 +22,12 @@
      (analysis results, race reports, War Room output, form fields).
    - Photos are local-only in this stage; each account's photos are kept
      on this device under that uid and shown only while it is signed in.
+   - The working copy is replaced only once the text it holds has been
+     preserved: this device's own data set aside, or an unreadable account
+     copy kept, each written and read back exactly. If browser storage
+     refuses (full, blocked), the sign-in, log-out, switch or restore step
+     stops, nothing is replaced, and the page says what to do next
+     (saved-data-check.js showStorageProblem).
    ========================================================= */
 
 import {
@@ -68,12 +74,6 @@ const store = {
 const savedData = window.swimticsSavedData;
 
 function rawGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
-function rawSet(key, raw) {
-    try {
-        if (raw === null) localStorage.removeItem(key); else localStorage.setItem(key, raw);
-        return true;
-    } catch (err) { console.error("SWIMTICS storage:", err); return false; }
-}
 
 /* the value in `raw` if it is readable saved data of that kind, else `fallback` */
 function usable(key, raw, fallback) {
@@ -83,6 +83,16 @@ function usable(key, raw, fallback) {
 
 /* true unless the working copy of `key` is readable saved data */
 const notReadable = (key) => savedData.readSaved(key).status !== "ok";
+
+/* Before an account's working copy is replaced: keep an exact copy of any
+   of its text that can't be read, for `uid` only. false if browser storage
+   refused a copy (the page says so): the working copy must not be replaced. */
+function keepAccountCopies(uid, step) {
+    const { failed } = savedData.preserveUnreadableCopies(KEY.unreadableCopy(uid));
+    if (!failed.length) return true;
+    savedData.showStorageProblem(step, failed);
+    return false;
+}
 
 function deviceId() {
     let id = store.get(KEY.device);
@@ -107,7 +117,12 @@ function writeWorking({ profile, pbs: list, strokeData: strokes }) {
     store.set("profile", profile || {});
     store.set("pbs", list || []);
     if (strokes !== undefined) store.set("strokeData", strokes || {});
-    /* keep index.html's in-memory copies (used by pb.js / profile.js) in step */
+    showWorking(list, strokes);
+}
+
+/* keep index.html's in-memory copies (used by pb.js / profile.js) in step
+   with `list` / `strokes`, then redraw */
+function showWorking(list, strokes) {
     if (typeof pbs !== "undefined" && Array.isArray(pbs)) {
         pbs.length = 0;
         pbs.push(...(list || []));
@@ -137,37 +152,57 @@ function guestData() {
 /* Put this device's own data back in the working copy. The set-aside
    profile and PB text goes back exactly as it was saved, so a value that
    can't be read is kept (and shows its recovery message) instead of being
-   replaced with an empty one. */
+   replaced with an empty one. Each is written and read back; if browser
+   storage refuses either, the working copy is put back as it was (as far
+   as storage allows) and false is returned. */
 function restoreGuestWorking() {
-    const profileRaw = rawGet(KEY.guestProfile);
-    const pbsRaw = rawGet(KEY.guestPbs);
-    writeWorking(guestData());
-    if (profileRaw !== null || pbsRaw !== null) {
-        if (profileRaw !== null) rawSet("profile", profileRaw);
-        if (pbsRaw !== null) rawSet("pbs", pbsRaw);
-        rerender();
+    const g = guestData();
+    const profileText = rawGet(KEY.guestProfile) ?? JSON.stringify({});
+    const pbsText = rawGet(KEY.guestPbs) ?? JSON.stringify([]);
+    const before = { profile: rawGet("profile"), pbs: rawGet("pbs") };
+    if (!savedData.writeSavedText("pbs", pbsText) || !savedData.writeSavedText("profile", profileText)) {
+        savedData.writeSavedText("pbs", before.pbs);
+        savedData.writeSavedText("profile", before.profile);
+        return false;
     }
+    store.set("strokeData", g.strokeData);
+    showWorking(g.pbs, g.strokeData);
+    return true;
 }
 
 function hasLocalData(local) {
     return Object.keys(sanitizeProfile(local.profile)).length > 0 || (local.pbs || []).length > 0;
 }
 
+/* true while this device's own data couldn't be set aside when an account
+   signed in (loadAccount): the working copy is still the device's own and
+   was never replaced, so there is nothing to put back */
+let deviceNotSetAside = false;
+
 /* Keep the departing account's local-only photos (they exist nowhere else),
    then put this device's own data back in the working copy. The account's
    profile/PB copy is not kept: it lives in the database. If that copy
    can't be read, its exact text is kept for this uid first (shown only
-   when this account is signed in again). */
-function leaveAccount(uid) {
-    if (!uid) return;
-    savedData.keepUnreadableCopies(KEY.unreadableCopy(uid));
+   when this account is signed in again). Returns false, with nothing
+   replaced and the page saying why, if browser storage refused a write
+   this needs; the account then stays in the working copy. `signingOut`:
+   for Log Out, which then doesn't sign out (the message says so). */
+function leaveAccount(uid, signingOut = false) {
+    if (!uid) return true;
+    if (deviceNotSetAside && store.get(KEY.active) === null) return true;
+    if (store.get(KEY.active) === uid && !keepAccountCopies(uid, signingOut ? "sign-out" : "leave")) return false;
     const w = readWorking();
     const photos = store.get(KEY.localPhotos(uid), {}) || {};
     if (w.profile.photo) photos.photo = w.profile.photo;
     if (Object.keys(w.strokeData).length) photos.strokeData = w.strokeData;
     if (Object.keys(photos).length) store.set(KEY.localPhotos(uid), photos);
+    if (!restoreGuestWorking()) {
+        savedData.showStorageProblem(signingOut ? "sign-out-restore" : "leave-restore");
+        return false;
+    }
     store.remove(KEY.active);
-    restoreGuestWorking();
+    rerender();
+    return true;
 }
 
 /* loadProfile() calls this; the real version is defined below. */
@@ -271,6 +306,7 @@ function setupAccounts() {
     let accountLoaded = false;   // working copy holds currentUser's data
     let lastLoadError = null;
     let importPlan = null;
+    let heldBack = false;        // browser storage refused a write loading the account needs
 
     /* still the same signed-in user, in the same session? */
     const still = (uid, myGen) => gen === myGen && !!currentUser && currentUser.uid === uid;
@@ -455,13 +491,35 @@ function setupAccounts() {
     };
 
     let userSignedOut = false;   // this tab's own Log Out: clear the page at once
+    let leftForSignOut = false;  // Log Out already put this device's data back
 
+    /* This device's data is put back before signing out: if browser storage
+       refuses what that needs, the user stays signed in with the account's
+       data in place (never shown signed out) and the page says why. */
     window.logoutUser = async function () {
+        const active = store.get(KEY.active);
+        if (active && !leaveAccount(active, true)) {
+            window.updateProfileAccountSection();
+            return;
+        }
+        gen += 1;                // in-flight account work never touches the working copy now
+        leftForSignOut = true;
         userSignedOut = true;
         try { await authFns.signOut(auth); }
         catch (err) {
             userSignedOut = false;
+            leftForSignOut = false;
             setStatus("profileSaveStatus", "Couldn't sign out. Please try again.", "error");
+            /* still signed in: load the account again over this device's data */
+            if (currentUser) {
+                accountLoaded = false;
+                const user = currentUser, myGen = gen;
+                queue(async () => {
+                    if (gen !== myGen) return;
+                    await loadAccount(user, myGen);
+                    if (gen === myGen) window.updateProfileAccountSection();
+                });
+            }
         }
     };
 
@@ -499,21 +557,38 @@ function setupAccounts() {
     }
 
     /* the saved profile and PB text is copied exactly as it is, so a value
-       that can't be read is kept unchanged until it is put back */
+       that can't be read is kept unchanged until it is put back. false if
+       browser storage refused either copy (each is read back). */
     function snapshotGuest() {
         const w = readWorking();
-        rawSet(KEY.guestProfile, rawGet("profile"));
-        rawSet(KEY.guestPbs, rawGet("pbs"));
-        store.set(KEY.guestStroke, w.strokeData);
+        const ok = savedData.writeSavedText(KEY.guestProfile, rawGet("profile"))
+            && savedData.writeSavedText(KEY.guestPbs, rawGet("pbs"));
+        if (ok) store.set(KEY.guestStroke, w.strokeData);
+        return ok;
+    }
+
+    /* the account isn't loaded into the working copy (the page says why) */
+    function holdAccount() {
+        heldBack = true;
+        accountLoaded = false;
+        window.updateProfileAccountSection();
     }
 
     /* runs inside queue() */
     async function loadAccount(user, myGen) {
         const uid = user.uid;
+        heldBack = false;
+        /* Nothing is replaced unless what it holds was preserved first. */
         const active = store.get(KEY.active);
-        if (active && active !== uid) leaveAccount(active);
-        if (!store.get(KEY.active)) snapshotGuest();
-        else savedData.keepUnreadableCopies(KEY.unreadableCopy(uid));   // replacing this account's own working copy
+        if (active && active !== uid && !leaveAccount(active)) return holdAccount();
+        if (!store.get(KEY.active)) {
+            if (!snapshotGuest()) {
+                deviceNotSetAside = true;
+                savedData.showStorageProblem("sign-in");
+                return holdAccount();
+            }
+            deviceNotSetAside = false;
+        } else if (!keepAccountCopies(uid, "reload")) return holdAccount();   // replacing this account's own working copy
 
         let cloud;
         try {
@@ -534,7 +609,11 @@ function setupAccounts() {
         const profile = { ...stripMeta(cloud.profile) };
         if (photos.photo) profile.photo = photos.photo;
         const list = cloudPbsToLocal(cloud.pbs);
-        store.set(KEY.active, uid);
+        /* without this mark the account's data would later be taken for this device's own */
+        if (store.get(KEY.active) !== uid && !store.set(KEY.active, uid)) {
+            savedData.showStorageProblem("sign-in");
+            return holdAccount();
+        }
         store.set(KEY.synced(uid), list.map((p) => pbKey(p.event, p.course)));
         writeWorking({ profile, pbs: list, strokeData: photos.strokeData || {} });
         accountLoaded = true;
@@ -563,7 +642,7 @@ function setupAccounts() {
             const cloud = await repo.load(uid);
             if (!still(uid, myGen)) return;
             const list = cloudPbsToLocal(cloud.pbs);
-            savedData.keepUnreadableCopies(KEY.unreadableCopy(uid));
+            if (!keepAccountCopies(uid, "reload")) return;   // sent, but this page isn't refreshed over unpreserved text
             const w = readWorking();
             store.set(KEY.synced(uid), list.map((x) => pbKey(x.event, x.course)));
             writeWorking({ profile: { ...stripMeta(cloud.profile), ...(w.profile.photo ? { photo: w.profile.photo } : {}) }, pbs: list });
@@ -726,12 +805,15 @@ function setupAccounts() {
                 endWrite(uid, "pbs", token);
                 if (!still(uid, myGen)) return false;
                 store.set(KEY.synced(uid), list.map((p) => pbKey(p.event, p.course)));
-                savedData.keepUnreadableCopies(KEY.unreadableCopy(uid));
+                if (!keepAccountCopies(uid, "reload")) return "held";
                 const w = readWorking();
                 writeWorking({ profile: w.profile, pbs: list });
                 return true;
             });
-            if (done && still(uid, myGen)) setStatus("pbSyncStatus", "Saved to your account.", "ok");
+            if (done === true && still(uid, myGen)) setStatus("pbSyncStatus", "Saved to your account.", "ok");
+            else if (done === "held" && still(uid, myGen)) {
+                setStatus("pbSyncStatus", "Saved to your account, but this page wasn't refreshed from it: see the message at the top of the page.", "error");
+            }
         } catch (err) {
             console.error("SWIMTICS PB sync:", err);
             if (still(uid, myGen)) {
@@ -759,7 +841,9 @@ function setupAccounts() {
             return;
         }
         const verified = currentUser.emailVerified;
-        const syncNote = lastLoadError
+        const syncNote = heldBack
+            ? "Your account wasn't loaded into this page because browser storage is full or blocked. See the message at the top of the page."
+            : lastLoadError
             ? `Couldn't load your account data — changes stay on this device for now. <button type="button" class="auth-link" onclick="retryAccountLoad()">Try again</button>`
             : accountLoaded
                 ? "Your profile details and personal bests are saved to your account."
@@ -785,8 +869,11 @@ function setupAccounts() {
     let leaving = null;          // { uid, timer } while a non-user sign-out is being confirmed
     const LEAVE_CONFIRM_MS = 1200;
 
+    /* leaves whichever account the working copy belongs to; if storage
+       refuses, start-up tries again after the reload and says so */
     function leaveAndReload(uid) {
-        leaveAccount(uid);
+        const active = store.get(KEY.active);
+        if (active || !leftForSignOut) leaveAccount(active || uid);
         location.reload();
     }
 
@@ -803,6 +890,7 @@ function setupAccounts() {
         const prev = currentUser ? currentUser.uid : (leaving ? leaving.uid : null);
         currentUser = user;
         accountLoaded = false;
+        heldBack = false;
         importPlan = null;
         lastLoadError = null;
         closeImportDialog();

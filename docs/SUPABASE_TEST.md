@@ -155,6 +155,9 @@ Set-aside profile and PB text goes back exactly as saved, even if it
 can't be read; an unreadable copy of an account's own data is kept for
 that account only (`swimtics-test:unreadableCopy:<uid>:…`) and shown on
 Profile while it is signed in (`docs/ACCOUNTS.md` §2 describes both).
+If browser storage refuses one of those writes, nothing is replaced: the
+step stops and a message at the top of the page explains it
+(`docs/ACCOUNTS.md` §2, "When browser storage refuses a write").
 1. Signed out: type a recognisable name (e.g. "Device Owner") → Save
    Profile → it saves on this device only.
 2. Sign in as A → the form is empty (not "Device Owner") until A's own

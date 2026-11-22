@@ -48,6 +48,42 @@ account; after ~8 s without a reply it says so.
   account, reloading the account), its exact text is kept first under
   `swimtics:unreadableCopy:<uid>:pbs|profile:<time>` and shown on Profile,
   with backup and Discard, only while that account is signed in.
+- **When browser storage refuses a write** (quota exceeded, blocked or
+  unavailable): the working copy is replaced only after the text it holds
+  has been set aside or kept as an unreadable copy, each written and read
+  back exactly. Otherwise, in both account systems:
+  - *Sign-in*: if this device's data can't be set aside (or the account
+    mark can't be written), the account stays signed in but **isn't
+    loaded**. The device's data stays shown, unchanged, and nothing from it
+    is synced or saved to the account. Profile says the account wasn't
+    loaded.
+  - *Log Out*: this device's data is put back **before** signing out. If
+    an unreadable account copy can't be kept, or this device's data can't
+    be put back, the log out stops before the sign-out: the user stays
+    signed in, nothing is replaced (account text, set-aside device text and
+    account mark all stay), nothing is sent, and the message says logging
+    out didn't finish: free up browser storage, then choose Log Out again.
+    The account's data is never shown as though signed out.
+  - *Start-up / switching account / a sign-out from elsewhere* (another
+    tab, an expired session): if an unreadable account copy can't be kept,
+    or this device's data can't be put back, nothing is replaced. The
+    account's text, the set-aside device text and the account mark
+    (`…activeUid`) all stay, so Start fresh stays unavailable. Here the
+    sign-out has already happened outside this page, so the page **may
+    still show that account's data while signed out** until storage
+    accepts writes; a different account signing in meanwhile isn't loaded
+    either. An unreadable copy is only ever kept under the account the
+    working copy belongs to.
+  - *Reloading the signed-in account* (and the refresh after a PB sync or
+    a replay of earlier changes): if the account's unreadable copy can't
+    be kept, the page isn't refreshed over it.
+
+  Each time, a message at the top of the page says what was left in
+  place, that nothing was deleted but no backup was made, and to free up
+  browser storage and reload (or, for Log Out, log out again). "Download a backup" in the recovery
+  messages on Personal Bests and Profile still works meanwhile. Start-up
+  retries the unfinished step after every reload, so it finishes on its
+  own once storage accepts the writes.
 - **Repository** (`src/app/data/user-data.js`): pure conversion/merge logic
   plus a repository that takes the Firebase Database functions as
   arguments (browser: CDN SDK 10.12.2; tests: npm `firebase`).

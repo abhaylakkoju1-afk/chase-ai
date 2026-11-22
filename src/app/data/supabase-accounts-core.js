@@ -83,8 +83,17 @@ function setStatus(id, text, kind = "info") {
    account signs out or another account signs in, so one person's data is
    never shown to another person or while signed out. keys.active marks
    that the working copy currently belongs to an account. Each environment
-   has its own keys; the Firebase path (account.js) keeps its own too. */
+   has its own keys; the Firebase path (account.js) keeps its own too.
+
+   The working copy is replaced only once the text it holds has been
+   preserved (set aside, or kept as an unreadable account copy), each
+   written and read back exactly. If browser storage refuses, the step
+   stops, nothing is replaced, and the page says what to do next
+   (saved-data-check.js showStorageProblem); the functions below then
+   return false. */
 function deviceDataStore(keys) {
+    const saved = window.swimticsSavedData;
+
     /* Working keys that still hold this device's own data although it has
        just been set aside (the profile and the PBs are replaced one after
        the other): never kept as the account's copy. */
@@ -92,21 +101,37 @@ function deviceDataStore(keys) {
 
     /* Before an account's working copy is replaced: if its profile or PBs
        (`which`) can't be read, keep the exact text for that account only
-       (saved-data-check.js; shown when that account is signed in again). */
-    function keepAccountCopy(which) {
+       (saved-data-check.js; shown when that account is signed in again).
+       false if browser storage refused a copy (the page says so, as `step`). */
+    function keepAccountCopy(which, step) {
         const active = lsGet(keys.active);
         const owned = which.filter((key) => !stillDeviceData.has(key));
-        if (active !== null && owned.length) window.swimticsSavedData.keepUnreadableCopies(keys.unreadableCopy(active), owned);
+        if (active === null || !owned.length) return true;
+        const { failed } = saved.preserveUnreadableCopies(keys.unreadableCopy(active), owned);
+        if (!failed.length) return true;
+        saved.showStorageProblem(step, failed);
+        return false;
     }
 
     /* Put this device's own profile and PBs back (or none, if it had none)
-       and forget which account the working copy belonged to. Returns true if it did. */
-    function restoreDeviceData() {
+       and forget which account the working copy belonged to. Returns true if
+       it did; false if there was no account, or if browser storage refused
+       a write (then the account stays and this device's data stays set aside).
+       `signingOut`: for Log Out, which then doesn't sign out (the message says so). */
+    function restoreDeviceData(signingOut = false) {
         if (lsGet(keys.active) === null) return false;
-        keepAccountCopy(["pbs", "profile"]);
-        stillDeviceData.clear();
-        lsSet("profile", lsGet(keys.guest));
+        if (!keepAccountCopy(["pbs", "profile"], signingOut ? "sign-out" : "leave")) return false;
+        const deviceProfile = lsGet(keys.guest);
         const devicePbs = lsGet(keys.guestPbs);
+        /* the set-aside copies are removed only once both are back */
+        const before = { profile: lsGet("profile"), pbs: lsGet("pbs") };
+        if (!saved.writeSavedText("profile", deviceProfile) || !saved.writeSavedText("pbs", devicePbs)) {
+            saved.writeSavedText("profile", before.profile);
+            saved.writeSavedText("pbs", before.pbs);
+            saved.showStorageProblem(signingOut ? "sign-out-restore" : "leave-restore");
+            return false;
+        }
+        stillDeviceData.clear();
         lsSet(keys.guest, null);
         lsSet(keys.guestPbs, null);
         lsSet(keys.active, null);
@@ -117,31 +142,51 @@ function deviceDataStore(keys) {
         return true;
     }
 
+    /* Before Log Out signs out: put this device's data back if an account's
+       is in the working copy. false if browser storage refused (nothing replaced). */
+    function restoreBeforeSignOut() {
+        return lsGet(keys.active) === null || restoreDeviceData(true);
+    }
+
     /* Set this device's own profile and PBs aside (only once, when no
-       account was shown yet) and mark the working copy as this account's. */
+       account was shown yet) and mark the working copy as this account's.
+       false if browser storage refused (each write is read back). */
     function setAsideDeviceData(uid) {
         if (lsGet(keys.active) === null) {
-            lsSet(keys.guest, lsGet("profile"));
-            lsSet(keys.guestPbs, lsGet("pbs"));
+            if (!saved.writeSavedText(keys.guest, lsGet("profile")) || !saved.writeSavedText(keys.guestPbs, lsGet("pbs"))) return false;
             stillDeviceData.add("profile");
             stillDeviceData.add("pbs");
         }
-        lsSet(keys.active, uid);
+        return saved.writeSavedText(keys.active, uid);
+    }
+
+    /* Before the working copy shows account `uid`: keep it (if it is an
+       account's and can't be read), set this device's data aside, mark it.
+       false, with nothing replaced and the page saying why, if storage refused. */
+    function makeRoomFor(uid, which) {
+        /* another account's working copy: keep both of its values for THAT
+           account now, before the mark moves to `uid` */
+        const active = lsGet(keys.active);
+        const own = active === null || active === uid;
+        if (!keepAccountCopy(own ? which : ["pbs", "profile"], active === uid ? "reload" : "leave")) return false;
+        if (setAsideDeviceData(uid)) return true;
+        saved.showStorageProblem("sign-in");
+        return false;
     }
 
     function showAccountProfile(uid, profile) {
-        keepAccountCopy(["profile"]);
-        setAsideDeviceData(uid);
+        if (!makeRoomFor(uid, ["profile"])) return false;
         lsSet("profile", JSON.stringify(profile || {}));
         stillDeviceData.delete("profile");
         redrawProfileForm();
+        return true;
     }
 
     function showAccountPbs(uid, list) {
-        keepAccountCopy(["pbs"]);
-        setAsideDeviceData(uid);
+        if (!makeRoomFor(uid, ["pbs"])) return false;
         setWorkingPbs(list);
         stillDeviceData.delete("pbs");
+        return true;
     }
 
     /* This device's own (set-aside) data, the source of a first-sign-in import. */
@@ -168,7 +213,7 @@ function deviceDataStore(keys) {
             .map(([key]) => key);
     }
 
-    return { restoreDeviceData, showAccountProfile, showAccountPbs, deviceData, deviceId, deviceUnreadable };
+    return { restoreDeviceData, restoreBeforeSignOut, showAccountProfile, showAccountPbs, deviceData, deviceId, deviceUnreadable };
 }
 
 /* Put this device's own data back if an account of `env` was still shown
@@ -256,6 +301,15 @@ export async function startSupabaseAccounts(env) {
     let lastSyncedKeys = [];         // the account's PB keys at the last load / sync
     let importPlan = null;           // this device's data not yet in the account, if offered
     let recovering = false;
+    let held = false;                // browser storage refused a write showing the account needs: not loaded
+
+    /* the account isn't shown in the working copy (the page says why) */
+    function holdAccount() {
+        held = true;
+        accountPbsLoaded = false;
+        setPbsLoading(false);
+        render();
+    }
     const here = () => ({ origin: location.origin, pathname: location.pathname });
     const authMessage = (t, k) => setStatus("authMessage", t, k);
     const val = (id) => (el(id)?.value || "").trim();
@@ -374,9 +428,22 @@ export async function startSupabaseAccounts(env) {
         setStatus("profileSaveStatus", "Your password has been changed.", "ok");
     };
 
+    /* This device's data is put back before signing out: if browser storage
+       refuses what that needs, the user stays signed in with the account's
+       data in place (never shown signed out) and the page says why. */
     window.logoutUser = async function () {
+        if (leaving) return;
+        if (!currentUser) {
+            await supabase.auth.signOut({ scope: "local" });
+            return;
+        }
+        if (!store.restoreBeforeSignOut()) {
+            render();
+            return;
+        }
+        stopShowingAccount();                        // the SIGNED_OUT event then has nothing to leave
         await supabase.auth.signOut({ scope: "local" });
-        if (currentUser) leaveAndReload();          // normally the SIGNED_OUT event already did
+        location.reload();
     };
 
     /* ----- the user's own profiles row ----- */
@@ -387,7 +454,7 @@ export async function startSupabaseAccounts(env) {
         if (!stillUser(uid)) return;                                   // signed out meanwhile
         cloudRow = error ? undefined : data;
         if (error) setStatus("profileSaveStatus", `Couldn't load your ${A}'s profile.`, "error");
-        else store.showAccountProfile(uid, rowToProfile(data));
+        else if (!store.showAccountProfile(uid, rowToProfile(data))) return holdAccount();
         render();
     }
 
@@ -413,9 +480,9 @@ export async function startSupabaseAccounts(env) {
         }
         if (!stillUser(uid)) return;
         const list = rowsToLocalPbs(rows);
+        if (!store.showAccountPbs(uid, list)) return holdAccount();
         lastSyncedKeys = list.map((pb) => pbKey(pb.event, pb.course));
         accountPbsLoaded = true;
-        store.showAccountPbs(uid, list);
         setPbsLoading(false);
         importPlan = null;
         const local = store.deviceData();
@@ -429,7 +496,9 @@ export async function startSupabaseAccounts(env) {
     }
 
     async function loadAccount(uid) {
+        if (held) return;
         await loadRow(uid);
+        if (held) return;
         if (stillUser(uid) && cloudRow !== undefined) await Promise.all([loadPbsAndOffer(uid), loadPhoto(uid)]);
         else if (stillUser(uid)) setPbsLoading(false);              // the profile failed, so the PBs aren't loaded either
         refreshSavedDataNotes();
@@ -630,6 +699,11 @@ export async function startSupabaseAccounts(env) {
     window.saveProfile = async function () {
         const saved = typeof saveLocally === "function" ? saveLocally() : null;
         if (!currentUser || !saved) return saved;
+        if (held) {
+            /* the form shows this device's data, not the account's: never sent */
+            setStatus("profileSaveStatus", `Saved on this device only. Your ${A} wasn't loaded into this page (see the message at the top of the page), so nothing was sent to it.`, "error");
+            return saved;
+        }
         const uid = currentUser.id;
         setStatus("profileSaveStatus", `Saving to your ${A}…`);
         const { data, error } = await supabase.from("profiles")
@@ -650,13 +724,16 @@ export async function startSupabaseAccounts(env) {
        logout in another tab): put this device's own profile back and reload,
        so nothing of that account stays in memory or in the form. */
     let leaving = false;
-    function leaveAndReload() {
-        if (leaving) return;                    // logout and its SIGNED_OUT event both ask; reload once
+    function stopShowingAccount() {
         leaving = true;
         currentUser = null;
         cloudRow = undefined;
         if (accountPhoto) URL.revokeObjectURL(accountPhoto);
         accountPhoto = null;
+    }
+    function leaveAndReload() {
+        if (leaving) return;                    // logout and its SIGNED_OUT event both ask; reload once
+        stopShowingAccount();
         store.restoreDeviceData();
         location.reload();
     }
@@ -678,7 +755,8 @@ export async function startSupabaseAccounts(env) {
             return;
         }
         let rowLine = `Loading your ${A}'s profile…`;
-        if (cloudRow === null) rowLine = `No profile saved to your ${A} yet. Fill in the form and choose Save Profile.`;
+        if (held) rowLine = `Your ${A} wasn't loaded into this page because browser storage is full or blocked. See the message at the top of the page.`;
+        else if (cloudRow === null) rowLine = `No profile saved to your ${A} yet. Fill in the form and choose Save Profile.`;
         else if (cloudRow) rowLine = `Showing your ${A}'s profile (last saved ${escapeHtml(new Date(cloudRow.updated_at).toLocaleString())}).`;
         card.innerHTML = `
             <div class="account-card">
@@ -722,10 +800,14 @@ export async function startSupabaseAccounts(env) {
             importPlan = null;
             accountPhoto = undefined;
             photoLoadFailed = false;
-            store.showAccountProfile(user.id, {});          // nothing shown until this account's own data loads
-            store.showAccountPbs(user.id, []);
-            setPbsLoading(true);
-            setTimeout(() => loadAccount(user.id), 0);      // not inside the callback
+            held = false;
+            /* nothing shown until this account's own data loads */
+            if (store.showAccountProfile(user.id, {}) && store.showAccountPbs(user.id, [])) {
+                setPbsLoading(true);
+                setTimeout(() => loadAccount(user.id), 0);  // not inside the callback
+            } else {
+                held = true;
+            }
         }
         render();
         /* only the recovery link itself opens the set-new-password form (not
