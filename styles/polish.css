@@ -478,6 +478,15 @@ body.light-mode .pb-invalid-history {
     background: rgba(255, 80, 80, 0.28);
 }
 
+/* the page-level message when browser storage refuses a write the account
+   code needs (saved-data-check.js showStorageProblem) */
+.saved-data-storage-alert {
+    margin: 12px auto;
+    width: calc(100% - 32px);
+    max-width: 960px;
+    box-sizing: border-box;
+}
+
 .saved-data-pbs-note .recovery-btn {
     display: block;
     margin-top: 8px;

@@ -32,6 +32,14 @@
    Discard, only while that account is signed in again
    (renderAccountCopyRecovery); Discard removes only the local copy.
 
+   If browser storage refuses a write (full, blocked, or unavailable), the
+   account code never replaces text it couldn't first preserve: a copy or a
+   set-aside value only counts once it has been written and read back
+   exactly (writeSavedText, preserveUnreadableCopies). The sign-in, log-out,
+   switch or restore step that needed it stops, the original is left
+   untouched, and the page says what happened and what to do next
+   (showStorageProblem) without claiming anything was backed up.
+
    A classic script (not a module) so index.html's main script can use it
    while it starts up. The checks are pure functions, also run by
    test/saved-data-check.test.js.
@@ -161,26 +169,44 @@
         return out.sort((a, b) => a.at - b.at || a.key.localeCompare(b.key));
     }
 
-    /* Before account code replaces the working copy of an account, keep any
+    /* Stores `raw` under `key` exactly (null removes the key) and reads it
+       back. true only if storage now holds exactly `raw`; a write the
+       browser refused (storage full, blocked or unavailable) is false. */
+    function writeSavedText(key, raw) {
+        try {
+            if (raw === null || raw === undefined) root.localStorage.removeItem(key);
+            else root.localStorage.setItem(key, raw);
+            return root.localStorage.getItem(key) === (raw === undefined ? null : raw);
+        } catch (err) {
+            if (root.console) root.console.error("SWIMTICS storage:", err);
+            return false;
+        }
+    }
+
+    /* Before account code replaces the working copy of an account: keep any
        of "pbs" / "profile" (or just `keys`) that can't be read under that
-       account's prefix (once per distinct text). Returns the keys of the
-       copies made. */
-    function keepUnreadableCopies(prefix, keys = COPY_KEYS) {
+       account's prefix (once per distinct text), each written and read back
+       exactly. Returns { made: storage keys of the copies made, failed: the
+       keys ("pbs" / "profile") whose copy couldn't be kept }. While `failed`
+       isn't empty, that working copy must not be replaced. */
+    function preserveUnreadableCopies(prefix, keys = COPY_KEYS) {
         const made = [];
+        const failed = [];
         for (const key of COPY_KEYS) {
             if (!keys.includes(key)) continue;
             const r = readSaved(key);
             if (!needsRecovery(r)) continue;
             if (listUnreadableCopies(prefix).some((c) => c.key === key && c.raw === r.raw)) continue;
             const storageKey = `${prefix}${key}:${Date.now()}`;
-            try {
-                root.localStorage.setItem(storageKey, r.raw);
-                made.push(storageKey);
-            } catch (err) {
-                if (root.console) root.console.error("SWIMTICS: couldn't keep an unreadable copy:", err);
-            }
+            if (writeSavedText(storageKey, r.raw)) made.push(storageKey);
+            else failed.push(key);
         }
-        return made;
+        return { made, failed };
+    }
+
+    /* the storage keys of the copies made (preserveUnreadableCopies) */
+    function keepUnreadableCopies(prefix, keys = COPY_KEYS) {
+        return preserveUnreadableCopies(prefix, keys).made;
     }
 
     function removeUnreadableCopy(storageKey) {
@@ -465,6 +491,90 @@
         return `This device's own saved ${what} can't be read. ${kept} kept on this device exactly as saved and will come back when you log out, where you can save a backup or start fresh.`;
     }
 
+    /* ---------- when storage refuses a write the account code needs ----------
+       `step`:
+         "sign-in"       this device's own data couldn't be set aside, so the
+                         account wasn't loaded over it
+         "leave"         an unreadable copy of the account last signed in
+                         here couldn't be kept, so it wasn't replaced
+                         (switching account, a sign-out from elsewhere, or
+                         start-up after either)
+         "leave-restore" this device's own data couldn't be put back, so the
+                         account last signed in here was left in place
+         "reload"        an unreadable copy of the signed-in account's own
+                         data couldn't be kept, so it wasn't refreshed
+         "sign-out"      Log Out: an unreadable copy of the account couldn't
+                         be kept, so the user stays signed in (nothing replaced)
+         "sign-out-restore"  Log Out: this device's own data couldn't be put
+                         back, so the user stays signed in (nothing replaced)
+       `keys`: the "pbs" / "profile" values concerned (for "leave" / "reload" /
+       "sign-out"). */
+
+    const STORAGE_PROBLEM_TITLE = {
+        "sign-in": "Your account wasn't loaded: browser storage is full or blocked",
+        "leave": "Switching accounts didn't finish: browser storage is full or blocked",
+        "leave-restore": "Switching accounts didn't finish: browser storage is full or blocked",
+        "reload": "Your account's data wasn't refreshed: browser storage is full or blocked",
+        "sign-out": "You're still signed in: logging out didn't finish because browser storage is full or blocked",
+        "sign-out-restore": "You're still signed in: logging out didn't finish because browser storage is full or blocked",
+    };
+
+    function whatText(keys) {
+        const list = keys || [];
+        if (list.includes("pbs") && list.includes("profile")) return "personal bests and profile";
+        return list.includes("profile") ? "profile" : "personal bests";
+    }
+
+    function storageProblemText(step, keys) {
+        const what = whatText(keys);
+        const lead = {
+            "sign-in": "You're signed in, but this browser wouldn't store a safe copy of this device's own saved profile and personal bests, so your account's data wasn't loaded over them. This device's data is still shown, unchanged, and nothing from it was sent to your account.",
+            "leave": `The account last signed in here has saved ${what} that can't be read, and this browser wouldn't store a copy of it, so it was left in place instead of being replaced. This page may still show that account's data, even after logging out. This device's own data is kept and hasn't been put back yet.`,
+            "leave-restore": "This browser wouldn't store this device's own saved profile and personal bests again, so the account last signed in here was left in place instead of being replaced. This page may still show that account's data, even after logging out. This device's own data is kept and hasn't been put back yet.",
+            "reload": `Your account's ${what} saved in this browser can't be read, and this browser wouldn't store a copy of it, so it wasn't replaced with your account's data. Your account itself wasn't changed.`,
+            "sign-out": `Your account's ${what} saved in this browser can't be read, and this browser wouldn't store a copy of it, so you weren't logged out and nothing was replaced. You're still signed in, and your account's data is still shown only because you are.`,
+            "sign-out-restore": "This browser wouldn't store this device's own saved profile and personal bests again, so you weren't logged out and nothing was replaced. You're still signed in, and your account's data is still shown only because you are.",
+        }[step];
+        if (step === "sign-out" || step === "sign-out-restore") {
+            return {
+                title: STORAGE_PROBLEM_TITLE[step],
+                lead,
+                next: "Nothing was deleted, but no backup was made either. To log out, free up browser storage (for example, remove data other websites have saved in this browser), then choose Log Out again. On a shared device, don't leave it signed in. Until then, you can save your own copy of anything that can't be read with \"Download a backup\" in its message on Personal Bests or Profile.",
+            };
+        }
+        return {
+            title: STORAGE_PROBLEM_TITLE[step],
+            lead,
+            next: "Nothing was deleted, but no backup was made either. To finish, free up browser storage (for example, remove data other websites have saved in this browser), then reload this page. Until then, you can save your own copy of anything that can't be read with \"Download a backup\" in its message on Personal Bests or Profile.",
+        };
+    }
+
+    /* Shows (or updates) one message at the top of the page, under the main
+       navigation, so it's seen whichever page is open. Text only. */
+    function showStorageProblem(step, keys) {
+        const text = storageProblemText(step, keys);
+        try {
+            let box = document.getElementById("savedDataStorageAlert");
+            if (!box) {
+                /* a div: a global section rule (profile-pb-cards.css) removes section margins */
+                box = make("div", "saved-data-recovery saved-data-storage-alert");
+                box.id = "savedDataStorageAlert";
+                box.setAttribute("role", "alert");
+                box.setAttribute("aria-labelledby", "savedDataStorageAlertTitle");
+                const nav = document.querySelector("nav.site-nav");
+                if (nav && nav.parentNode) nav.after(box);
+                else document.body.prepend(box);
+            }
+            box.dataset.step = step;
+            const title = make("h4", "saved-data-recovery-title", text.title);
+            title.id = "savedDataStorageAlertTitle";
+            box.replaceChildren(title, make("p", "", text.lead), make("p", "", text.next));
+        } catch (err) {
+            if (root.console) root.console.error("SWIMTICS:", text.title, err);
+        }
+        return text;
+    }
+
     root.swimticsSavedData = Object.freeze({
         PROFILE_TEXT_FIELDS,
         pbsProblem,
@@ -477,8 +587,12 @@
         renderSavedDataRecovery,
         listUnreadableCopies,
         keepUnreadableCopies,
+        preserveUnreadableCopies,
+        writeSavedText,
         removeUnreadableCopy,
         renderAccountCopyRecovery,
         deviceDataNoteText,
+        storageProblemText,
+        showStorageProblem,
     });
 })(typeof window !== "undefined" ? window : globalThis);

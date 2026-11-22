@@ -109,7 +109,22 @@ analysis output. Wiring it into the pipeline is future work (see
   its exact text is kept under a key for that account only
   (`…unreadableCopy:<uid>:pbs|profile:<time>`), offered on Profile for
   backup or Discard only while that account is signed in. Discard removes
-  only that local key and sends nothing.
+  only that local key and sends nothing. Nothing replaces a working copy
+  until the text it holds has been preserved: each set-aside value and
+  per-account copy is written and read back exactly
+  (`writeSavedText` / `preserveUnreadableCopies`). If browser storage
+  refuses (quota exceeded, blocked, unavailable), the sign-in, log-out,
+  account switch or restore stops: the original text is left untouched,
+  the account isn't loaded (and so nothing is synced from that page),
+  the set-aside copy and the account mark are kept, and a page-level
+  message (`showStorageProblem`, under the main navigation) says what was
+  left in place, that nothing was deleted or backed up, and to free up
+  storage and reload. Start-up retries the unfinished step, so the
+  message persists until storage accepts the writes. Log Out puts this
+  device's data back before signing out, so if that is refused the user
+  stays signed in and is told to free up storage and log out again; only
+  a sign-out from elsewhere (another tab, an expired session) can leave
+  the previous account's data shown while signed out.
 - **Accounts (Stage 1, D10)**: Firebase Auth (email/password) +
   Realtime Database under `/users/{uid}` with deny-by-default rules
   (`database.rules.json`). When signed in, profile text fields and PBs

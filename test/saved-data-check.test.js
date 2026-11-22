@@ -14,7 +14,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SOURCE = readFileSync(join(__dirname, "..", "src", "app", "data", "saved-data-check.js"), "utf8");
 
 // Loads the script in a sandbox with a fake localStorage that records writes.
-function load(items = {}, { throwOnRead = false } = {}) {
+// `refuseWrite(key)` may return an error to throw instead of storing (a
+// full or blocked storage), or "truncate" to store a shortened value.
+function load(items = {}, { throwOnRead = false, refuseWrite = () => null } = {}) {
   const data = new Map(Object.entries(items));
   const writes = [];
   const localStorage = {
@@ -22,7 +24,12 @@ function load(items = {}, { throwOnRead = false } = {}) {
       if (throwOnRead) throw new Error("blocked");
       return data.has(k) ? data.get(k) : null;
     },
-    setItem(k, v) { writes.push(["set", k, v]); data.set(k, String(v)); },
+    setItem(k, v) {
+      const refusal = refuseWrite(k);
+      if (refusal === "truncate") { data.set(k, String(v).slice(0, 3)); return; }
+      if (refusal) throw refusal;
+      writes.push(["set", k, v]); data.set(k, String(v));
+    },
     removeItem(k) { writes.push(["remove", k]); data.delete(k); },
     get length() { return data.size; },
     key(i) { return [...data.keys()][i] ?? null; },
@@ -229,5 +236,89 @@ describe("per-account copies of unreadable text", () => {
     assert.match(api.deviceDataNoteText(["pbs"]), /^This device's own saved personal bests can't be read\. They're kept/);
     assert.match(api.deviceDataNoteText(["profile"]), /^This device's own saved profile can't be read\. It's kept/);
     assert.match(api.deviceDataNoteText(["pbs", "profile"]), /^This device's own saved personal bests and profile can't be read\. They're kept/);
+  });
+});
+
+describe("when browser storage refuses a write", () => {
+  const PREFIX = "swimtics:unreadableCopy:uid-1:";
+  const BAD_PBS = '[{"event":"Freestyle 50m"';
+  const BAD_PROFILE = '{"name":"Sam","club":';
+  const quota = () => new DOMException("The quota has been exceeded.", "QuotaExceededError");
+  const blocked = () => new Error("SecurityError: storage is blocked");
+
+  test("writeSavedText stores or removes the exact text and reads it back", () => {
+    const { api, data } = load({ gone: "x" });
+    assert.equal(api.writeSavedText("k", BAD_PBS), true);
+    assert.equal(data.get("k"), BAD_PBS);
+    assert.equal(api.writeSavedText("gone", null), true);
+    assert.equal(data.has("gone"), false);
+  });
+
+  for (const [label, refusal] of [["quota exceeded", quota], ["a general storage error", blocked], ["a value that doesn't read back", () => "truncate"]]) {
+    test(`writeSavedText is false on ${label}, and the earlier value stays`, () => {
+      const { api, data } = load({ k: "earlier" }, { refuseWrite: (k) => (k === "k" ? refusal() : null) });
+      assert.equal(api.writeSavedText("k", BAD_PBS), false);
+      if (label !== "a value that doesn't read back") assert.equal(data.get("k"), "earlier");
+    });
+
+    test(`preserveUnreadableCopies reports a copy refused by ${label}; the working copy is untouched`, () => {
+      const { api, data } = load({ pbs: BAD_PBS, profile: BAD_PROFILE }, {
+        refuseWrite: (k) => (k.startsWith(`${PREFIX}pbs:`) ? refusal() : null),
+      });
+      const result = api.preserveUnreadableCopies(PREFIX);
+      assert.deepEqual([...result.failed], ["pbs"]);
+      assert.equal(result.made.length, 1);
+      assert.match(result.made[0], /:profile:\d+$/);
+      assert.equal(data.get(result.made[0]), BAD_PROFILE);
+      assert.equal(data.get("pbs"), BAD_PBS);
+      assert.equal(data.get("profile"), BAD_PROFILE);
+    });
+  }
+
+  test("a value already kept with the same text needs no new copy, even while storage refuses writes", () => {
+    const { api } = load({ pbs: BAD_PBS, [`${PREFIX}pbs:100`]: BAD_PBS }, { refuseWrite: quota });
+    assert.deepEqual(JSON.parse(JSON.stringify(api.preserveUnreadableCopies(PREFIX))), { made: [], failed: [] });
+  });
+
+  test("readable or missing values need no copy, so a refusing storage isn't a failure", () => {
+    const { api } = load({ pbs: "[]" }, { refuseWrite: quota });
+    assert.deepEqual(JSON.parse(JSON.stringify(api.preserveUnreadableCopies(PREFIX))), { made: [], failed: [] });
+  });
+
+  test("keepUnreadableCopies still returns only the copies made", () => {
+    const { api } = load({ pbs: BAD_PBS }, { refuseWrite: quota });
+    assert.deepEqual([...api.keepUnreadableCopies(PREFIX)], []);
+  });
+
+  test("the page message says what was left in place and what to do next, without claiming a backup", () => {
+    const { api } = load();
+    for (const step of ["sign-in", "leave", "leave-restore", "reload"]) {
+      const t = api.storageProblemText(step, ["pbs"]);
+      assert.match(t.title, /browser storage is full or blocked$/);
+      assert.ok(t.lead.length > 40, step);
+      assert.match(t.next, /Nothing was deleted, but no backup was made either\./);
+      assert.match(t.next, /free up browser storage/);
+      assert.match(t.next, /reload this page/);
+      assert.match(t.next, /"Download a backup"/);
+      assert.doesNotMatch(`${t.lead} ${t.next}`, /was backed up|backup was (saved|made)(?! either)|has been saved/);
+    }
+    assert.match(api.storageProblemText("leave", ["pbs", "profile"]).lead, /saved personal bests and profile that can't be read/);
+    assert.match(api.storageProblemText("reload", ["profile"]).lead, /^Your account's profile saved in this browser can't be read/);
+    assert.match(api.storageProblemText("sign-in").lead, /your account's data wasn't loaded over them/);
+  });
+
+  test("when Log Out can't preserve the account's data, the message says you're still signed in and to log out again", () => {
+    const { api } = load();
+    for (const step of ["sign-out", "sign-out-restore"]) {
+      const t = api.storageProblemText(step, ["pbs"]);
+      assert.match(t.title, /^You're still signed in: logging out didn't finish because browser storage is full or blocked$/);
+      assert.match(t.lead, /you weren't logged out and nothing was replaced/);
+      assert.match(t.next, /Nothing was deleted, but no backup was made either\./);
+      assert.match(t.next, /free up browser storage/);
+      assert.match(t.next, /then choose Log Out again/);
+      assert.match(t.next, /"Download a backup"/);
+      assert.doesNotMatch(`${t.lead} ${t.next}`, /even after logging out|was backed up|backup was (saved|made)(?! either)|has been saved/);
+    }
+    assert.match(api.storageProblemText("sign-out", ["pbs", "profile"]).lead, /^Your account's personal bests and profile saved in this browser can't be read/);
   });
 });
