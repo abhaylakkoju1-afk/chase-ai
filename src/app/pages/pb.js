@@ -134,7 +134,15 @@
            is written over it until the person chooses a recovery action
            under Your PBs (saved-data-check.js) */
         function pbSavedDataBlocked() {
-            if (!swimticsSavedData.needsRecovery(swimticsSavedData.readSaved("pbs"))) return false;
+            const saved = swimticsSavedData.readSaved("pbs");
+            /* hidden: they belong to an account that isn't signed in here
+               (saved-data-check.js accountMask), and are never written over */
+            if (saved.status === "hidden") {
+                showPBBlocked("Personal bests can't be added, edited or deleted right now: the ones saved in this browser belong to an account that isn't signed in, so they're hidden. Nothing was saved. See the message at the top of the page.");
+                displayPBs();
+                return true;
+            }
+            if (!swimticsSavedData.needsRecovery(saved)) return false;
             showPBBlocked("Your saved personal bests can't be read, so nothing can be added, edited or deleted yet. Nothing was saved. Save a backup or start fresh using the message under Your PBs first.");
             displayPBs();
             return true;
@@ -407,6 +415,13 @@
                the list (or an empty-list message), and the saved value is
                left exactly as it is */
             const saved = swimticsSavedData.readSaved("pbs");
+            /* a list that belongs to an account that isn't signed in here:
+               none of it is shown (saved-data-check.js accountMask) */
+            if (saved.status === "hidden") {
+                c.append(pbEl("p", "tool-message saved-data-hidden-note",
+                    "Personal bests are hidden: the ones saved in this browser belong to an account that isn't signed in. See the message at the top of the page."));
+                return;
+            }
             if (swimticsSavedData.needsRecovery(saved)) {
                 swimticsSavedData.renderSavedDataRecovery(c, saved, {
                     accountOwned: pbListBelongsToAccount,

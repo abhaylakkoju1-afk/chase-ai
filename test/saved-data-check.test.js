@@ -16,7 +16,10 @@ const SOURCE = readFileSync(join(__dirname, "..", "src", "app", "data", "saved-d
 // Loads the script in a sandbox with a fake localStorage that records writes.
 // `refuseWrite(key)` may return an error to throw instead of storing (a
 // full or blocked storage), or "truncate" to store a shortened value.
-function load(items = {}, { throwOnRead = false, refuseWrite = () => null } = {}) {
+// `page: true` adds a still-loading page (document) and records the
+// listeners the script adds, so the end of page loading and another tab's
+// storage change can be played back.
+function load(items = {}, { throwOnRead = false, refuseWrite = () => null, page = false } = {}) {
   const data = new Map(Object.entries(items));
   const writes = [];
   const localStorage = {
@@ -35,8 +38,18 @@ function load(items = {}, { throwOnRead = false, refuseWrite = () => null } = {}
     key(i) { return [...data.keys()][i] ?? null; },
   };
   const sandbox = { localStorage };
+  const listeners = {};
+  if (page) {
+    sandbox.document = {
+      readyState: "loading",
+      addEventListener(type, fn) { listeners[`document:${type}`] = fn; },
+      getElementById: () => null,
+      querySelector: () => null,
+    };
+    sandbox.addEventListener = (type, fn) => { listeners[`window:${type}`] = fn; };
+  }
   vm.runInNewContext(SOURCE, sandbox);
-  return { api: sandbox.swimticsSavedData, writes, data };
+  return { api: sandbox.swimticsSavedData, writes, data, listeners };
 }
 
 const VALID_PBS = [
@@ -292,19 +305,45 @@ describe("when browser storage refuses a write", () => {
 
   test("the page message says what was left in place and what to do next, without claiming a backup", () => {
     const { api } = load();
-    for (const step of ["sign-in", "leave", "leave-restore", "reload"]) {
+    for (const step of ["sign-in", "leave", "leave-restore", "reload", "signed-out"]) {
       const t = api.storageProblemText(step, ["pbs"]);
       assert.match(t.title, /browser storage is full or blocked$/);
       assert.ok(t.lead.length > 40, step);
       assert.match(t.next, /Nothing was deleted, but no backup was made either\./);
       assert.match(t.next, /free up browser storage/);
       assert.match(t.next, /reload this page/);
-      assert.match(t.next, /"Download a backup"/);
-      assert.doesNotMatch(`${t.lead} ${t.next}`, /was backed up|backup was (saved|made)(?! either)|has been saved/);
+      assert.doesNotMatch(`${t.lead} ${t.next}`, /was backed up|backup was (saved|made)(?! either)|has been saved|was deleted(?!, but)/);
     }
+    // where the page still shows the text, its own message offers a backup
+    for (const step of ["sign-in", "reload"]) assert.match(api.storageProblemText(step, ["pbs"]).next, /"Download a backup"/);
+    // where the account's data is hidden, no backup of it is offered and the page never claims to show it
+    for (const step of ["leave", "leave-restore", "signed-out"]) {
+      const t = api.storageProblemText(step, ["pbs"]);
+      assert.match(t.lead, /hidden on this page/);
+      assert.match(t.lead, /kept in this browser exactly as (it was|they were)/);
+      assert.match(t.next, /saving changes to the profile or personal bests here is paused/);
+      assert.match(t.next, /Signing in to that account again shows its data/);
+      assert.doesNotMatch(`${t.lead} ${t.next}`, /may still show|even after logging out|Download a backup/);
+    }
+    const ended = api.storageProblemText("signed-out");
+    assert.match(ended.title, /^Your session ended: the account's data is hidden/);
+    assert.match(ended.lead, /signed out outside this page \(for example, by logging out in another tab, or because the session expired\)/);
     assert.match(api.storageProblemText("leave", ["pbs", "profile"]).lead, /saved personal bests and profile that can't be read/);
     assert.match(api.storageProblemText("reload", ["profile"]).lead, /^Your account's profile saved in this browser can't be read/);
     assert.match(api.storageProblemText("sign-in").lead, /your account's data wasn't loaded over them/);
+  });
+
+  test("the message for an account whose code doesn't run on this page says its data is hidden and how to reach it, without claiming a backup", () => {
+    const { api } = load();
+    const t = api.storageProblemText("not-here", ["pbs", "profile"]);
+    assert.equal(t.title, "An account's data is hidden on this page");
+    assert.match(t.lead, /^This browser holds personal bests and profile saved for an account that this page doesn't sign in/);
+    assert.match(t.lead, /can't confirm that account is signed in/);
+    assert.match(t.lead, /kept in this browser exactly as it was/);
+    assert.match(t.next, /^Nothing was deleted or sent anywhere, but no backup was made either\./);
+    assert.match(t.next, /saving changes to the profile or personal bests here is paused/);
+    assert.match(t.next, /open the page that account signs in on/);
+    assert.doesNotMatch(`${t.title} ${t.lead} ${t.next}`, /browser storage is full|may still show|Download a backup|was backed up|was deleted(?! or)/);
   });
 
   test("when Log Out can't preserve the account's data, the message says you're still signed in and to log out again", () => {
@@ -320,5 +359,109 @@ describe("when browser storage refuses a write", () => {
       assert.doesNotMatch(`${t.lead} ${t.next}`, /even after logging out|was backed up|backup was (saved|made)(?! either)|has been saved/);
     }
     assert.match(api.storageProblemText("sign-out", ["pbs", "profile"]).lead, /^Your account's personal bests and profile saved in this browser can't be read/);
+  });
+});
+
+describe("account data hidden while its account isn't signed in (accountMask)", () => {
+  const FB = "swimtics:activeUid";               // account.js stores the id as JSON text
+  const SB = "swimtics-test:activeUid";          // the Supabase code stores it as plain text
+  const PBS = JSON.stringify([{ event: "Freestyle 50m", course: "Long Course", time: "28.45" }]);
+  const PROFILE = JSON.stringify({ name: "Account swimmer" });
+  const STROKES = JSON.stringify({ freestyle: { photo: "data:image/png;base64,AAAA" } });
+
+  test("no account marker: nothing is hidden and the page reads the saved values as before", () => {
+    const { api, writes } = load({ pbs: PBS, profile: PROFILE, strokeData: STROKES });
+    assert.deepEqual([...api.accountMask.hiddenKeys()], []);
+    assert.equal(api.readSaved("pbs").status, "ok");
+    assert.equal(api.usableProfile().name, "Account swimmer");
+    assert.deepEqual(JSON.parse(JSON.stringify(api.usableStrokeData())), JSON.parse(STROKES));
+    assert.deepEqual(writes, []);
+  });
+
+  test("a marker with no one signed in hides the account's values (no value, no raw text) and writes nothing", () => {
+    const { api, writes, data } = load({ pbs: PBS, profile: PROFILE, strokeData: STROKES, [FB]: JSON.stringify("uid-a") });
+    for (const key of ["pbs", "profile"]) {
+      assert.deepEqual({ ...api.readSaved(key) }, { key, status: "hidden", raw: null, value: undefined, problem: null });
+      assert.equal(api.needsRecovery(api.readSaved(key)), false);   // so no backup or Start fresh is offered
+    }
+    assert.deepEqual([...api.usablePbs()], []);
+    assert.deepEqual({ ...api.usableProfile() }, {});
+    assert.deepEqual({ ...api.usableStrokeData() }, {});              // Firebase also swaps stroke-card photos
+    assert.equal(api.accountMask.hides("strokeData"), true);
+    assert.deepEqual(writes, []);
+    assert.equal(data.get("pbs"), PBS);
+    assert.equal(data.get("profile"), PROFILE);
+  });
+
+  test("the account's own user signed in sees it; another user, or signing out, hides it again", () => {
+    const { api, writes } = load({ pbs: PBS, profile: PROFILE, [SB]: "uid-a" });
+    api.accountMask.signedIn(SB, "uid-a");
+    assert.equal(api.readSaved("pbs").status, "ok");
+    assert.equal(api.readSaved("profile").raw, PROFILE);
+    api.accountMask.signedIn(SB, "uid-b");
+    assert.equal(api.readSaved("pbs").status, "hidden");
+    api.accountMask.signedIn(SB, null);
+    assert.equal(api.readSaved("profile").status, "hidden");
+    assert.equal(api.accountMask.hides("strokeData"), false);       // the Supabase code doesn't swap stroke-card photos
+    assert.deepEqual(writes, []);
+  });
+
+  test("it follows the stored marker: once the device's data is put back (marker removed) nothing is hidden", () => {
+    const { api, data } = load({ pbs: PBS, [FB]: JSON.stringify("uid-a") });
+    assert.equal(api.readSaved("pbs").status, "hidden");
+    data.delete(FB);
+    assert.equal(api.readSaved("pbs").status, "ok");
+  });
+
+  test("signing in for one account system doesn't show another system's hidden data", () => {
+    const { api } = load({ pbs: PBS, [FB]: JSON.stringify("uid-a") });
+    api.accountMask.signedIn(SB, "uid-a");
+    assert.equal(api.readSaved("pbs").status, "hidden");
+  });
+
+  test("hidden text is still preserved exactly: an unreadable account copy is kept for that account", () => {
+    const BAD = '{"event":"Backstroke 50m"';
+    const { api, data } = load({ pbs: BAD, [SB]: "uid-a" });
+    assert.equal(api.readSaved("pbs").status, "hidden");
+    const { made, failed } = api.preserveUnreadableCopies("swimtics-test:unreadableCopy:uid-a:");
+    assert.equal(made.length, 1);
+    assert.deepEqual([...failed], []);
+    assert.equal(data.get(made[0]), BAD);
+    assert.equal(data.get("pbs"), BAD);
+  });
+
+  test("a marker no account code on this page claims keeps hiding after the page has loaded, and follows another tab's change", () => {
+    const { api, writes, data, listeners } = load({ pbs: PBS, profile: PROFILE, [SB]: "uid-a" }, { page: true });
+    api.accountMask.claim(FB);                                       // only the Firebase code runs on this page
+    listeners["document:DOMContentLoaded"]();
+    assert.equal(api.readSaved("pbs").status, "hidden");
+    assert.equal(api.readSaved("profile").status, "hidden");
+    assert.deepEqual([...api.usablePbs()], []);
+    // another tab puts the device's data back (removing the marker)
+    data.delete(SB);
+    listeners["window:storage"]({ key: SB });
+    assert.equal(api.readSaved("pbs").status, "ok");
+    // and another tab signs that account in again
+    data.set(SB, "uid-a");
+    listeners["window:storage"]({ key: SB });
+    assert.equal(api.readSaved("pbs").status, "hidden");
+    assert.deepEqual(writes, []);
+    assert.equal(data.get("pbs"), PBS);
+    assert.equal(data.get("profile"), PROFILE);
+  });
+
+  test("a claimed marker shows its data only once that same account is confirmed as signed in", () => {
+    const { api, listeners } = load({ pbs: PBS, [SB]: "uid-a" }, { page: true });
+    api.accountMask.claim(SB);
+    listeners["document:DOMContentLoaded"]();
+    assert.equal(api.readSaved("pbs").status, "hidden");
+    api.accountMask.signedIn(SB, "uid-a");
+    assert.equal(api.readSaved("pbs").status, "ok");
+  });
+
+  test("a marker that can't be read hides nothing (the values can't be read either)", () => {
+    const { api } = load({ pbs: PBS, [FB]: '"uid-a"' }, { throwOnRead: true });
+    assert.equal(api.accountMask.hides("pbs"), false);
+    assert.equal(api.readSaved("pbs").status, "unavailable");
   });
 });

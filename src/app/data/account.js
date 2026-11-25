@@ -73,6 +73,13 @@ const store = {
    saveProfile). */
 const savedData = window.swimticsSavedData;
 
+/* While the working copy belongs to an account that isn't the one signed
+   in here (its session ended elsewhere, or another account signed in, and
+   browser storage refused putting this device's data back), the page hides
+   it (saved-data-check.js accountMask). This file tells the mask who is
+   signed in; until it does, the account's data stays hidden. */
+savedData.accountMask.claim(KEY.active);
+
 function rawGet(key) { try { return localStorage.getItem(key); } catch { return null; } }
 
 /* the value in `raw` if it is readable saved data of that kind, else `fallback` */
@@ -259,6 +266,12 @@ function collectProfileForm() {
 }
 
 function saveProfileLocally(message = "Saved on this device.") {
+    /* never written over a profile that belongs to an account that isn't
+       signed in here (it's hidden; profile.js holds the button back too) */
+    if (savedData.accountMask.hides("profile")) {
+        setStatus("profileSaveStatus", "Your profile wasn't saved: the profile saved in this browser belongs to an account that isn't signed in, so it's hidden and can't be changed here. See the message at the top of the page.", "error");
+        return null;
+    }
     /* never written over a saved profile that can't be read (profile.js
        also holds the button back and shows the recovery message) */
     if (savedData.needsRecovery(savedData.readSaved("profile"))) {
@@ -495,10 +508,13 @@ function setupAccounts() {
 
     /* This device's data is put back before signing out: if browser storage
        refuses what that needs, the user stays signed in with the account's
-       data in place (never shown signed out) and the page says why. */
+       data in place (never shown signed out) and the page says why. If the
+       working copy is another account's (it couldn't be put away when this
+       one signed in), it stays hidden after signing out, so Log Out goes
+       ahead and start-up tries to put it away again. */
     window.logoutUser = async function () {
         const active = store.get(KEY.active);
-        if (active && !leaveAccount(active, true)) {
+        if (active && currentUser && active === currentUser.uid && !leaveAccount(active, true)) {
             window.updateProfileAccountSection();
             return;
         }
@@ -889,6 +905,9 @@ function setupAccounts() {
         const myGen = gen;
         const prev = currentUser ? currentUser.uid : (leaving ? leaving.uid : null);
         currentUser = user;
+        /* only this user's own data may be shown: an account that left
+           (signed out elsewhere, expired, replaced) is hidden at once */
+        savedData.accountMask.signedIn(KEY.active, user ? user.uid : null);
         accountLoaded = false;
         heldBack = false;
         importPlan = null;
@@ -925,6 +944,9 @@ function setupAccounts() {
             }
             return;
         }
+        /* signed out, with an account's data still in the working copy
+           (start-up couldn't put it away): it stays hidden; say why */
+        if (!user && store.get(KEY.active) !== null) savedData.showStorageProblem("signed-out");
         window.updateProfileAccountSection();
         if (user) {
             queue(async () => {

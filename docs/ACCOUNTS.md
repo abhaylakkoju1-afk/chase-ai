@@ -68,20 +68,53 @@ account; after ~8 s without a reply it says so.
     tab, an expired session): if an unreadable account copy can't be kept,
     or this device's data can't be put back, nothing is replaced. The
     account's text, the set-aside device text and the account mark
-    (`…activeUid`) all stay, so Start fresh stays unavailable. Here the
-    sign-out has already happened outside this page, so the page **may
-    still show that account's data while signed out** until storage
-    accepts writes; a different account signing in meanwhile isn't loaded
-    either. An unreadable copy is only ever kept under the account the
-    working copy belongs to.
+    (`…activeUid`) all stay, so Start fresh stays unavailable. A different
+    account signing in meanwhile isn't loaded either. An unreadable copy
+    is only ever kept under the account the working copy belongs to.
+  - *Hidden while that account isn't signed in* (`accountMask`,
+    `saved-data-check.js`): the page **hides** that account's working
+    copy — profile, PBs and (Firebase) stroke-card photos — whenever the
+    account mark is set and the account it names isn't the one signed in
+    on this page. It needs no storage write and rewrites nothing: it
+    follows from the mark, so it holds across navigation and reloads. The
+    page learns of a sign-out from elsewhere (Firebase `onAuthStateChanged`,
+    the Supabase auth event or another tab's `storage` event) and hides the
+    data at once, before the page reloads; until the session is known at
+    start-up, the data stays hidden too. While hidden, Profile and the Wall
+    of Records show a short note instead of the data (no backup or Start
+    fresh is offered for the account's text), and Save PB / Edit / Delete,
+    Save Profile, the photo and stroke-card photo uploads refuse to write
+    over it; nothing is synced, imported or saved to any account. Signed
+    out, the message says the session ended and the account's data is
+    hidden (`signed-out`); it never says the data was backed up or
+    deleted. It ends when start-up puts this device's data back (storage
+    accepts writes again; the mark is then removed) or when **that same
+    account** signs in again, which then runs the usual flow (its
+    unreadable copy kept for it, this device's set-aside copy left as it
+    is). A second account signed in meanwhile still doesn't see it, and
+    can log out normally (the first account's data stays hidden). A mark
+    whose account code doesn't run on the page at all (for example the
+    Supabase test mark on a page opened without `?supabase`, or the
+    production mark on a host that isn't production) hides its data too,
+    whether or not storage works: nothing on that page can confirm the
+    account is signed in. That page doesn't start the account code, load
+    Supabase or send any request for it; a message (`not-here`) says an
+    account's data is hidden on this page, kept exactly as it was, that
+    saving the profile or PBs is paused, and to open the page that
+    account signs in on. If another tab removes or sets the mark, the
+    page follows it. With no mark at all, device-only data is shown and
+    saved exactly as before.
   - *Reloading the signed-in account* (and the refresh after a PB sync or
     a replay of earlier changes): if the account's unreadable copy can't
     be kept, the page isn't refreshed over it.
 
   Each time, a message at the top of the page says what was left in
   place, that nothing was deleted but no backup was made, and to free up
-  browser storage and reload (or, for Log Out, log out again). "Download a backup" in the recovery
-  messages on Personal Bests and Profile still works meanwhile. Start-up
+  browser storage and reload (or, for Log Out, log out again). Where the
+  page still shows the text (sign-in, reloading the account, Log Out),
+  "Download a backup" in the recovery messages on Personal Bests and
+  Profile still works meanwhile; an account's hidden text is not offered
+  for backup on a page where that account isn't signed in. Start-up
   retries the unfinished step after every reload, so it finishes on its
   own once storage accepts the writes.
 - **Repository** (`src/app/data/user-data.js`): pure conversion/merge logic

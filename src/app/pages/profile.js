@@ -93,6 +93,18 @@
             if (!box) return;
             box.replaceChildren();
 
+            /* data that belongs to an account that isn't signed in here is
+               hidden, with no backup or reset offered (saved-data-check.js
+               accountMask) */
+            if (saved.status === "hidden" || swimticsSavedData.readSaved("pbs").status === "hidden") {
+                const note = document.createElement("p");
+                note.className = "tool-message saved-data-hidden-note";
+                note.dataset.kind = "info";
+                note.textContent = "Profile details and personal bests are hidden: the ones saved in this browser belong to an account that isn't signed in. See the message at the top of the page.";
+                box.append(note);
+                return;
+            }
+
             if (swimticsSavedData.needsRecovery(saved)) {
                 swimticsSavedData.renderSavedDataRecovery(box, saved, {
                     /* the same account markers own the profile and the PBs */
@@ -168,6 +180,14 @@
            is written over it until the person chooses a recovery action */
         function profileSaveBlocked(what) {
             const saved = swimticsSavedData.readSaved("profile");
+            if (saved.status === "hidden") {
+                const status = document.getElementById("profileSaveStatus");
+                if (status) {
+                    status.textContent = `${what} wasn't saved: the profile saved in this browser belongs to an account that isn't signed in, so it's hidden and can't be changed here. See the message at the top of the page.`;
+                    status.dataset.kind = "error";
+                }
+                return true;
+            }
             if (!swimticsSavedData.needsRecovery(saved)) return false;
             const status = document.getElementById("profileSaveStatus");
             if (status) {
@@ -296,7 +316,11 @@
                 /* ===== GENDER-SPECIFIC STROKE DATA ===== */
                 let data = {};
 
-                if (
+                /* none while the photos belong to an account that isn't
+                   signed in here (saved-data-check.js accountMask) */
+                if (swimticsSavedData.accountMask.hides("strokeData")) {
+                    data = {};
+                } else if (
                     strokeData[athleteGender] &&
                     strokeData[athleteGender][stroke]
                 ) {
@@ -362,6 +386,10 @@
                 const reader = new FileReader();
 
                 reader.onload = function (event) {
+
+                    /* never written over photos that belong to an account
+                       that isn't signed in here (saved-data-check.js) */
+                    if (swimticsSavedData.accountMask.hides("strokeData")) return;
 
                     // Load current stroke data
                     let savedStrokeData =
@@ -497,6 +525,8 @@
 
         
         function getPB(eventName) {
+
+            if (swimticsSavedData.readSaved("pbs").status === "hidden") return "--";
 
             for (let pb of pbs) {
                 if (pb.event === eventName) {

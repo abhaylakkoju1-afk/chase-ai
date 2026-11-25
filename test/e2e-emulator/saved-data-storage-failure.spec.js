@@ -7,7 +7,10 @@
 // first (this device's data set aside, or this account's unreadable copy
 // kept, each read back exactly). Otherwise the sign-in, log-out, switch or
 // restore step stops, the original text stays byte for byte, nothing is
-// sent to the account, and the page says what to do next.
+// sent to the account, and the page says what to do next. If the session
+// then ends outside the page (another tab, an expired session), the
+// account's data is hidden on the signed-out page instead (accountMask in
+// saved-data-check.js), without any storage write.
 import { test, expect } from "@playwright/test";
 
 const PROJECT = "demo-swimtics";
@@ -149,6 +152,72 @@ async function accountWithPbs(page, email, device = {}) {
   return { uid, remote, profile: await readDb(`users/${uid}/profile`) };
 }
 
+const SIGNED_OUT_TITLE = "Your session ended: the account's data is hidden because browser storage is full or blocked";
+const NAV = ["Chase", "Wall of Records", "Chronos", "War Room", "Profile"];
+
+// Everything in localStorage except Firebase's own session keys (a sign-out removes them).
+const snapshot = (page) => page.evaluate(() => Object.fromEntries(Object.keys(localStorage)
+  .filter((k) => !k.startsWith("firebase:")).sort().map((k) => [k, localStorage.getItem(k)])));
+
+// None of `secrets` is on the page as shown: visible text, form values or images.
+async function noneShown(page, secrets) {
+  const shown = await page.evaluate(() => [document.body.innerText,
+    ...[...document.querySelectorAll("input, textarea, select")].map((e) => e.value),
+    ...[...document.images].map((i) => i.getAttribute("src") || "")].join("\n"));
+  for (const secret of secrets) expect(shown).not.toContain(secret);
+}
+
+// Signed out, the account's data hidden: the message says so, and no page
+// (reached through the navigation) shows any of it.
+async function expectHidden(page, secrets) {
+  await expectStorageMessage(page, "signed-out", SIGNED_OUT_TITLE);
+  const box = page.locator("#savedDataStorageAlert");
+  await expect(box).toContainText("signed out outside this page");
+  await expect(box).toContainText("hidden on this page");
+  await expect(box).not.toContainText(/Download a backup|may still show|was deleted\./);
+  await page.evaluate(() => window.showPage("profile"));
+  await expect(page.locator("#accountDetails")).toContainText("not signed in");
+  await expect(page.locator(".site-nav-signin")).toHaveText("Sign In");
+  await expect(page.locator("#profileDataRecovery .saved-data-hidden-note")).toBeVisible();
+  await expect(page.locator("#profileDataRecovery .saved-data-recovery")).toHaveCount(0);
+  await expect(page.locator("#displayName")).toHaveText("Athlete Name");
+  await expect(page.locator("#name")).toHaveValue("");
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList .saved-data-hidden-note")).toBeVisible();
+  await expect(page.locator("#pbList .pb-item, #pbList .saved-data-recovery")).toHaveCount(0);
+  for (const name of NAV) {
+    const tools = page.locator("#siteNavToolsButton");
+    if ((await tools.getAttribute("aria-expanded")) !== "true") await tools.click();
+    await expect(page.locator("#siteNavToolsMenu")).toBeVisible();
+    await page.locator("#siteNavToolsMenu").getByRole("button", { name, exact: true }).click();
+    await noneShown(page, secrets);
+  }
+  await page.locator("nav.site-nav .site-nav-brand").click();
+  await noneShown(page, secrets);
+}
+
+// While hidden, nothing can be saved over it: PBs, the profile, the photo.
+async function nothingSavable(page, uid) {
+  await page.evaluate(() => window.showPage("pb"));
+  await page.locator("#event").selectOption("Freestyle 50m");
+  await page.locator("#course").selectOption("Short Course");
+  await page.locator("#time").fill("29.00");
+  await page.locator('button[onclick="savePB()"]').click();
+  await expect(page.locator("#pbBlockedError")).toContainText("belong to an account that isn't signed in, so they're hidden. Nothing was saved.");
+  await page.evaluate((u) => { window.savePB(); window.deletePB(0); window.saveUserData(u); }, uid);
+  await page.evaluate(() => window.showPage("profile"));
+  await page.locator("#name").fill("Typed while hidden");
+  await page.locator('button[onclick="saveProfile()"]').click();
+  await expect(page.locator("#profileSaveStatus")).toContainText("Your profile wasn't saved: the profile saved in this browser belongs to an account that isn't signed in");
+  await page.evaluate(() => window.saveProfile());
+  await expect(page.locator("#profileSaveStatus")).toContainText("Your profile wasn't saved: the profile saved in this browser belongs to an account that isn't signed in");
+  await page.evaluate(() => window.uploadProfileImage());
+  await expect(page.locator("#profileSaveStatus")).toContainText("The photo wasn't saved");
+  await page.evaluate(() => window.offerDeviceImport && window.offerDeviceImport());
+  await expect(page.locator("#importDialog")).toHaveCount(0);
+  await page.locator("#name").fill("");
+}
+
 async function expectStorageMessage(page, step, title) {
   const box = page.locator("#savedDataStorageAlert");
   await expect(box).toBeVisible();
@@ -273,6 +342,7 @@ test("signing out when the account's unreadable PB copy can't be kept (quota exc
 });
 
 test("switching to another account while the previous account's unreadable copy can't be kept: the new account isn't loaded and nothing moves between accounts", async ({ page }) => {
+  test.setTimeout(120_000);
   const { uid } = await accountWithPbs(page, "first@example.com");
   await signOut(page);
   await signUp(page, "second@example.com");
@@ -288,7 +358,8 @@ test("switching to another account while the previous account's unreadable copy 
   await refuseWrites(page, "^swimtics:unreadableCopy:", "error");
   await Promise.all([page.waitForEvent("load"), page.evaluate(() => window.auth.signOut())]);
   await enter(page);
-  await expectStorageMessage(page, "leave", "Switching accounts didn't finish: browser storage is full or blocked");
+  await expectHidden(page, ["30.00", "35.00", "first@example.com"]);
+  expect(await stored(page, "pbs")).toBe(ACCOUNT_BAD_PBS);
 
   await signIn(page, "second@example.com");
   await heldAs(page, "second@example.com");
@@ -297,13 +368,32 @@ test("switching to another account while the previous account's unreadable copy 
   expect(await stored(page, "pbs")).toBe(ACCOUNT_BAD_PBS);
   expect(await activeOf(page)).toBe(uid);             // still the first account's
   expect(await copiesOf(page, second)).toEqual([]);                        // never kept for the wrong account
+  // the first account's data stays hidden from the second account
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList .saved-data-hidden-note")).toBeVisible();
+  await noneShown(page, ["30.00", "35.00"]);
+  await page.evaluate(() => window.showPage("profile"));
+  await page.locator("#name").fill("Typed by the second account");
+  await page.evaluate(() => window.saveProfile());
+  await expect(page.locator("#profileSaveStatus")).toContainText("Your profile wasn't saved: the profile saved in this browser belongs to an account that isn't signed in");
+  await settle(page);
   expect(await readDb(`users/${second}/pbs`)).toBeNull();
+  expect(await readDb(`users/${second}/profile`)).toBeNull();
+  expect(await stored(page, "pbs")).toBe(ACCOUNT_BAD_PBS);
+
+  // the second account can log out (the first account's data stays hidden)
+  await signOut(page);
+  await expectHidden(page, ["30.00", "35.00", "first@example.com", "second@example.com"]);
+  expect(await page.evaluate(() => window.auth.currentUser)).toBeNull();
+  expect(await activeOf(page)).toBe(uid);
+  expect(await stored(page, "pbs")).toBe(ACCOUNT_BAD_PBS);
 
   await allowWrites(page);
   await reload(page);
-  await signedInAs(page, "second@example.com");
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
   expect(await copiesOf(page, uid)).toEqual([["pbs", ACCOUNT_BAD_PBS]]);
   expect(await copiesOf(page, second)).toEqual([]);
+  expect(await activeOf(page)).toBeNull();
 });
 
 test("putting this device's unreadable profile back fails (storage error): Log Out stops, you stay signed in, and the set-aside text stays exact; Log Out works once storage does", async ({ page }) => {
@@ -334,4 +424,123 @@ test("putting this device's unreadable profile back fails (storage error): Log O
   await page.evaluate(() => window.showPage("profile"));
   await expect(page.locator('#profileDataRecovery .saved-data-recovery[data-saved-key="profile"]')).toBeVisible();
   expect(await pbsInAccount(uid)).toEqual(remote);
+});
+
+test("the session ends outside this page while browser storage refuses writes (quota exceeded): the account's data is hidden at once, across navigation and reloads; nothing can be saved or sent, the stored text stays exact, and signing in again restores the normal flow", async ({ page }) => {
+  test.setTimeout(120_000);
+  const email = "elsewhere-quota@example.com";
+  const DEVICE_PBS = JSON.stringify([{ event: "Butterfly 50m", course: "Long Course", time: "31.00", history: [31] }]);
+  const DEVICE_PROFILE = '{"name":"Device swimmer"}';
+  await page.goto(APP);
+  await page.evaluate(([p, b]) => { localStorage.clear(); localStorage.setItem("profile", p); localStorage.setItem("pbs", b); }, [DEVICE_PROFILE, DEVICE_PBS]);
+  await page.reload();
+  await enter(page);
+  await signUp(page, email);
+  await page.locator("#importLater").click();                   // the offer to import this device's data
+  await signedInAs(page, email);
+  await addPb(page, "Freestyle 50m", "Short Course", "30.00");
+  await addPb(page, "Backstroke 50m", "Long Course", "35.00");
+  await page.evaluate(() => window.showPage("profile"));
+  await page.locator("#name").fill("Account swimmer");
+  await page.locator('button[onclick="saveProfile()"]').click();
+  await expect(page.locator("#profileSaveStatus")).toHaveText("Saved to your account.");
+  const uid = await uidOf(page);
+  const remote = await pbsInAccount(uid);
+  const profile = await readDb(`users/${uid}/profile`);
+  const secrets = ["Account swimmer", "30.00", "35.00", email];
+
+  const before = await snapshot(page);
+  expect(JSON.parse(before["swimtics:activeUid"])).toBe(uid);
+  expect(before["swimtics:guest:pbs"]).toBe(DEVICE_PBS);
+  await refuseWrites(page, "^(profile|pbs|strokeData|swimtics:)", "quota");
+
+  // the session ends outside this page's Log Out (as when another tab logs
+  // out or the session expires): hidden at once, before the page reloads
+  const [, during] = await Promise.all([page.waitForEvent("load"), page.evaluate(async () => {
+    await window.auth.signOut();
+    await new Promise((r) => setTimeout(r, 150));
+    return {
+      pbs: document.getElementById("pbList").innerText,
+      name: document.getElementById("name").value,
+      shownName: document.getElementById("displayName").innerText,
+      cards: document.getElementById("strokeCards").innerText,
+    };
+  })]);
+  expect(during.pbs).not.toContain("30.00");
+  expect(during.name).toBe("");
+  expect(during.shownName).toBe("Athlete Name");
+  expect(during.cards).not.toContain("30.00");
+  await enter(page);
+
+  await expectHidden(page, secrets);
+  await nothingSavable(page, uid);
+  await settle(page);
+  expect(await snapshot(page)).toEqual(before);
+
+  // still hidden after reloading
+  await reload(page);
+  await expectHidden(page, secrets);
+  expect(await snapshot(page)).toEqual(before);
+  expect(await pbsInAccount(uid)).toEqual(remote);
+  expect(await readDb(`users/${uid}/profile`)).toEqual(profile);
+
+  // storage accepts writes again and the same account signs in: its data is
+  // shown, this device's own copy is still set aside exactly
+  await allowWrites(page);
+  await signIn(page, email);
+  await signedInAs(page, email);
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+  await expect(page.locator("#name")).toHaveValue("Account swimmer");
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Backstroke 50m (Long Course) - 35.00");
+  expect(await stored(page, "swimtics:guest:pbs")).toBe(DEVICE_PBS);
+  expect(await stored(page, "swimtics:guest:profile")).toBe(DEVICE_PROFILE);
+
+  // and Log Out puts this device's own data back exactly
+  await signOut(page);
+  expect(await stored(page, "pbs")).toBe(DEVICE_PBS);
+  expect(await stored(page, "profile")).toBe(DEVICE_PROFILE);
+  expect(await activeOf(page)).toBeNull();
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Butterfly 50m (Long Course) - 31.00");
+  await noneShown(page, ["Account swimmer", "35.00"]);
+  expect(await pbsInAccount(uid)).toEqual(remote);
+  expect(await readDb(`users/${uid}/profile`)).toEqual(profile);
+});
+
+test("the session ends while the page is closed and the account's unreadable PB copy can't be kept (storage error): the reopened page hides it, offers no backup of it, and signing in to the same account once storage works keeps both the account's copy and the device's", async ({ page }) => {
+  test.setTimeout(120_000);
+  const email = "expired-blocked@example.com";
+  const { uid, remote } = await accountWithPbs(page, email, { pbs: DEVICE_BAD_PBS });
+  expect(await stored(page, "swimtics:guest:pbs")).toBe(DEVICE_BAD_PBS);
+
+  await page.evaluate((v) => localStorage.setItem("pbs", v), ACCOUNT_BAD_PBS);
+  await refuseWrites(page, "^swimtics:unreadableCopy:", "error");
+  // the session is gone when the page is opened again (Firebase keeps it in localStorage)
+  await page.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith("firebase:authUser:")) localStorage.removeItem(k); });
+  const before = await snapshot(page);
+  await reload(page);
+
+  await expectHidden(page, ["35.00", "30.00"]);
+  await nothingSavable(page, uid);
+  await reload(page);
+  await expectHidden(page, ["35.00", "30.00"]);
+  expect(await snapshot(page)).toEqual(before);
+  expect(await copiesOf(page, uid)).toEqual([]);
+  expect(await pbsInAccount(uid)).toEqual(remote);
+
+  await allowWrites(page);
+  await signIn(page, email);
+  await signedInAs(page, email);
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+  expect(await copiesOf(page, uid)).toEqual([["pbs", ACCOUNT_BAD_PBS]]);
+  expect(await stored(page, "swimtics:guest:pbs")).toBe(DEVICE_BAD_PBS);
+  expect(await pbsInAccount(uid)).toEqual(remote);
+
+  await signOut(page);
+  expect(await stored(page, "pbs")).toBe(DEVICE_BAD_PBS);
+  expect(await activeOf(page)).toBeNull();
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator('#pbList .saved-data-recovery[data-saved-key="pbs"]')).toBeVisible();   // this device's own text, with its recovery message
+  expect(await copiesOf(page, uid)).toEqual([["pbs", ACCOUNT_BAD_PBS]]);
 });

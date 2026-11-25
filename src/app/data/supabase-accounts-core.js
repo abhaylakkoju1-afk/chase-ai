@@ -142,10 +142,14 @@ function deviceDataStore(keys) {
         return true;
     }
 
-    /* Before Log Out signs out: put this device's data back if an account's
-       is in the working copy. false if browser storage refused (nothing replaced). */
-    function restoreBeforeSignOut() {
-        return lsGet(keys.active) === null || restoreDeviceData(true);
+    /* Before Log Out signs out `uid`: put this device's data back if that
+       account's data is in the working copy. false if browser storage refused
+       (nothing replaced). Another account's working copy (it couldn't be put
+       away when `uid` signed in) stays hidden after signing out
+       (saved-data-check.js accountMask), so it doesn't stop Log Out. */
+    function restoreBeforeSignOut(uid) {
+        const active = lsGet(keys.active);
+        return active === null || active !== uid || restoreDeviceData(true);
     }
 
     /* Set this device's own profile and PBs aside (only once, when no
@@ -234,6 +238,11 @@ export async function startSupabaseAccounts(env) {
     const A = env.accountLabel;
     const keys = storageKeys(env);
     const store = deviceDataStore(keys);
+    /* While the working copy belongs to an account that isn't the one signed
+       in here, the page hides it (saved-data-check.js accountMask). The entry
+       point claimed keys.active before the page finished loading; this
+       controller says who is signed in. Until then it stays hidden. */
+    const mask = window.swimticsSavedData.accountMask;
 
     /* For the "can't start" states: show why, and keep showing it when the
        profile page redraws the account card (loadProfile() calls this hook). */
@@ -437,7 +446,7 @@ export async function startSupabaseAccounts(env) {
             await supabase.auth.signOut({ scope: "local" });
             return;
         }
-        if (!store.restoreBeforeSignOut()) {
+        if (!store.restoreBeforeSignOut(currentUser.id)) {
             render();
             return;
         }
@@ -727,6 +736,7 @@ export async function startSupabaseAccounts(env) {
     function stopShowingAccount() {
         leaving = true;
         currentUser = null;
+        mask.signedIn(keys.active, null);       // its data is hidden at once, even if it can't be put away
         cloudRow = undefined;
         if (accountPhoto) URL.revokeObjectURL(accountPhoto);
         accountPhoto = null;
@@ -790,10 +800,12 @@ export async function startSupabaseAccounts(env) {
         if (recoveryLink) recovering = true;
         const changed = (user && user.id) !== (currentUser && currentUser.id);
         if (currentUser && changed) {                       // signed out, expired, or a different account
+            mask.signedIn(keys.active, null);              // hidden at once, before it's put away
             setTimeout(leaveAndReload, 0);
             return;
         }
         currentUser = user;
+        mask.signedIn(keys.active, user ? user.id : null); // only this user's own data is shown
         if (user && changed) {
             cloudRow = undefined;
             accountPbsLoaded = false;
@@ -835,6 +847,9 @@ export async function startSupabaseAccounts(env) {
     else if (hadCode && session && !recovering) setStatus("profileSaveStatus", `Email confirmed — you're signed in to your ${A}.`, "ok");
     history.replaceState(null, "", location.pathname + cleanedSearch(location.search) + location.hash);
     if (recovering && session) window.openLoginModal();
+    /* signed out, with an account's data still in the working copy (start-up
+       couldn't put it away): it stays hidden; say why */
+    if (!session && lsGet(keys.active) !== null) window.swimticsSavedData.showStorageProblem("signed-out");
 
     render();
     state("ready");

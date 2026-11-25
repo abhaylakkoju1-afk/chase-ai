@@ -18,7 +18,15 @@ import { isSupabaseTestMode, testModeHost } from "./supabase-test-core.js";
 
 const PREVIEW_CONFIG_URL = "/api/supabase-test-config";
 
-if (isSupabaseTestMode(location.hostname, location.search)) start();
+/* storageKeys(test).active: claimed for the account mask (saved-data-check.js)
+   now, before the page finishes loading, so a test account's data stays
+   hidden until the session is known */
+const ACTIVE_KEY = "swimtics-test:activeUid";
+
+if (isSupabaseTestMode(location.hostname, location.search)) {
+    window.swimticsSavedData?.accountMask.claim(ACTIVE_KEY);
+    start();
+}
 
 /* The project URL and publishable key: { config } when found,
    { missing } when there is none, { bad } when it was refused. */
