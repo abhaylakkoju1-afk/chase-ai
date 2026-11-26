@@ -30,6 +30,17 @@ async function openPB(page) {
   await expect(page.locator("#pb")).toBeVisible();
 }
 
+// With an account marker set, the list stays hidden until the account code
+// confirms that account is signed in on this page; this does what it does
+// (saved-data-check.js accountMask.signedIn).
+async function confirmSignedIn(page, marker, uid) {
+  await expect(page.locator("#pbList .saved-data-hidden-note")).toBeVisible();
+  await expect(page.locator("#savedDataStorageAlert")).toHaveAttribute("data-step", "not-here");
+  await page.evaluate(([m, u]) => window.swimticsSavedData.accountMask.signedIn(m, u), [marker, uid]);
+  await expect(page.locator("#pbList .saved-data-hidden-note")).toHaveCount(0);
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+}
+
 // Seeds the PB list once (an init script that leaves later changes alone).
 async function seed(page, pbs) {
   await page.addInitScript((list) => {
@@ -305,6 +316,7 @@ test.describe("editing", () => {
     await page.addInitScript(() => localStorage.setItem("swimtics:sb:activeUid", "user-1"));
     await openPB(page);
     const before = await stored(page);
+    await confirmSignedIn(page, "swimtics:sb:activeUid", "user-1");
 
     await page.locator("#pbList button[onclick='editPB(0)']").click();
     await expect(page.locator("#pbEditStatus")).toHaveText("Editing a saved time isn't available while you're signed in yet. You can still add a new time or delete a PB.");
@@ -510,6 +522,7 @@ test.describe("adding to a PB whose saved time isn't valid", () => {
     await page.addInitScript(() => localStorage.setItem("swimtics:sb:activeUid", "user-1"));
     await openPB(page);
     const before = await stored(page);
+    await confirmSignedIn(page, "swimtics:sb:activeUid", "user-1");
 
     await expect(page.locator("#pbList .pb-invalid-note")).toHaveText(
       ["This saved time isn't valid. Editing isn't available while you're signed in yet; you can Delete this PB."]);

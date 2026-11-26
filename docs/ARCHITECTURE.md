@@ -122,9 +122,23 @@ analysis output. Wiring it into the pipeline is future work (see
   storage and reload. Start-up retries the unfinished step, so the
   message persists until storage accepts the writes. Log Out puts this
   device's data back before signing out, so if that is refused the user
-  stays signed in and is told to free up storage and log out again; only
-  a sign-out from elsewhere (another tab, an expired session) can leave
-  the previous account's data shown while signed out.
+  stays signed in and is told to free up storage and log out again. If a
+  sign-out from elsewhere (another tab, an expired session) or another
+  account signing in leaves an account's working copy in place, the page
+  hides it instead (`accountMask` in `saved-data-check.js`): `readSaved`
+  reports those keys as `"hidden"` whenever an account mark
+  (`…activeUid`) is set and the account it names isn't the one the
+  account code reports as signed in (`accountMask.signedIn`). The mask
+  writes nothing and follows the stored mark, so it holds across
+  navigation and reloads; the PB, Profile and stroke-card views show none
+  of it, the save paths refuse to write over it, and the `signed-out`
+  message says the session ended and the data is hidden. Each account
+  entry point claims its mark before the page finishes loading. A mark
+  no account code on the page claims (for example the Supabase test mark
+  without `?supabase`) still hides its data, since nothing there can
+  confirm that account: the page shows the `not-here` message, starts no
+  account code and makes no request, and follows the mark through
+  `storage` events from other tabs.
 - **Accounts (Stage 1, D10)**: Firebase Auth (email/password) +
   Realtime Database under `/users/{uid}` with deny-by-default rules
   (`database.rules.json`). When signed in, profile text fields and PBs

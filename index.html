@@ -1755,7 +1755,9 @@
            value itself is left untouched (saved-data-check.js), and the
            Wall of Records shows a recovery message for it */
         let pbs = swimticsSavedData.usablePbs();
-        let strokeData = JSON.parse(localStorage.getItem("strokeData")) || {};
+        /* none while they belong to an account that isn't signed in here
+           (saved-data-check.js accountMask) */
+        let strokeData = swimticsSavedData.usableStrokeData();
 
         /* =========================================================
    CHASE AI — SWIMMING ANALYSIS ENGINE

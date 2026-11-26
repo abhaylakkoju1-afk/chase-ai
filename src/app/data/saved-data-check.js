@@ -38,7 +38,10 @@
    exactly (writeSavedText, preserveUnreadableCopies). The sign-in, log-out,
    switch or restore step that needed it stops, the original is left
    untouched, and the page says what happened and what to do next
-   (showStorageProblem) without claiming anything was backed up.
+   (showStorageProblem) without claiming anything was backed up. If that
+   leaves an account's text in place while the account isn't signed in
+   (its session ended elsewhere, or another account signed in), the page
+   hides it instead (accountMask) and refuses to save over it.
 
    A classic script (not a module) so index.html's main script can use it
    while it starts up. The checks are pure functions, also run by
@@ -117,7 +120,9 @@
         return { key, status: "ok", raw, value, problem: null };
     }
 
-    function readSaved(key) {
+    /* what storage holds for `key`, whoever it belongs to (the account code
+       uses this to preserve text; the page reads through readSaved) */
+    function readStored(key) {
         let raw;
         try {
             raw = root.localStorage.getItem(key);
@@ -125,6 +130,14 @@
             return { key, status: "unavailable", raw: null, value: undefined, problem: null };
         }
         return classifySaved(key, raw);
+    }
+
+    /* What the page may show for `key`: status "hidden" (no value, no raw
+       text) while it belongs to an account that isn't signed in on this
+       page (accountMask below); otherwise as stored. */
+    function readSaved(key) {
+        if (accountDataHidden(key)) return { key, status: "hidden", raw: null, value: undefined, problem: null };
+        return readStored(key);
     }
 
     /* the saved value can't be used and is kept until the person acts */
@@ -141,6 +154,170 @@
     function usableProfile() {
         const r = readSaved("profile");
         return r.status === "ok" ? r.value : {};
+    }
+
+    /* the saved stroke-card photos ("strokeData") as index.html has always
+       read them, or none while they're hidden (storage is not touched) */
+    function usableStrokeData() {
+        if (accountDataHidden("strokeData")) return {};
+        return JSON.parse(root.localStorage.getItem("strokeData")) || {};
+    }
+
+    /* ---------- account data hidden while its account isn't signed in ----------
+       While an account is signed in, "pbs" and "profile" (and, for Firebase,
+       "strokeData") hold that account's working copy, and the account code
+       sets a marker to that account's id. Normally the account code puts this
+       device's own data back when the account leaves (Log Out, a sign-out in
+       another tab, an expired session, another account signing in). If
+       browser storage refuses that (full or blocked), the account's text has
+       to stay where it is: it is never deleted or rewritten just to hide it.
+
+       Instead it is hidden: while a marker is set and the account it names
+       isn't the one signed in on this page, readSaved() reports those values
+       as "hidden" and the page shows none of them. This needs no storage
+       write; it follows from the marker, so it still applies after a reload
+       or on another page, until the account code puts this device's data
+       back (which removes the marker) or that same account signs in again.
+       Saving over hidden values is refused by the page (pb.js, profile.js,
+       account.js), so they stay exactly as stored.
+
+       Each account system tells this page who is signed in (signedIn). Until
+       it does, every marker hides its values, so nothing is shown before the
+       session is known. A marker whose account code doesn't run on this page
+       (not claimed by the time the page has loaded, for example the Supabase
+       test marker on a page opened without ?supabase) keeps hiding them: no
+       one can be confirmed as signed in for it here. Nothing for that
+       account is started, loaded or requested; the page only says so
+       ("not-here") and follows the marker if another tab changes it. */
+    const ACCOUNT_MARKERS = Object.freeze({
+        "swimtics:activeUid": Object.freeze(["pbs", "profile", "strokeData"]),   // Firebase (account.js)
+        "swimtics:sb:activeUid": Object.freeze(["pbs", "profile"]),              // Supabase production
+        "swimtics-test:activeUid": Object.freeze(["pbs", "profile"]),            // Supabase test
+    });
+    const MASKED_KEYS = ["pbs", "profile", "strokeData"];
+    const maskState = {};
+    for (const marker of Object.keys(ACCOUNT_MARKERS)) maskState[marker] = { claimed: false, signedIn: null };
+
+    /* the account id a marker holds (account.js stores it as JSON text), or null */
+    function markerOwner(marker) {
+        let raw;
+        try {
+            raw = root.localStorage.getItem(marker);
+        } catch {
+            return null;
+        }
+        if (raw === null) return null;
+        try {
+            const v = JSON.parse(raw);
+            if (typeof v === "string") return v;
+        } catch { /* stored as plain text */ }
+        return raw;
+    }
+
+    function accountDataHidden(key) {
+        for (const marker of Object.keys(ACCOUNT_MARKERS)) {
+            if (!ACCOUNT_MARKERS[marker].includes(key)) continue;
+            const owner = markerOwner(marker);
+            if (owner !== null && owner !== maskState[marker].signedIn) return true;
+        }
+        return false;
+    }
+
+    const hiddenKeys = () => MASKED_KEYS.filter(accountDataHidden);
+
+    /* the keys hidden by markers whose account code doesn't run here */
+    function unclaimedHiddenKeys() {
+        return MASKED_KEYS.filter((key) => Object.keys(ACCOUNT_MARKERS).some((marker) =>
+            !maskState[marker].claimed && ACCOUNT_MARKERS[marker].includes(key) && markerOwner(marker) !== null));
+    }
+
+    /* the storage-problem steps whose message is about hidden account data */
+    const MASK_STEPS = ["leave", "leave-restore", "signed-out", "not-here"];
+
+    /* what the page last showed as hidden (for changes made in another tab) */
+    let lastHidden = hiddenKeys();
+
+    /* After what is hidden changed: keep index.html's in-memory copies
+       (`pbs`, `strokeData`) in step, and redraw Profile and the PB list. */
+    function afterMaskChange(before) {
+        const after = hiddenKeys();
+        lastHidden = after;
+        const hid = after.filter((k) => !before.includes(k));
+        const shown = before.filter((k) => !after.includes(k));
+        if (!hid.length && !shown.length) return;
+        try {
+            if (typeof pbs !== "undefined" && Array.isArray(pbs) && (hid.includes("pbs") || shown.includes("pbs"))) {
+                pbs.length = 0;
+                if (shown.includes("pbs")) pbs.push(...usablePbs());
+            }
+            if (typeof strokeData !== "undefined" && strokeData && typeof strokeData === "object"
+                && (hid.includes("strokeData") || shown.includes("strokeData"))) {
+                for (const k of Object.keys(strokeData)) delete strokeData[k];
+                if (shown.includes("strokeData")) Object.assign(strokeData, usableStrokeData());
+            }
+        } catch (err) {
+            if (root.console) root.console.error("SWIMTICS:", err);
+        }
+        if (typeof document !== "undefined") {
+            /* status lines may name the account that just left */
+            if (hid.length) {
+                for (const id of ["profileSaveStatus", "pbSyncStatus", "importMessage"]) {
+                    const node = document.getElementById(id);
+                    if (node) { node.textContent = ""; node.dataset.kind = ""; }
+                }
+            }
+            if (!after.length) {
+                const box = document.getElementById("savedDataStorageAlert");
+                if (box && MASK_STEPS.includes(box.dataset.step)) box.remove();
+            }
+        }
+        for (const name of ["loadProfile", "displayPBs"]) {
+            try { if (typeof root[name] === "function") root[name](); } catch (err) { if (root.console) root.console.error(err); }
+        }
+    }
+
+    const accountMask = Object.freeze({
+        markers: ACCOUNT_MARKERS,
+        /* the account code for `marker` runs on this page (called before the
+           page has finished loading) */
+        claim(marker) {
+            if (maskState[marker]) maskState[marker].claimed = true;
+        },
+        /* who is signed in for `marker`'s account system (an id, or null when
+           no one is): that account's own data is shown, any other is hidden */
+        signedIn(marker, uid) {
+            const state = maskState[marker];
+            if (!state) return;
+            const before = hiddenKeys();
+            state.signedIn = uid || null;
+            afterMaskChange(before);
+        },
+        hides: accountDataHidden,
+        hiddenKeys,
+    });
+
+    /* Markers whose account code doesn't run on this page keep hiding their
+       account's data: say so, unless another message is already shown. */
+    function noteUnclaimed() {
+        if (typeof document === "undefined") return;
+        const keys = unclaimedHiddenKeys();
+        if (!keys.length) return;
+        const box = document.getElementById("savedDataStorageAlert");
+        if (!box || box.dataset.step === "not-here") showStorageProblem("not-here", keys);
+    }
+    if (typeof document !== "undefined" && document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", noteUnclaimed);
+    }
+    /* another tab set or removed a marker that no account code here follows
+       (the account code that runs here handles its own marker) */
+    if (typeof root.addEventListener === "function") {
+        root.addEventListener("storage", (e) => {
+            const unclaimedMarker = e.key !== null && Object.prototype.hasOwnProperty.call(maskState, e.key)
+                && !maskState[e.key].claimed;
+            if (e.key !== null && !unclaimedMarker) return;
+            afterMaskChange(lastHidden);
+            noteUnclaimed();
+        });
     }
 
     /* ---------- per-account copies of unreadable text ----------
@@ -194,7 +371,7 @@
         const failed = [];
         for (const key of COPY_KEYS) {
             if (!keys.includes(key)) continue;
-            const r = readSaved(key);
+            const r = readStored(key);          // the stored text, even while it's hidden
             if (!needsRecovery(r)) continue;
             if (listUnreadableCopies(prefix).some((c) => c.key === key && c.raw === r.raw)) continue;
             const storageKey = `${prefix}${key}:${Date.now()}`;
@@ -498,9 +675,20 @@
          "leave"         an unreadable copy of the account last signed in
                          here couldn't be kept, so it wasn't replaced
                          (switching account, a sign-out from elsewhere, or
-                         start-up after either)
+                         start-up after either); its data is hidden
+                         (accountMask) while it isn't signed in
          "leave-restore" this device's own data couldn't be put back, so the
                          account last signed in here was left in place
+                         (hidden, the same way)
+         "not-here"      an account's data is stored here, but that
+                         account's code doesn't run on this page (for
+                         example the Supabase test account without
+                         ?supabase), so it can't be confirmed as signed in
+                         and its data is hidden
+         "signed-out"    the session of the account last signed in here
+                         ended outside this page (another tab, an expired
+                         session) and its data couldn't be put away, so it
+                         is hidden on this signed-out page
          "reload"        an unreadable copy of the signed-in account's own
                          data couldn't be kept, so it wasn't refreshed
          "sign-out"      Log Out: an unreadable copy of the account couldn't
@@ -514,6 +702,8 @@
         "sign-in": "Your account wasn't loaded: browser storage is full or blocked",
         "leave": "Switching accounts didn't finish: browser storage is full or blocked",
         "leave-restore": "Switching accounts didn't finish: browser storage is full or blocked",
+        "signed-out": "Your session ended: the account's data is hidden because browser storage is full or blocked",
+        "not-here": "An account's data is hidden on this page",
         "reload": "Your account's data wasn't refreshed: browser storage is full or blocked",
         "sign-out": "You're still signed in: logging out didn't finish because browser storage is full or blocked",
         "sign-out-restore": "You're still signed in: logging out didn't finish because browser storage is full or blocked",
@@ -529,8 +719,10 @@
         const what = whatText(keys);
         const lead = {
             "sign-in": "You're signed in, but this browser wouldn't store a safe copy of this device's own saved profile and personal bests, so your account's data wasn't loaded over them. This device's data is still shown, unchanged, and nothing from it was sent to your account.",
-            "leave": `The account last signed in here has saved ${what} that can't be read, and this browser wouldn't store a copy of it, so it was left in place instead of being replaced. This page may still show that account's data, even after logging out. This device's own data is kept and hasn't been put back yet.`,
-            "leave-restore": "This browser wouldn't store this device's own saved profile and personal bests again, so the account last signed in here was left in place instead of being replaced. This page may still show that account's data, even after logging out. This device's own data is kept and hasn't been put back yet.",
+            "leave": `The account last signed in here has saved ${what} that can't be read, and this browser wouldn't store a copy of it, so it was left in place instead of being replaced. While that account isn't signed in, its data is hidden on this page and kept in this browser exactly as it was. This device's own data is kept too, but hasn't been put back yet.`,
+            "leave-restore": "This browser wouldn't store this device's own saved profile and personal bests again, so the account last signed in here was left in place instead of being replaced. While that account isn't signed in, its data is hidden on this page and kept in this browser exactly as it was. This device's own data is kept too, but hasn't been put back yet.",
+            "signed-out": "The account last signed in here was signed out outside this page (for example, by logging out in another tab, or because the session expired). This browser wouldn't store the changes needed to put this device's own data back in its place, so the account's profile, personal bests and other details are hidden on this page instead. They're kept in this browser exactly as they were, and so is this device's own data.",
+            "not-here": `This browser holds ${what} saved for an account that this page doesn't sign in (for example, one used on the account test page), so this page can't confirm that account is signed in. That data is hidden here and kept in this browser exactly as it was.`,
             "reload": `Your account's ${what} saved in this browser can't be read, and this browser wouldn't store a copy of it, so it wasn't replaced with your account's data. Your account itself wasn't changed.`,
             "sign-out": `Your account's ${what} saved in this browser can't be read, and this browser wouldn't store a copy of it, so you weren't logged out and nothing was replaced. You're still signed in, and your account's data is still shown only because you are.`,
             "sign-out-restore": "This browser wouldn't store this device's own saved profile and personal bests again, so you weren't logged out and nothing was replaced. You're still signed in, and your account's data is still shown only because you are.",
@@ -540,6 +732,20 @@
                 title: STORAGE_PROBLEM_TITLE[step],
                 lead,
                 next: "Nothing was deleted, but no backup was made either. To log out, free up browser storage (for example, remove data other websites have saved in this browser), then choose Log Out again. On a shared device, don't leave it signed in. Until then, you can save your own copy of anything that can't be read with \"Download a backup\" in its message on Personal Bests or Profile.",
+            };
+        }
+        if (step === "not-here") {
+            return {
+                title: STORAGE_PROBLEM_TITLE[step],
+                lead,
+                next: "Nothing was deleted or sent anywhere, but no backup was made either. While it's hidden, saving changes to the profile or personal bests here is paused, so it can't be overwritten. To see it or put it away, open the page that account signs in on, then sign in to it or log out there.",
+            };
+        }
+        if (MASK_STEPS.includes(step)) {
+            return {
+                title: STORAGE_PROBLEM_TITLE[step],
+                lead,
+                next: "Nothing was deleted, but no backup was made either. While the account's data is hidden, saving changes to the profile or personal bests here is paused, and nothing is sent to any account, so it can't be overwritten. To finish, free up browser storage (for example, remove data other websites have saved in this browser), then reload this page. Signing in to that account again shows its data.",
             };
         }
         return {
@@ -584,6 +790,8 @@
         needsRecovery,
         usablePbs,
         usableProfile,
+        usableStrokeData,
+        accountMask,
         renderSavedDataRecovery,
         listUnreadableCopies,
         keepUnreadableCopies,
@@ -595,4 +803,7 @@
         storageProblemText,
         showStorageProblem,
     });
+
+    /* loaded after the page itself: the account code has already run */
+    if (typeof document !== "undefined" && document.readyState !== "loading") noteUnclaimed();
 })(typeof window !== "undefined" ? window : globalThis);

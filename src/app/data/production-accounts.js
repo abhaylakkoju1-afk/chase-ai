@@ -48,6 +48,12 @@ async function restoreOnly() {
     core.restoreDeviceDataFor(ENVIRONMENTS.production);
 }
 
+/* Where this file puts an account's data away or signs accounts in, it
+   claims the marker for the account mask (saved-data-check.js) now, before
+   the page finishes loading: the account's data stays hidden until it is put
+   away or that account is signed in. */
+const claim = () => window.swimticsSavedData?.accountMask.claim(ACTIVE_KEY);
+
 if (!onProductionHost) { /* not a production host: nothing */ }
-else if (PRODUCTION_SUPABASE_ACCOUNTS === true) start().catch(() => { /* stays off */ });
-else if (lsHas(ACTIVE_KEY)) restoreOnly().catch(() => { /* ignore */ });
+else if (PRODUCTION_SUPABASE_ACCOUNTS === true) { claim(); start().catch(() => { /* stays off */ }); }
+else if (lsHas(ACTIVE_KEY)) { claim(); restoreOnly().catch(() => { /* ignore */ }); }

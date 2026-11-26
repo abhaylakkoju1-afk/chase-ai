@@ -292,10 +292,17 @@ for (const r of RECOVERY) {
     test("while the data belongs to a signed-in account, Start fresh isn't offered", async ({ page }) => {
       const w = watch(page);
       // the Supabase test-account marker: owned by an account, and (without
-      // ?supabase) no account code runs to replace the working copy
+      // ?supabase) no account code runs to replace the working copy, so
+      // nothing of it is shown until that account is confirmed as signed in
       await seed(page, { [r.key]: r.raw, "swimtics-test:activeUid": '"user-1"' });
       await open(page, r.page);
       const panel = r.panel(page);
+      await expect(page.locator(".saved-data-hidden-note:visible")).toHaveCount(1);
+      await expect(page.locator("#savedDataStorageAlert")).toHaveAttribute("data-step", "not-here");
+      await expect(page.getByRole("button", { name: /Download a backup|Copy backup|Start fresh/ })).toHaveCount(0);
+      expect(await stored(page, r.key)).toBe(r.raw);
+      // what the account code does once it confirms that account is signed in
+      await page.evaluate(() => window.swimticsSavedData.accountMask.signedIn("swimtics-test:activeUid", "user-1"));
       await expect(panel).toContainText("You're signed in, so this copy belongs to your account. Starting fresh isn't available while you're signed in yet");
       await expect(panel.getByRole("button", { name: "Download a backup" })).toBeVisible();
       await expect(panel.getByRole("button", { name: "Copy backup" })).toBeVisible();

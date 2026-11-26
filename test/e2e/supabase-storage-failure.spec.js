@@ -4,7 +4,10 @@
 // holds was preserved first (set aside, or kept as this account's
 // unreadable copy, each read back exactly). Instead the sign-in, log-out,
 // switch or restore step stops, the original text stays byte for byte,
-// nothing reaches the account, and the page says what to do next.
+// nothing reaches the account, and the page says what to do next. If the
+// session then ends outside the page (another tab, an expired session), the
+// account's data is hidden on the signed-out page instead (accountMask in
+// saved-data-check.js), without any storage write.
 // Driven through the real page and supabase-js against the in-memory
 // stand-in (support/fake-supabase.js); no real project or credentials.
 
@@ -145,6 +148,79 @@ const accountWrites = (fake, from) => fake.requests.slice(from)
   .filter((r) => r.method !== "GET" && /profiles|personal_bests|pb_entries|add_pb_entries|device_imports/.test(r.path))
   .map((r) => `${r.method} ${r.path}`);
 const settle = (page) => page.evaluate(() => new Promise((r) => setTimeout(r, 750)));
+
+const SIGNED_OUT_TITLE = "Your session ended: the account's data is hidden because browser storage is full or blocked";
+const NAV = ["Chase", "Wall of Records", "Chronos", "War Room", "Profile"];
+
+// Everything in localStorage except the auth session (which a sign-out elsewhere removes).
+const snapshot = (page) => page.evaluate(() => Object.fromEntries(Object.keys(localStorage)
+  .filter((k) => !k.startsWith("swimtics-test-auth")).sort().map((k) => [k, localStorage.getItem(k)])));
+
+// None of `secrets` is on the page as shown: visible text, form values or images.
+async function noneShown(page, secrets) {
+  const shown = await page.evaluate(() => [document.body.innerText,
+    ...[...document.querySelectorAll("input, textarea, select")].map((e) => e.value),
+    ...[...document.images].map((i) => i.getAttribute("src") || "")].join("\n"));
+  for (const secret of secrets) expect(shown).not.toContain(secret);
+}
+
+// Signed out, the account's data hidden: the message says so, and no page
+// (reached through the navigation) shows any of it.
+async function expectHidden(page, secrets) {
+  await expectStorageMessage(page, "signed-out", SIGNED_OUT_TITLE);
+  const box = page.locator("#savedDataStorageAlert");
+  await expect(box).toContainText("signed out outside this page");
+  await expect(box).toContainText("hidden on this page");
+  await expect(box).not.toContainText(/Download a backup|may still show|was deleted\./);
+  await page.evaluate(() => window.showPage("profile"));
+  await expect(page.locator("#accountDetails")).toContainText("not signed in");
+  await expect(page.locator(".site-nav-signin")).toHaveText("Sign In");
+  await hiddenOnEveryPage(page, secrets);
+}
+
+// No page (reached through the navigation) shows any of the hidden data.
+async function hiddenOnEveryPage(page, secrets) {
+  await page.evaluate(() => window.showPage("profile"));
+  await expect(page.locator("#profileDataRecovery .saved-data-hidden-note")).toBeVisible();
+  await expect(page.locator("#profileDataRecovery .saved-data-recovery")).toHaveCount(0);
+  await expect(page.locator("#displayName")).toHaveText("Athlete Name");
+  await expect(page.locator("#name")).toHaveValue("");
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList .saved-data-hidden-note")).toBeVisible();
+  await expect(page.locator("#pbList .pb-item, #pbList .saved-data-recovery")).toHaveCount(0);
+  for (const name of NAV) {
+    const tools = page.locator("#siteNavToolsButton");
+    if ((await tools.getAttribute("aria-expanded")) !== "true") await tools.click();
+    await expect(page.locator("#siteNavToolsMenu")).toBeVisible();
+    await page.locator("#siteNavToolsMenu").getByRole("button", { name, exact: true }).click();
+    await noneShown(page, secrets);
+  }
+  await page.locator("nav.site-nav .site-nav-brand").click();
+  await noneShown(page, secrets);
+}
+
+// While hidden, nothing can be saved over it: PBs, the profile, the photo
+// (signed in as another account, its photo goes to that account instead).
+async function nothingSavable(page, { signedIn = false } = {}) {
+  await page.evaluate(() => window.showPage("pb"));
+  await page.locator("#event").selectOption("Freestyle 50m");
+  await page.locator("#course").selectOption("Short Course");
+  await page.locator("#time").fill("29.00");
+  await page.locator("button[onclick='savePB()']").click();
+  await expect(page.locator("#pbBlockedError")).toContainText("belong to an account that isn't signed in, so they're hidden. Nothing was saved.");
+  await page.evaluate(() => { window.savePB(); window.deletePB(0); });
+  await page.evaluate(() => window.showPage("profile"));
+  await page.locator("#name").fill("Typed while hidden");
+  await page.locator("button[onclick='saveProfile()']").click();
+  await expect(page.locator("#profileSaveStatus")).toContainText("Your profile wasn't saved: the profile saved in this browser belongs to an account that isn't signed in");
+  await page.evaluate(() => window.saveProfile());
+  if (!signedIn) {
+    await page.evaluate(() => window.uploadProfileImage());
+    await expect(page.locator("#profileSaveStatus")).toContainText("The photo wasn't saved");
+  }
+  await page.evaluate(() => window.testImportDeviceData && window.testImportDeviceData());
+  await page.locator("#name").fill("");
+}
 
 async function expectStorageMessage(page, step, title) {
   const box = page.locator("#savedDataStorageAlert");
@@ -302,7 +378,8 @@ test("switching to another account while the previous account's unreadable copy 
   await refuseWrites(page, `^${P}unreadableCopy:`, "error");
   await page.evaluate(() => localStorage.removeItem("swimtics-test-auth"));
   await reload(page);
-  await expectStorageMessage(page, "leave", "Switching accounts didn't finish: browser storage is full or blocked");
+  await expectHidden(page, ["30.00", "35.00", "first@example.com"]);
+  expect(await stored(page, "pbs")).toBe(ACCOUNT_BAD_PBS);
 
   const from = fake.requests.length;
   await logInWithoutLoading(page, "second@example.com");
@@ -312,14 +389,29 @@ test("switching to another account while the previous account's unreadable copy 
   expect(await stored(page, "pbs")).toBe(ACCOUNT_BAD_PBS);
   expect(await stored(page, `${P}activeUid`)).toBe(uid);                 // still the first account's
   expect(await copiesOf(page, second)).toEqual([]);                       // never kept for the wrong account
+  // the first account's data stays hidden from the second account
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList .saved-data-hidden-note")).toBeVisible();
+  await noneShown(page, ["30.00", "35.00"]);
+  await nothingSavable(page, { signedIn: true });
+  await settle(page);
   expect(accountWrites(fake, from)).toEqual([]);
   expect(fake.pbsOf(second)).toEqual([]);
+  expect(await stored(page, "pbs")).toBe(ACCOUNT_BAD_PBS);
+
+  // the second account can log out (the first account's data stays hidden)
+  await logOut(page);
+  await expectHidden(page, ["30.00", "35.00", "first@example.com", "second@example.com"]);
+  expect(await stored(page, "swimtics-test-auth")).toBeNull();
+  expect(await stored(page, `${P}activeUid`)).toBe(uid);
+  expect(await stored(page, "pbs")).toBe(ACCOUNT_BAD_PBS);
 
   await allowWrites(page);
   await reload(page);
-  await signedInAs(page, "second@example.com");
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
   expect(await copiesOf(page, uid)).toEqual([["pbs", ACCOUNT_BAD_PBS]]);
   expect(await copiesOf(page, second)).toEqual([]);
+  expect(await stored(page, `${P}activeUid`)).toBeNull();
 });
 
 test("putting this device's unreadable profile back fails (storage error): Log Out stops, you stay signed in, and the set-aside text stays exact; Log Out works once storage does", async ({ page, context }) => {
@@ -354,4 +446,266 @@ test("putting this device's unreadable profile back fails (storage error): Log O
   await page.evaluate(() => window.showPage("profile"));
   await expect(page.locator('#profileDataRecovery .saved-data-recovery[data-saved-key="profile"]')).toBeVisible();
   expect(accountWrites(fake, from)).toEqual([]);
+});
+
+test("another tab logs out while browser storage refuses writes (quota exceeded): the account's data is hidden at once, across navigation and reloads; nothing can be saved or sent, the stored text stays exact, and signing in again restores the normal flow", async ({ page, context }) => {
+  test.setTimeout(180_000);
+  const email = "elsewhere-quota@example.com";
+  const DEVICE_PBS = JSON.stringify([{ event: "Butterfly 50m", course: "Long Course", time: "31.00", history: [31] }]);
+  const DEVICE_PROFILE = '{"name":"Device swimmer"}';
+  const { fake, uid, remote } = await accountWithPbs(page, context, email, { profile: DEVICE_PROFILE, pbs: DEVICE_PBS });
+  await page.evaluate(() => window.showPage("profile"));
+  await page.locator("#name").fill("Account swimmer");
+  await page.locator("button[onclick='saveProfile()']").click();
+  await expect(page.locator("#profileSaveStatus")).toHaveText("Saved to your test account.");
+  const profileRow = structuredClone(fake.profiles.get(uid));
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Backstroke 50m (Long Course) - 35.00");
+  const secrets = ["Account swimmer", "30.00", "35.00", email];
+
+  const before = await snapshot(page);
+  expect(before[`${P}activeUid`]).toBe(uid);
+  expect(before[`${P}guestPbs`]).toBe(DEVICE_PBS);
+  await refuseWrites(page, `^(profile|pbs|strokeData|${P})`, "quota");
+  const from = fake.requests.length;
+
+  // another tab of this browser logs out
+  const other = await context.newPage();
+  await other.goto("/favicon.png");
+  await Promise.all([page.waitForEvent("load"), other.evaluate(() => localStorage.removeItem("swimtics-test-auth"))]);
+  await other.close();
+  await ready(page);
+  await enter(page);
+
+  await expectHidden(page, secrets);
+  await nothingSavable(page);
+  await settle(page);
+  expect(await snapshot(page)).toEqual(before);
+  expect(accountWrites(fake, from)).toEqual([]);
+
+  // still hidden after reloading
+  await reload(page);
+  await expectHidden(page, secrets);
+  expect(await snapshot(page)).toEqual(before);
+  expect(accountWrites(fake, from)).toEqual([]);
+  expect(fake.pbsOf(uid)).toEqual(remote);
+  expect(fake.profiles.get(uid)).toEqual(profileRow);
+
+  // storage accepts writes again and the same account signs in: its data is
+  // shown, this device's own copy is still set aside exactly
+  await allowWrites(page);
+  await logInWithoutLoading(page, email);
+  await signedInAs(page, email);
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+  await expect(page.locator("#name")).toHaveValue("Account swimmer");
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Backstroke 50m (Long Course) - 35.00");
+  expect(await stored(page, `${P}guestPbs`)).toBe(DEVICE_PBS);
+  expect(await stored(page, `${P}guestProfile`)).toBe(DEVICE_PROFILE);
+
+  // and Log Out puts this device's own data back exactly
+  await logOut(page);
+  expect(await stored(page, "pbs")).toBe(DEVICE_PBS);
+  expect(await stored(page, "profile")).toBe(DEVICE_PROFILE);
+  expect(await stored(page, `${P}activeUid`)).toBeNull();
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Butterfly 50m (Long Course) - 31.00");
+  await noneShown(page, ["Account swimmer", "35.00"]);
+  expect(fake.pbsOf(uid)).toEqual(remote);
+});
+
+test("the session ends while the page is closed and the account's unreadable PB copy can't be kept (storage error): the reopened page hides it, offers no backup of it, and signing in to the same account once storage works keeps both the account's copy and the device's", async ({ page, context }) => {
+  test.setTimeout(150_000);
+  const email = "expired-blocked@example.com";
+  const { fake, uid, remote } = await accountWithPbs(page, context, email, { pbs: DEVICE_BAD_PBS });
+  expect(await stored(page, `${P}guestPbs`)).toBe(DEVICE_BAD_PBS);
+
+  await page.evaluate((v) => localStorage.setItem("pbs", v), ACCOUNT_BAD_PBS);
+  await refuseWrites(page, `^${P}unreadableCopy:`, "error");
+  // the session is gone (expired, or logged out elsewhere) when the page is opened again
+  await page.evaluate(() => localStorage.removeItem("swimtics-test-auth"));
+  const before = await snapshot(page);
+  const from = fake.requests.length;
+  await reload(page);
+
+  await expectHidden(page, ["35.00", "30.00"]);
+  await nothingSavable(page);
+  await reload(page);
+  await expectHidden(page, ["35.00", "30.00"]);
+  expect(await snapshot(page)).toEqual(before);
+  expect(await copiesOf(page, uid)).toEqual([]);
+  expect(accountWrites(fake, from)).toEqual([]);
+
+  await allowWrites(page);
+  await logInWithoutLoading(page, email);
+  await signedInAs(page, email);
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+  expect(await copiesOf(page, uid)).toEqual([["pbs", ACCOUNT_BAD_PBS]]);
+  expect(await stored(page, `${P}guestPbs`)).toBe(DEVICE_BAD_PBS);
+  expect(fake.pbsOf(uid)).toEqual(remote);
+
+  await logOut(page);
+  expect(await stored(page, "pbs")).toBe(DEVICE_BAD_PBS);
+  expect(await stored(page, `${P}activeUid`)).toBeNull();
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator('#pbList .saved-data-recovery[data-saved-key="pbs"]')).toBeVisible();   // this device's own text, with its recovery message
+  expect(await copiesOf(page, uid)).toEqual([["pbs", ACCOUNT_BAD_PBS]]);
+});
+
+
+/* ---------- a page where no account code runs (no ?supabase) ---------- */
+
+// Supabase requests, or the Supabase account code starting, on this page.
+const SUPABASE_TRAFFIC = /supabase\.co|supabase-js|\/api\/supabase-test-config|supabase-accounts-core\.js|supabase-env\.js|supabase-config\.local\.js/;
+function watchTraffic(page) {
+  const urls = [];
+  page.on("request", (r) => urls.push(r.url()));
+  return { supabase: () => urls.filter((u) => SUPABASE_TRAFFIC.test(u)) };
+}
+async function openPlain(page, path = "/") {
+  await page.goto(path);
+  await enter(page);
+  expect(await page.locator("html").getAttribute("data-supabase-test")).toBeNull();
+}
+const NOT_HERE_TITLE = "An account's data is hidden on this page";
+async function expectNotHereMessage(page) {
+  const box = page.locator("#savedDataStorageAlert");
+  await expect(box).toBeVisible();
+  await expect(box).toHaveAttribute("data-step", "not-here");
+  await expect(box).toHaveAttribute("role", "alert");
+  await expect(box.locator("h4")).toHaveText(NOT_HERE_TITLE);
+  await expect(box).toContainText("can't confirm that account is signed in");
+  await expect(box).toContainText("kept in this browser exactly as it was");
+  await expect(box).toContainText("Nothing was deleted or sent anywhere, but no backup was made either.");
+  await expect(box).not.toContainText(/was backed up|backup was saved|Download a backup|may still show/);
+}
+
+test("the signed-out page opened without ?supabase while the test account's marker and data are still stored: its data stays hidden across navigation and reloads, the Supabase account code isn't started and nothing is requested, the stored text stays exact, and signing in through ?supabase restores the normal flow", async ({ page, context }) => {
+  test.setTimeout(180_000);
+  const email = "not-here@example.com";
+  const DEVICE_PBS = JSON.stringify([{ event: "Butterfly 50m", course: "Long Course", time: "31.00", history: [31] }]);
+  const DEVICE_PROFILE = '{"name":"Device swimmer"}';
+  const { fake, uid, remote } = await accountWithPbs(page, context, email, { profile: DEVICE_PROFILE, pbs: DEVICE_PBS });
+  await page.evaluate(() => window.showPage("profile"));
+  await page.locator("#name").fill("Account swimmer");
+  await page.locator("button[onclick='saveProfile()']").click();
+  await expect(page.locator("#profileSaveStatus")).toHaveText("Saved to your test account.");
+  const profileRow = structuredClone(fake.profiles.get(uid));
+  const secrets = ["Account swimmer", "30.00", "35.00", email];
+
+  // the session ends while no page with the account code is open (storage
+  // itself works: the mask doesn't depend on a refused write)
+  await page.goto("/favicon.png");
+  await page.evaluate(() => localStorage.removeItem("swimtics-test-auth"));
+  const before = await snapshot(page);
+  expect(before[`${P}activeUid`]).toBe(uid);
+  expect(before[`${P}guestPbs`]).toBe(DEVICE_PBS);
+  expect(before[`${P}guestProfile`]).toBe(DEVICE_PROFILE);
+  expect(before.profile).toContain("Account swimmer");
+  const from = fake.requests.length;
+  const traffic = watchTraffic(page);
+
+  await openPlain(page);
+  await expectNotHereMessage(page);
+  await hiddenOnEveryPage(page, secrets);
+  await nothingSavable(page);
+  await settle(page);
+  expect(await snapshot(page)).toEqual(before);
+
+  // still hidden after reloading, and after opening the page afresh
+  await page.reload();
+  await enter(page);
+  await expectNotHereMessage(page);
+  await hiddenOnEveryPage(page, secrets);
+  await openPlain(page);
+  await expectNotHereMessage(page);
+  await hiddenOnEveryPage(page, secrets);
+  await settle(page);
+  expect(await snapshot(page)).toEqual(before);
+  expect(traffic.supabase()).toEqual([]);
+  expect(fake.requests.length).toBe(from);
+  expect(fake.pbsOf(uid)).toEqual(remote);
+  expect(fake.profiles.get(uid)).toEqual(profileRow);
+
+  // the same account signs in through its normal flow: its data is shown and
+  // this device's own copy is still set aside exactly
+  await page.goto("/?supabase");
+  await ready(page);
+  await enter(page);
+  await logInWithoutLoading(page, email);
+  await signedInAs(page, email);
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+  await expect(page.locator("#name")).toHaveValue("Account swimmer");
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Backstroke 50m (Long Course) - 35.00");
+  expect(await stored(page, `${P}guestPbs`)).toBe(DEVICE_PBS);
+  expect(await stored(page, `${P}guestProfile`)).toBe(DEVICE_PROFILE);
+
+  // Log Out puts this device's own data back exactly, and the plain page then shows it
+  await logOut(page);
+  expect(await stored(page, "pbs")).toBe(DEVICE_PBS);
+  expect(await stored(page, "profile")).toBe(DEVICE_PROFILE);
+  expect(await stored(page, `${P}activeUid`)).toBeNull();
+  await openPlain(page);
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Butterfly 50m (Long Course) - 31.00");
+  await noneShown(page, ["Account swimmer", "35.00"]);
+  expect(fake.pbsOf(uid)).toEqual(remote);
+});
+
+test("the production account marker on a page that isn't a production host: its data stays hidden and exactly as stored, with nothing requested", async ({ page }) => {
+  const ACCOUNT_PBS = JSON.stringify([{ event: "Freestyle 100m", course: "Long Course", time: "58.40", history: [58.4] }]);
+  const ACCOUNT_PROFILE = '{"name":"Production swimmer","club":"Sharks"}';
+  const secrets = ["58.40", "Production swimmer", "Sharks"];
+  await page.goto("/favicon.png");
+  await page.evaluate(([pbs, profile]) => {
+    localStorage.setItem("pbs", pbs);
+    localStorage.setItem("profile", profile);
+    localStorage.setItem("swimtics:sb:activeUid", "prod-user-1");
+  }, [ACCOUNT_PBS, ACCOUNT_PROFILE]);
+  const before = await snapshot(page);
+  const traffic = watchTraffic(page);
+
+  await openPlain(page);
+  await expectNotHereMessage(page);
+  await hiddenOnEveryPage(page, secrets);
+  await nothingSavable(page);
+  await page.reload();
+  await enter(page);
+  await expectNotHereMessage(page);
+  await hiddenOnEveryPage(page, secrets);
+  await settle(page);
+  expect(await snapshot(page)).toEqual(before);
+  expect(traffic.supabase()).toEqual([]);
+});
+
+test("device-only data with no account marker is shown and saved as before, with no message and nothing requested", async ({ page }) => {
+  const DEVICE_PBS = JSON.stringify([{ event: "Butterfly 50m", course: "Long Course", time: "31.00", history: [31] }]);
+  await page.goto("/favicon.png");
+  await page.evaluate((pbs) => {
+    localStorage.setItem("pbs", pbs);
+    localStorage.setItem("profile", '{"name":"Device swimmer"}');
+  }, DEVICE_PBS);
+  const traffic = watchTraffic(page);
+
+  await openPlain(page);
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+  await page.evaluate(() => window.showPage("profile"));
+  await expect(page.locator("#name")).toHaveValue("Device swimmer");
+  await expect(page.locator(".saved-data-hidden-note")).toHaveCount(0);
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Butterfly 50m (Long Course) - 31.00");
+  await page.locator("#event").selectOption("Freestyle 50m");
+  await page.locator("#course").selectOption("Short Course");
+  await page.locator("#time").fill("29.00");
+  await page.locator("button[onclick='savePB()']").click();
+  await expect(page.locator("#pbList")).toContainText("Freestyle 50m (Short Course) - 29.00");
+  expect(JSON.parse(await stored(page, "pbs")).map((p) => p.time)).toEqual(["31.00", "29.00"]);
+  await page.reload();
+  await enter(page);
+  await page.evaluate(() => window.showPage("pb"));
+  await expect(page.locator("#pbList")).toContainText("Freestyle 50m (Short Course) - 29.00");
+  await expect(page.locator("#savedDataStorageAlert")).toHaveCount(0);
+  expect(traffic.supabase()).toEqual([]);
 });
